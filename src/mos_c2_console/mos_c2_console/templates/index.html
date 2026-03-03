@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MOS — Mission Operating System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e17;
+            color: #c0c8d8;
+            font-family: 'Consolas', 'Courier New', monospace;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #sidebar {
+            width: 320px;
+            background: #0d1220;
+            border-right: 1px solid #1a2a3a;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        #sidebar h1 {
+            text-align: center;
+            padding: 12px;
+            font-size: 18px;
+            color: #00ff88;
+            border-bottom: 1px solid #1a2a3a;
+            letter-spacing: 3px;
+        }
+        #sidebar h1 span {
+            color: #556;
+            font-size: 11px;
+            display: block;
+            letter-spacing: 1px;
+        }
+        .panel {
+            padding: 10px;
+            border-bottom: 1px solid #1a2a3a;
+        }
+        .panel-title {
+            font-size: 10px;
+            color: #558;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+        }
+        .stat-box {
+            background: #111828;
+            padding: 6px;
+            text-align: center;
+            border-radius: 3px;
+        }
+        .stat-val {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00aaff;
+        }
+        .stat-label {
+            font-size: 8px;
+            color: #556;
+            letter-spacing: 1px;
+        }
+        .stat-air .stat-val { color: #00ccff; }
+        .stat-gnd .stat-val { color: #00ff88; }
+        .stat-sea .stat-val { color: #ff8800; }
+        .stat-idle .stat-val { color: #888; }
+        .stat-exec .stat-val { color: #ffaa00; }
+        .stat-fault .stat-val { color: #ff4444; }
+        .autonomy-bar {
+            display: flex;
+            gap: 2px;
+            margin-top: 4px;
+        }
+        .auto-btn {
+            flex: 1;
+            padding: 4px 2px;
+            background: #1a2a3a;
+            border: 1px solid #2a3a4a;
+            color: #668;
+            font-size: 8px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 2px;
+            font-family: inherit;
+            letter-spacing: 1px;
+        }
+        .auto-btn:hover { background: #2a3a4a; color: #aab; }
+        .auto-btn.active { background: #00441a; color: #00ff88; border-color: #00ff88; }
+        .mission-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .mission-btn {
+            padding: 6px 4px;
+            background: #1a2a3a;
+            border: 1px solid #2a3a4a;
+            color: #8af;
+            font-size: 9px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .mission-btn:hover { background: #2a4a5a; color: #adf; }
+        .swarm-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .swarm-btn {
+            padding: 6px 4px;
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            color: #f88;
+            font-size: 9px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .swarm-btn:hover { background: #3a2a2a; color: #faa; }
+        #log {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 10px;
+        }
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #0a0e17;
+            color: #6a7a8a;
+        }
+        .log-entry .time { color: #334; }
+        .log-entry .tag { color: #00aaff; }
+        .log-entry .threat-tag { color: #ff4444; }
+        #map { flex: 1; }
+        .leaflet-container { background: #0a0e17 !important; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h1>&#x2B21; MOS<span>MISSION OPERATING SYSTEM</span></h1>
+
+    <div class="panel">
+        <div class="panel-title">PLATOON STATUS</div>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-val" id="s-total">0</div>
+                <div class="stat-label">TOTAL</div>
+            </div>
+            <div class="stat-box stat-air">
+                <div class="stat-val" id="s-air">0</div>
+                <div class="stat-label">AIR</div>
+            </div>
+            <div class="stat-box stat-gnd">
+                <div class="stat-val" id="s-gnd">0</div>
+                <div class="stat-label">GROUND</div>
+            </div>
+            <div class="stat-box stat-idle">
+                <div class="stat-val" id="s-idle">0</div>
+                <div class="stat-label">IDLE</div>
+            </div>
+            <div class="stat-box stat-exec">
+                <div class="stat-val" id="s-exec">0</div>
+                <div class="stat-label">EXEC</div>
+            </div>
+            <div class="stat-box stat-fault">
+                <div class="stat-val" id="s-fault">0</div>
+                <div class="stat-label">FAULT</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">AUTONOMY LEVEL</div>
+        <div class="autonomy-bar">
+            <button class="auto-btn" onclick="setAutonomy(0)">MANUAL</button>
+            <button class="auto-btn active" onclick="setAutonomy(1)">ASSIST</button>
+            <button class="auto-btn" onclick="setAutonomy(2)">COLLAB</button>
+            <button class="auto-btn" onclick="setAutonomy(3)">SWARM</button>
+            <button class="auto-btn" onclick="setAutonomy(4)">COGNT</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">MISSION ORDERS</div>
+        <div class="mission-controls">
+            <button class="mission-btn" onclick="sendMission('ISR')">ISR</button>
+            <button class="mission-btn" onclick="sendMission('SECURITY')">SECURITY</button>
+            <button class="mission-btn" onclick="sendMission('PRECISION_EFFECTS')">PRECISION</button>
+            <button class="mission-btn" onclick="sendMission('LOGISTICS')">LOGISTICS</button>
+            <button class="mission-btn" onclick="sendMission('SAR')">SAR</button>
+            <button class="mission-btn" onclick="sendMission('EW_SIGINT')">EW/SIGINT</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">SWARM COMMANDS</div>
+        <div class="swarm-controls">
+            <button class="swarm-btn" onclick="sendSwarm('RTB')">RTB</button>
+            <button class="swarm-btn" onclick="sendSwarm('HOLD')">HOLD</button>
+            <button class="swarm-btn" onclick="sendSwarm('SCATTER')">SCATTER</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">THREATS</div>
+        <div id="threat-count" style="font-size: 14px; color: #ff4444;">0 active threats</div>
+    </div>
+
+    <div id="log">
+        <div class="panel-title">ACTIVITY LOG</div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+/* ================================================================
+   MAP
+   ================================================================ */
+var map = L.map('map', { center: [35.14, -79.01], zoom: 14, zoomControl: false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: 'MOS C2', maxZoom: 19
+}).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+/* ================================================================
+   STATE
+   ================================================================ */
+var assetMarkers = {};
+var assetLastKey = {};
+var threatMarkers = {};
+var threatLastKey = {};
+var hasAutoFitted = false;
+
+var DCOLOR  = { "AIR": "#00ccff", "GROUND": "#00ff88", "MARITIME": "#ff8800" };
+var SNAME   = ["IDLE", "EN_ROUTE", "EXEC", "DONE", "FAULT"];
+var SCOLOR  = ["#888888", "#ffaa00", "#00ff88", "#00aaff", "#ff4444"];
+
+/* ================================================================
+   ASSET RENDERING
+   ================================================================ */
+function renderAssets(assets) {
+    if (!assets || assets.length === 0) return;
+
+    var seen = {};
+    for (var i = 0; i < assets.length; i++) {
+        var a = assets[i];
+        seen[a.asset_id] = true;
+
+        var key = a.asset_type + '-' + a.mission_status;
+        var color = DCOLOR[a.asset_type] || "#fff";
+        var sc = SCOLOR[a.mission_status] || "#888";
+        var radius = a.asset_type === "AIR" ? 8 : a.asset_type === "MARITIME" ? 9 : 7;
+
+        var tip = '<b style="color:#00ff88">' + a.callsign + '</b> (' + a.asset_id + ')<br/>' +
+            a.asset_type + ' | <span style="color:#00aaff">' + (SNAME[a.mission_status]||'UNK') + '</span><br/>' +
+            'BAT: <span style="color:#00aaff">' + (a.battery||0).toFixed(1) + '%</span> | COMMS: ' + (a.comms||0) + 'dBm<br/>' +
+            'LAT: ' + a.lat.toFixed(5) + ' LON: ' + a.lon.toFixed(5);
+
+        if (assetMarkers[a.asset_id]) {
+            assetMarkers[a.asset_id].setLatLng([a.lat, a.lon]);
+            if (assetLastKey[a.asset_id] !== key) {
+                assetMarkers[a.asset_id].setStyle({ fillColor: color, color: sc });
+                assetLastKey[a.asset_id] = key;
+            }
+            assetMarkers[a.asset_id].setTooltipContent(tip);
+        } else {
+            var m = L.circleMarker([a.lat, a.lon], {
+                radius: radius,
+                fillColor: color,
+                color: sc,
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            m.bindTooltip(tip, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+            assetMarkers[a.asset_id] = m;
+            assetLastKey[a.asset_id] = key;
+        }
+    }
+
+    /* Remove stale */
+    var ids = Object.keys(assetMarkers);
+    for (var j = 0; j < ids.length; j++) {
+        if (!seen[ids[j]]) {
+            map.removeLayer(assetMarkers[ids[j]]);
+            delete assetMarkers[ids[j]];
+            delete assetLastKey[ids[j]];
+        }
+    }
+
+    /* Auto-fit once */
+    if (!hasAutoFitted && Object.keys(assetMarkers).length > 0) {
+        var bounds = [];
+        var mk = Object.keys(assetMarkers);
+        for (var b = 0; b < mk.length; b++) {
+            bounds.push(assetMarkers[mk[b]].getLatLng());
+        }
+        map.fitBounds(L.latLngBounds(bounds).pad(0.15));
+        hasAutoFitted = true;
+    }
+}
+
+/* ================================================================
+   STATS
+   ================================================================ */
+function renderStats(assets) {
+    var total = assets.length, air = 0, gnd = 0, sea = 0, idle = 0, exec = 0, fault = 0;
+    for (var i = 0; i < assets.length; i++) {
+        var a = assets[i];
+        if (a.asset_type === "AIR") air++;
+        else if (a.asset_type === "GROUND") gnd++;
+        else if (a.asset_type === "MARITIME") sea++;
+        if (a.mission_status === 0) idle++;
+        else if (a.mission_status === 2) exec++;
+        else if (a.mission_status === 4) fault++;
+    }
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-air').textContent = air;
+    document.getElementById('s-gnd').textContent = gnd + (sea > 0 ? '+' + sea : '');
+    document.getElementById('s-idle').textContent = idle;
+    document.getElementById('s-exec').textContent = exec;
+    document.getElementById('s-fault').textContent = fault;
+}
+
+/* ================================================================
+   THREATS
+   ================================================================ */
+function renderThreats(threats) {
+    if (!threats) threats = [];
+    document.getElementById('threat-count').textContent =
+        threats.length + ' active threat' + (threats.length !== 1 ? 's' : '');
+
+    var seen = {};
+    for (var i = 0; i < threats.length; i++) {
+        var t = threats[i];
+        var tid = t.contact_id || t.id || ('t' + i);
+        seen[tid] = true;
+        var color = t.threat_level === "CRITICAL" ? "#ff0000" :
+                    t.threat_level === "HIGH" ? "#ff4444" :
+                    t.threat_level === "MEDIUM" ? "#ff8800" : "#ffaa00";
+        var tip = '<b style="color:#ff4444">THREAT</b> ' +
+            (t.classification || t.type || 'UNKNOWN') + '<br/>' +
+            (t.threat_level || 'UNK') + ' | ' + tid;
+
+        if (threatMarkers[tid]) {
+            threatMarkers[tid].setLatLng([t.lat || 0, t.lon || 0]);
+            if (threatLastKey[tid] !== t.threat_level) {
+                threatMarkers[tid].setStyle({ color: color, fillColor: color });
+                threatLastKey[tid] = t.threat_level;
+            }
+            threatMarkers[tid].setTooltipContent(tip);
+        } else {
+            var tm = L.circleMarker([t.lat || 0, t.lon || 0], {
+                radius: 12, color: color, fillColor: color,
+                fillOpacity: 0.3, weight: 2, dashArray: '4 4'
+            }).addTo(map);
+            tm.bindTooltip(tip, { direction: 'top', offset: [0, -10] });
+            threatMarkers[tid] = tm;
+            threatLastKey[tid] = t.threat_level;
+        }
+    }
+    var tids = Object.keys(threatMarkers);
+    for (var j = 0; j < tids.length; j++) {
+        if (!seen[tids[j]]) {
+            map.removeLayer(threatMarkers[tids[j]]);
+            delete threatMarkers[tids[j]];
+            delete threatLastKey[tids[j]];
+        }
+    }
+}
+
+/* ================================================================
+   POLLING — 1 second interval via REST
+   ================================================================ */
+function poll() {
+    fetch('/api/assets')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            renderAssets(data);
+            renderStats(data);
+        })
+        .catch(function(e) { console.log('asset poll err', e); });
+
+    fetch('/api/threats')
+        .then(function(r) { return r.json(); })
+        .then(function(data) { renderThreats(data); })
+        .catch(function(e) {});
+}
+
+setInterval(poll, 1000);
+poll();
+
+/* ================================================================
+   USER ACTIONS
+   ================================================================ */
+var missionCounter = 1;
+
+function sendMission(mtype) {
+    var id = 'MVRX-' + String(missionCounter++).padStart(3, '0');
+    var intents = {
+        'ISR': 'Conduct ISR sweep of AO',
+        'SECURITY': 'Establish perimeter defense',
+        'PRECISION_EFFECTS': 'Neutralize target in AO',
+        'LOGISTICS': 'Emergency resupply to forward element',
+        'SAR': 'Search and rescue in designated sector',
+        'EW_SIGINT': 'Map enemy communications network'
+    };
+    fetch('/api/send_mission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            mission_id: id, mission_type: mtype,
+            commander_intent: intents[mtype] || 'Execute',
+            objectives: ['Primary objective'],
+            area_of_operations: 'AO-ALPHA', priority: 1
+        })
+    }).then(function(r) { return r.json(); })
+      .then(function(d) { addLog('MISSION', id + ' ' + mtype + ' sent'); })
+      .catch(function(e) { addLog('ERROR', 'Mission send failed'); });
+}
+
+function sendSwarm(behavior) {
+    fetch('/api/send_swarm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ behavior: behavior, domain: 'ALL' })
+    }).then(function(r) { return r.json(); })
+      .then(function(d) { addLog('SWARM', behavior + ' command sent'); })
+      .catch(function(e) { addLog('ERROR', 'Swarm send failed'); });
+}
+
+function setAutonomy(level) {
+    var names = ['MANUAL', 'ASSISTED', 'COLLABORATIVE', 'SWARM', 'COGNITIVE'];
+    fetch('/api/set_autonomy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_level: level })
+    }).then(function(r) { return r.json(); })
+      .then(function(d) {
+        addLog('AUTONOMY', 'Set to ' + names[level]);
+        var btns = document.querySelectorAll('.auto-btn');
+        for (var i = 0; i < btns.length; i++) {
+            if (i === level) btns[i].classList.add('active');
+            else btns[i].classList.remove('active');
+        }
+    }).catch(function(e) { addLog('ERROR', 'Autonomy set failed'); });
+}
+
+/* ================================================================
+   ACTIVITY LOG
+   ================================================================ */
+function addLog(tag, msg) {
+    var logDiv = document.getElementById('log');
+    var now = new Date().toLocaleTimeString();
+    var tc = (tag === 'THREAT' || tag === 'ERROR') ? 'threat-tag' : 'tag';
+    var e = document.createElement('div');
+    e.className = 'log-entry';
+    e.innerHTML = '<span class="time">' + now + '</span> <span class="' + tc + '">[' + tag + ']</span> ' + msg;
+    if (logDiv.children.length > 1) logDiv.insertBefore(e, logDiv.children[1]);
+    else logDiv.appendChild(e);
+    while (logDiv.children.length > 101) logDiv.removeChild(logDiv.lastChild);
+}
+
+addLog('SYSTEM', 'MOS C2 Console initialized');
+</script>
+</body>
+</html>
