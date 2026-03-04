@@ -3,35 +3,39 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import json, math, random, time
 
+# MacDill AFB, Tampa FL — 27.8497° N, 82.5212° W
+BASE_LAT = 27.8497
+BASE_LON = -82.5212
+
 ASSETS = [
     # AIR — 10
-    {'id': 'MVRX-A01', 'type': 'AIR', 'callsign': 'HAWK-1',      'lat': 34.000, 'lon': -118.000, 'alt': 120.0},
-    {'id': 'MVRX-A02', 'type': 'AIR', 'callsign': 'HAWK-2',      'lat': 34.001, 'lon': -117.998, 'alt': 130.0},
-    {'id': 'MVRX-A03', 'type': 'AIR', 'callsign': 'HAWK-3',      'lat': 34.002, 'lon': -117.996, 'alt': 110.0},
-    {'id': 'MVRX-A04', 'type': 'AIR', 'callsign': 'RAVEN-1',     'lat': 33.998, 'lon': -118.002, 'alt': 90.0},
-    {'id': 'MVRX-A05', 'type': 'AIR', 'callsign': 'RAVEN-2',     'lat': 33.999, 'lon': -118.004, 'alt': 95.0},
-    {'id': 'MVRX-A06', 'type': 'AIR', 'callsign': 'RAVEN-3',     'lat': 33.997, 'lon': -118.001, 'alt': 85.0},
-    {'id': 'MVRX-A07', 'type': 'AIR', 'callsign': 'TALON-1',     'lat': 34.003, 'lon': -117.997, 'alt': 150.0},
-    {'id': 'MVRX-A08', 'type': 'AIR', 'callsign': 'TALON-2',     'lat': 34.004, 'lon': -117.995, 'alt': 145.0},
-    {'id': 'MVRX-A09', 'type': 'AIR', 'callsign': 'OVERWATCH-1', 'lat': 34.005, 'lon': -118.000, 'alt': 200.0},
-    {'id': 'MVRX-A10', 'type': 'AIR', 'callsign': 'OVERWATCH-2', 'lat': 34.006, 'lon': -117.998, 'alt': 210.0},
+    {'id': 'MVRX-A01', 'type': 'AIR', 'callsign': 'HAWK-1',      'lat': BASE_LAT + 0.002, 'lon': BASE_LON + 0.001, 'alt': 120.0},
+    {'id': 'MVRX-A02', 'type': 'AIR', 'callsign': 'HAWK-2',      'lat': BASE_LAT + 0.003, 'lon': BASE_LON - 0.001, 'alt': 130.0},
+    {'id': 'MVRX-A03', 'type': 'AIR', 'callsign': 'HAWK-3',      'lat': BASE_LAT + 0.004, 'lon': BASE_LON + 0.002, 'alt': 110.0},
+    {'id': 'MVRX-A04', 'type': 'AIR', 'callsign': 'RAVEN-1',     'lat': BASE_LAT - 0.001, 'lon': BASE_LON - 0.002, 'alt': 90.0},
+    {'id': 'MVRX-A05', 'type': 'AIR', 'callsign': 'RAVEN-2',     'lat': BASE_LAT - 0.002, 'lon': BASE_LON + 0.003, 'alt': 95.0},
+    {'id': 'MVRX-A06', 'type': 'AIR', 'callsign': 'RAVEN-3',     'lat': BASE_LAT + 0.001, 'lon': BASE_LON - 0.003, 'alt': 85.0},
+    {'id': 'MVRX-A07', 'type': 'AIR', 'callsign': 'TALON-1',     'lat': BASE_LAT + 0.005, 'lon': BASE_LON + 0.000, 'alt': 150.0},
+    {'id': 'MVRX-A08', 'type': 'AIR', 'callsign': 'TALON-2',     'lat': BASE_LAT + 0.006, 'lon': BASE_LON - 0.002, 'alt': 145.0},
+    {'id': 'MVRX-A09', 'type': 'AIR', 'callsign': 'OVERWATCH-1', 'lat': BASE_LAT + 0.007, 'lon': BASE_LON + 0.001, 'alt': 200.0},
+    {'id': 'MVRX-A10', 'type': 'AIR', 'callsign': 'OVERWATCH-2', 'lat': BASE_LAT + 0.008, 'lon': BASE_LON - 0.001, 'alt': 210.0},
     # GROUND — 12
-    {'id': 'MVRX-G01', 'type': 'GROUND', 'callsign': 'WARHOUND-1',  'lat': 33.995, 'lon': -118.003, 'alt': 0.0},
-    {'id': 'MVRX-G02', 'type': 'GROUND', 'callsign': 'WARHOUND-2',  'lat': 33.994, 'lon': -118.005, 'alt': 0.0},
-    {'id': 'MVRX-G03', 'type': 'GROUND', 'callsign': 'WARHOUND-3',  'lat': 33.993, 'lon': -118.007, 'alt': 0.0},
-    {'id': 'MVRX-G04', 'type': 'GROUND', 'callsign': 'WARHOUND-4',  'lat': 33.996, 'lon': -118.001, 'alt': 0.0},
-    {'id': 'MVRX-G05', 'type': 'GROUND', 'callsign': 'MULE-1',      'lat': 33.992, 'lon': -118.004, 'alt': 0.0},
-    {'id': 'MVRX-G06', 'type': 'GROUND', 'callsign': 'MULE-2',      'lat': 33.991, 'lon': -118.006, 'alt': 0.0},
-    {'id': 'MVRX-G07', 'type': 'GROUND', 'callsign': 'MULE-3',      'lat': 33.990, 'lon': -118.008, 'alt': 0.0},
-    {'id': 'MVRX-G08', 'type': 'GROUND', 'callsign': 'SENTRY-1',    'lat': 33.997, 'lon': -117.999, 'alt': 0.0},
-    {'id': 'MVRX-G09', 'type': 'GROUND', 'callsign': 'SENTRY-2',    'lat': 33.998, 'lon': -117.997, 'alt': 0.0},
-    {'id': 'MVRX-G10', 'type': 'GROUND', 'callsign': 'SENTRY-3',    'lat': 33.996, 'lon': -117.995, 'alt': 0.0},
-    {'id': 'MVRX-G11', 'type': 'GROUND', 'callsign': 'SENTRY-4',    'lat': 33.995, 'lon': -117.993, 'alt': 0.0},
-    {'id': 'MVRX-G12', 'type': 'GROUND', 'callsign': 'PATHFINDER-1','lat': 33.994, 'lon': -117.998, 'alt': 0.0},
-    # MARITIME — 3
-    {'id': 'MVRX-M01', 'type': 'MARITIME', 'callsign': 'TRITON-1', 'lat': 33.985, 'lon': -118.010, 'alt': 0.0},
-    {'id': 'MVRX-M02', 'type': 'MARITIME', 'callsign': 'TRITON-2', 'lat': 33.983, 'lon': -118.012, 'alt': 0.0},
-    {'id': 'MVRX-M03', 'type': 'MARITIME', 'callsign': 'TRITON-3', 'lat': 33.981, 'lon': -118.014, 'alt': 0.0},
+    {'id': 'MVRX-G01', 'type': 'GROUND', 'callsign': 'WARHOUND-1',  'lat': BASE_LAT - 0.003, 'lon': BASE_LON + 0.001, 'alt': 0.0},
+    {'id': 'MVRX-G02', 'type': 'GROUND', 'callsign': 'WARHOUND-2',  'lat': BASE_LAT - 0.004, 'lon': BASE_LON - 0.001, 'alt': 0.0},
+    {'id': 'MVRX-G03', 'type': 'GROUND', 'callsign': 'WARHOUND-3',  'lat': BASE_LAT - 0.005, 'lon': BASE_LON + 0.002, 'alt': 0.0},
+    {'id': 'MVRX-G04', 'type': 'GROUND', 'callsign': 'WARHOUND-4',  'lat': BASE_LAT - 0.002, 'lon': BASE_LON - 0.003, 'alt': 0.0},
+    {'id': 'MVRX-G05', 'type': 'GROUND', 'callsign': 'MULE-1',      'lat': BASE_LAT - 0.006, 'lon': BASE_LON + 0.000, 'alt': 0.0},
+    {'id': 'MVRX-G06', 'type': 'GROUND', 'callsign': 'MULE-2',      'lat': BASE_LAT - 0.007, 'lon': BASE_LON - 0.002, 'alt': 0.0},
+    {'id': 'MVRX-G07', 'type': 'GROUND', 'callsign': 'MULE-3',      'lat': BASE_LAT - 0.008, 'lon': BASE_LON + 0.001, 'alt': 0.0},
+    {'id': 'MVRX-G08', 'type': 'GROUND', 'callsign': 'SENTRY-1',    'lat': BASE_LAT + 0.000, 'lon': BASE_LON + 0.004, 'alt': 0.0},
+    {'id': 'MVRX-G09', 'type': 'GROUND', 'callsign': 'SENTRY-2',    'lat': BASE_LAT + 0.001, 'lon': BASE_LON + 0.005, 'alt': 0.0},
+    {'id': 'MVRX-G10', 'type': 'GROUND', 'callsign': 'SENTRY-3',    'lat': BASE_LAT - 0.001, 'lon': BASE_LON + 0.006, 'alt': 0.0},
+    {'id': 'MVRX-G11', 'type': 'GROUND', 'callsign': 'SENTRY-4',    'lat': BASE_LAT - 0.003, 'lon': BASE_LON + 0.005, 'alt': 0.0},
+    {'id': 'MVRX-G12', 'type': 'GROUND', 'callsign': 'PATHFINDER-1','lat': BASE_LAT - 0.004, 'lon': BASE_LON + 0.003, 'alt': 0.0},
+    # MARITIME — 3 (in Tampa Bay waters)
+    {'id': 'MVRX-M01', 'type': 'MARITIME', 'callsign': 'TRITON-1', 'lat': BASE_LAT - 0.010, 'lon': BASE_LON - 0.005, 'alt': 0.0},
+    {'id': 'MVRX-M02', 'type': 'MARITIME', 'callsign': 'TRITON-2', 'lat': BASE_LAT - 0.012, 'lon': BASE_LON + 0.004, 'alt': 0.0},
+    {'id': 'MVRX-M03', 'type': 'MARITIME', 'callsign': 'TRITON-3', 'lat': BASE_LAT - 0.014, 'lon': BASE_LON - 0.003, 'alt': 0.0},
 ]
 
 SPEED = {'AIR': 0.0003, 'GROUND': 0.00012, 'MARITIME': 0.00015}
@@ -70,7 +74,7 @@ class SimulatedPlatoon(Node):
 
         self.timer = self.create_timer(0.5, self.tick)
         self.get_logger().info(
-            f'[MOS SIM] Platoon online — {len(self.state)} assets deployed')
+            f'[MOS SIM] Platoon online — {len(self.state)} assets at MacDill AFB')
 
     def on_waypoints(self, msg):
         try:
@@ -91,7 +95,7 @@ class SimulatedPlatoon(Node):
                         asset['mission_status'] = 0
                         asset['task_timer'] = 0
                         self.get_logger().info(
-                            f'  [SIM] {asset["callsign"]} → HOLD')
+                            f'  [SIM] {asset["callsign"]} -> HOLD')
                     else:
                         asset['waypoints'] = waypoints
                         asset['wp_index'] = 0
@@ -101,7 +105,7 @@ class SimulatedPlatoon(Node):
                         asset['mission_status'] = 1
                         asset['task_timer'] = 0
                         self.get_logger().info(
-                            f'  [SIM] {asset["callsign"]} → '
+                            f'  [SIM] {asset["callsign"]} -> '
                             f'{len(waypoints)} waypoints (loop={loop})')
                     break
         except json.JSONDecodeError:
@@ -111,8 +115,8 @@ class SimulatedPlatoon(Node):
         try:
             data = json.loads(msg.data)
             domain = data.get('required_domain', 'GROUND')
-            target_lat = data.get('target_lat', 34.0)
-            target_lon = data.get('target_lon', -118.0)
+            target_lat = data.get('target_lat', BASE_LAT)
+            target_lon = data.get('target_lon', BASE_LON)
 
             for asset in self.state:
                 if asset['type'] == domain and asset['mission_status'] == 0:
@@ -123,7 +127,7 @@ class SimulatedPlatoon(Node):
                     asset['waypoints'] = []
                     asset['wp_index'] = 0
                     self.get_logger().info(
-                        f'  [SIM] {asset["callsign"]} → EN_ROUTE to '
+                        f'  [SIM] {asset["callsign"]} -> EN_ROUTE to '
                         f'({target_lat:.4f}, {target_lon:.4f})')
                     break
         except json.JSONDecodeError:
@@ -252,6 +256,3 @@ def main():
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-
-
-

@@ -265,6 +265,7 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
     <div class="subtitle">MISSION OPERATING SYSTEM — PHASE 4</div>
   </div>
   <div class="right">
+    <a href="/dashboard" target="_blank" style="color:#00ffff;border:1px solid #00ffff44;padding:4px 10px;font-size:11px;text-decoration:none;border-radius:3px;letter-spacing:1px">◉ TWIN</a>
     <button id="help-btn" onclick="toggleHelp()">? HELP</button>
     <div style="text-align:right">
       <div style="font-size:11px" id="clock"></div>
@@ -404,7 +405,7 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
 // ══════════════════════════════════════════════
 //  MAP INIT
 // ══════════════════════════════════════════════
-const map = L.map('map', {center:[34.0,-118.0], zoom:15, zoomControl:false});
+const map = L.map('map', {center:[27.8497,-82.5212], zoom:15, zoomControl:false});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
   attribution:'CartoDB', maxZoom:19}).addTo(map);
 L.control.zoom({position:'bottomright'}).addTo(map);

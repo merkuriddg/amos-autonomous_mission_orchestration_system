@@ -1,205 +1,146 @@
+#!/usr/bin/env python3
 """
-MOS Swarm Orchestrator
-Manages multi-asset coordination behaviors:
-  - Formation control
-  - Area search patterns
-  - Overwatch positioning
-  - Dynamic reallocation on asset loss
-
-Maps to MVRX-C3 swarm coordination engine from the Mavrix1 RP.
+MOS Swarm Orchestrator — Phase 4b
+Formations: LINE, COLUMN, WEDGE, DIAMOND, ORBIT
+Passthrough: RTB, HOLD, SCATTER
 """
 
 import rclpy
 from rclpy.node import Node
-from mos_interfaces.msg import AssetState, TaskOrder
 from std_msgs.msg import String
-import json
-import math
-
-
-class SwarmBehavior:
-    """Base class for swarm behaviors."""
-
-    def __init__(self, name: str):
-        self.name = name
-        self.active_assets: list[str] = []
-
-    def compute_waypoints(
-        self, assets: dict[str, AssetState], params: dict
-    ) -> dict[str, tuple[float, float, float]]:
-        """Return asset_id -> (lat, lon, alt) waypoints."""
-        raise NotImplementedError
-
-
-class LineFormation(SwarmBehavior):
-    """Assets arranged in a line perpendicular to direction of travel."""
-
-    def __init__(self):
-        super().__init__("LINE_FORMATION")
-
-    def compute_waypoints(self, assets, params):
-        center_lat = params.get("center_lat", 0.0)
-        center_lon = params.get("center_lon", 0.0)
-        heading = params.get("heading_deg", 0.0)
-        spacing_m = params.get("spacing_m", 50.0)
-        alt = params.get("altitude_m", 100.0)
-
-        waypoints = {}
-        asset_list = list(assets.keys())
-        n = len(asset_list)
-
-        for i, asset_id in enumerate(asset_list):
-            offset = (i - n / 2) * spacing_m
-            # Simplified offset calc (production would use proper geodesic math)
-            perp_heading = math.radians(heading + 90)
-            dlat = offset * math.cos(perp_heading) / 111320.0
-            dlon = offset * math.sin(perp_heading) / (
-                111320.0 * math.cos(math.radians(center_lat))
-            )
-            waypoints[asset_id] = (
-                center_lat + dlat,
-                center_lon + dlon,
-                alt,
-            )
-
-        return waypoints
-
-
-class AreaSearch(SwarmBehavior):
-    """Divide an area into sectors and assign one per asset."""
-
-    def __init__(self):
-        super().__init__("AREA_SEARCH")
-
-    def compute_waypoints(self, assets, params):
-        # Simplified: divide bounding box into equal sectors
-        min_lat = params.get("min_lat", 0.0)
-        max_lat = params.get("max_lat", 0.001)
-        min_lon = params.get("min_lon", 0.0)
-        max_lon = params.get("max_lon", 0.001)
-        alt = params.get("altitude_m", 100.0)
-
-        waypoints = {}
-        asset_list = list(assets.keys())
-        n = len(asset_list)
-
-        if n == 0:
-            return waypoints
-
-        # Simple grid subdivision
-        cols = math.ceil(math.sqrt(n))
-        rows = math.ceil(n / cols)
-        dlat = (max_lat - min_lat) / rows
-        dlon = (max_lon - min_lon) / cols
-
-        for i, asset_id in enumerate(asset_list):
-            row = i // cols
-            col = i % cols
-            waypoints[asset_id] = (
-                min_lat + dlat * (row + 0.5),
-                min_lon + dlon * (col + 0.5),
-                alt,
-            )
-
-        return waypoints
-
+import json, math
 
 class SwarmOrchestrator(Node):
-    """
-    Coordinates multi-asset swarm behaviors for the Mavrix1 RP.
-    """
-
-    BEHAVIORS = {
-        "LINE_FORMATION": LineFormation(),
-        "AREA_SEARCH": AreaSearch(),
-    }
-
     def __init__(self):
-        super().__init__("mos_swarm_orchestrator")
-        self.get_logger().info("=== MOS Swarm Orchestrator Initializing ===")
+        super().__init__('mos_swarm_orchestrator')
 
-        self._asset_states: dict[str, AssetState] = {}
+        self.create_subscription(String, '/mos/swarm_command', self.on_command, 10)
+        self.create_subscription(String, '/mos/heartbeat', self.on_heartbeat, 10)
 
-        # Listen for asset states
-        self.create_subscription(
-            AssetState, "/mos/cop/assets", self._on_asset_state, 10
-        )
+        self.swarm_pub = self.create_publisher(String, '/mos/swarm/command', 10)
+        self.waypoint_pub = self.create_publisher(String, '/mos/waypoints/assign', 10)
 
-        # Listen for swarm commands
-        self.create_subscription(
-            String, "/mos/swarm/command", self._on_swarm_command, 10
-        )
+        self.assets = {}
+        self.get_logger().info('[MOS SWARM] Orchestrator online — Phase 4b (formations)')
 
-        # Publish individual waypoint commands
-        self._wp_pub = self.create_publisher(
-            String, "/mos/swarm/waypoints", 10
-        )
-
-        self.get_logger().info("Swarm Orchestrator online.")
-
-    def _on_asset_state(self, msg: AssetState):
-        self._asset_states[msg.asset_id] = msg
-
-    def _on_swarm_command(self, msg: String):
-        """
-        Expected JSON:
-        {
-            "behavior": "LINE_FORMATION" | "AREA_SEARCH",
-            "asset_ids": ["id1", "id2", ...],  // empty = all assets
-            "params": { ... behavior-specific parameters ... }
-        }
-        """
+    def on_heartbeat(self, msg):
         try:
-            cmd = json.loads(msg.data)
-        except json.JSONDecodeError:
-            self.get_logger().error("Invalid swarm command JSON")
+            d = json.loads(msg.data)
+            aid = d.get('asset_id', '')
+            if aid:
+                self.assets[aid] = d
+        except Exception:
+            pass
+
+    def on_command(self, msg):
+        try:
+            data = json.loads(msg.data)
+            behavior = data.get('behavior', 'HOLD')
+            domain = data.get('domain', 'ALL')
+            self.get_logger().info(f'[MOS SWARM] Received: {behavior} domain={domain}')
+
+            if behavior.startswith('FORM_'):
+                self.execute_formation(behavior, domain)
+            else:
+                out = String()
+                out.data = json.dumps(data)
+                self.swarm_pub.publish(out)
+                self.get_logger().info(f'[MOS SWARM] Passthrough → {behavior}')
+        except Exception as e:
+            self.get_logger().error(f'[MOS SWARM] Error: {e}')
+
+    def get_filtered(self, domain):
+        result = []
+        for a in self.assets.values():
+            if domain == 'ALL' or a.get('asset_type') == domain:
+                result.append(a)
+        return result
+
+    def get_center(self, assets):
+        if not assets:
+            return 34.0, -118.0
+        lat = sum(a['lat'] for a in assets) / len(assets)
+        lon = sum(a['lon'] for a in assets) / len(assets)
+        return lat, lon
+
+    def execute_formation(self, formation, domain):
+        assets = self.get_filtered(domain)
+        if not assets:
+            self.get_logger().warn(f'[MOS SWARM] No assets for domain={domain}')
             return
 
-        behavior_name = cmd.get("behavior", "")
-        behavior = self.BEHAVIORS.get(behavior_name)
-        if not behavior:
-            self.get_logger().error(f"Unknown behavior: {behavior_name}")
-            return
+        clat, clon = self.get_center(assets)
+        n = len(assets)
+        sp = 0.0008
 
-        # Filter assets
-        asset_ids = cmd.get("asset_ids", [])
-        if not asset_ids:
-            target_assets = dict(self._asset_states)
-        else:
-            target_assets = {
-                k: v for k, v in self._asset_states.items() if k in asset_ids
-            }
+        positions = []
 
-        # Compute waypoints
-        waypoints = behavior.compute_waypoints(target_assets, cmd.get("params", {}))
+        if formation == 'FORM_LINE':
+            for i in range(n):
+                offset = (i - (n - 1) / 2) * sp
+                positions.append((clat, clon + offset))
+
+        elif formation == 'FORM_COLUMN':
+            for i in range(n):
+                offset = (i - (n - 1) / 2) * sp
+                positions.append((clat + offset, clon))
+
+        elif formation == 'FORM_WEDGE':
+            for i in range(n):
+                if i == 0:
+                    positions.append((clat + sp, clon))
+                else:
+                    side = 1 if i % 2 == 1 else -1
+                    row = (i + 1) // 2
+                    positions.append((
+                        clat - row * sp * 0.7,
+                        clon + side * row * sp * 0.5))
+
+        elif formation == 'FORM_DIAMOND':
+            positions.append((clat, clon))
+            ring = 1
+            idx = 1
+            while idx < n:
+                pts_in_ring = ring * 4
+                for p in range(pts_in_ring):
+                    if idx >= n:
+                        break
+                    angle = (p / pts_in_ring) * 2 * math.pi + math.pi / 4
+                    r = ring * sp
+                    positions.append((
+                        clat + r * math.cos(angle),
+                        clon + r * math.sin(angle)))
+                    idx += 1
+                ring += 1
+
+        elif formation == 'FORM_ORBIT':
+            r = sp * max(1, n / 6)
+            for i in range(n):
+                angle = (i / n) * 2 * math.pi
+                positions.append((
+                    clat + r * math.cos(angle),
+                    clon + r * math.sin(angle)))
+
+        loop = (formation == 'FORM_ORBIT')
+
+        for i, asset in enumerate(assets):
+            if i < len(positions):
+                wp = {
+                    'asset_id': asset['asset_id'],
+                    'waypoints': [{'lat': positions[i][0], 'lon': positions[i][1]}],
+                    'loop': loop,
+                }
+                m = String()
+                m.data = json.dumps(wp)
+                self.waypoint_pub.publish(m)
 
         self.get_logger().info(
-            f"[SWARM] Executing {behavior_name} with {len(waypoints)} assets"
-        )
-
-        # Publish waypoints
-        wp_msg = String()
-        wp_msg.data = json.dumps({
-            "behavior": behavior_name,
-            "waypoints": {
-                k: {"lat": v[0], "lon": v[1], "alt": v[2]}
-                for k, v in waypoints.items()
-            },
-        })
-        self._wp_pub.publish(wp_msg)
+            f'[MOS SWARM] {formation}: {len(assets)} assets repositioned')
 
 
-def main(args=None):
-    rclpy.init(args=args)
+def main():
+    rclpy.init()
     node = SwarmOrchestrator()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MOS Digital Twin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overflow-y:auto}
+#header{background:#0d1117;padding:12px 20px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #00ff8844;position:sticky;top:0;z-index:100}
+#header h1{font-size:16px;letter-spacing:3px}
+#header h1 span{color:#00ff88}
+.nav-links{display:flex;align-items:center;gap:12px}
+.nav-links a{color:#4488ff;text-decoration:none;font-size:11px;border:1px solid #4488ff44;
+  padding:4px 12px;border-radius:3px;letter-spacing:1px}
+.nav-links a:hover{background:#4488ff22}
+#clock{font-size:11px;color:#888}
+#stats{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap}
+.stat{background:#0d1117;padding:8px 16px;border-radius:4px;text-align:center;
+  border:1px solid #00ff8822;min-width:90px}
+.stat .val{font-size:24px;font-weight:bold}
+.stat .lbl{font-size:9px;color:#888;letter-spacing:1px;margin-top:2px}
+#grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:8px 20px 20px 20px}
+.card{background:#0d1117;border:1px solid #333;border-radius:6px;padding:10px;transition:all 0.3s}
+.card.AIR{border-color:#4488ff44}
+.card.GROUND{border-color:#44ff4444}
+.card.MARITIME{border-color:#ff884444}
+.card.active{box-shadow:0 0 10px rgba(0,255,136,0.15)}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cs{font-size:13px;font-weight:bold;letter-spacing:1px}
+.badge{font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:1px;font-weight:bold}
+.badge.AIR{background:#4488ff33;color:#4488ff}
+.badge.GROUND{background:#44ff4433;color:#44ff44}
+.badge.MARITIME{background:#ff884433;color:#ff8844}
+.srow{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:10px}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.brow{margin:4px 0}
+.blbl{font-size:9px;color:#888;display:flex;justify-content:space-between}
+.bwrap{background:#1a1a2e;border-radius:2px;height:10px;overflow:hidden;margin-top:2px}
+.bfill{height:100%;border-radius:2px;transition:width 0.5s}
+.prow{font-size:9px;color:#555;margin-top:6px;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>&#x2B21; <span>MOS</span> DIGITAL TWIN</h1>
+  <div class="nav-links">
+    <span id="clock"></span>
+    <a href="/">&#x2190; C2 CONSOLE</a>
+  </div>
+</div>
+<div id="stats"></div>
+<div id="grid"></div>
+<script>
+var SN={0:"IDLE",1:"EN ROUTE",2:"EXECUTING",3:"COMPLETE"};
+var SC={0:"#888888",1:"#ffff00",2:"#00ff88",3:"#4488ff"};
+var DC={AIR:"#4488ff",GROUND:"#44ff44",MARITIME:"#ff8844"};
+
+function renderStats(assets){
+  var t=assets.length;
+  var act=assets.filter(function(a){return a.mission_status>0&&a.mission_status<5}).length;
+  var air=assets.filter(function(a){return a.asset_type==="AIR"}).length;
+  var gnd=assets.filter(function(a){return a.asset_type==="GROUND"}).length;
+  var sea=assets.filter(function(a){return a.asset_type==="MARITIME"}).length;
+  var ab=t>0?(assets.reduce(function(s,a){return s+a.battery},0)/t).toFixed(0):0;
+  var lo=assets.reduce(function(m,a){return a.battery<m.battery?a:m},assets[0]||{battery:0});
+  var lbc=lo.battery<20?"#ff4444":"#ffaa00";
+  document.getElementById("stats").innerHTML=
+    '<div class="stat"><div class="val">'+t+'</div><div class="lbl">TOTAL</div></div>'
+    +'<div class="stat"><div class="val" style="color:#00ff88">'+act+'</div><div class="lbl">ACTIVE</div></div>'
+    +'<div class="stat"><div class="val" style="color:#888">'+(t-act)+'</div><div class="lbl">IDLE</div></div>'
+    +'<div class="stat"><div class="val" style="color:#4488ff">'+air+'</div><div class="lbl">AIR</div></div>'
+    +'<div class="stat"><div class="val" style="color:#44ff44">'+gnd+'</div><div class="lbl">GROUND</div></div>'
+    +'<div class="stat"><div class="val" style="color:#ff8844">'+sea+'</div><div class="lbl">SEA</div></div>'
+    +'<div class="stat"><div class="val">'+ab+'%</div><div class="lbl">AVG BATT</div></div>'
+    +'<div class="stat"><div class="val" style="color:'+lbc+'">'+(lo.battery?lo.battery.toFixed(0):"--")+'%</div><div class="lbl">LOW BATT<br>'+(lo.callsign||"--")+'</div></div>';
+}
+
+function renderGrid(assets){
+  var order={AIR:0,GROUND:1,MARITIME:2};
+  var sorted=assets.slice().sort(function(a,b){
+    var d=(order[a.asset_type]||9)-(order[b.asset_type]||9);
+    if(d!==0) return d;
+    return a.callsign.localeCompare(b.callsign);
+  });
+  var html="";
+  for(var i=0;i<sorted.length;i++){
+    var a=sorted[i];
+    var sn=SN[a.mission_status]||"UNK";
+    var sc=SC[a.mission_status]||"#888";
+    var bp=Math.max(0,Math.min(100,a.battery));
+    var bc=bp>50?"#00ff88":bp>20?"#ffaa00":"#ff4444";
+    var cp=Math.max(0,Math.min(100,((a.comms+90)/60)*100));
+    var wpc=a.wp_count||0;
+    var wpi=a.wp_index||0;
+    var wpl=a.wp_loop?" &#x21BB;":"";
+    var wt=wpc>0?"WP "+(wpi+1)+"/"+wpc+wpl:"&#x2014;";
+    var act=a.mission_status>0&&a.mission_status<5;
+    var dtype=a.asset_type==="MARITIME"?"SEA":a.asset_type;
+    html+='<div class="card '+a.asset_type+(act?" active":"")+'">'
+      +'<div class="card-head">'
+      +'<span class="cs" style="color:'+DC[a.asset_type]+'">'+a.callsign+'</span>'
+      +'<span class="badge '+a.asset_type+'">'+dtype+'</span>'
+      +'</div>'
+      +'<div class="srow">'
+      +'<div class="sdot" style="background:'+sc+'"></div>'
+      +'<span style="color:'+sc+'">'+sn+'</span>'
+      +'<span style="margin-left:auto;color:#555">'+wt+'</span>'
+      +'</div>'
+      +'<div class="brow"><div class="blbl"><span>BATT</span><span>'+bp.toFixed(0)+'%</span></div>'
+      +'<div class="bwrap"><div class="bfill" style="width:'+bp+'%;background:'+bc+'"></div></div></div>'
+      +'<div class="brow"><div class="blbl"><span>COMMS</span><span>'+a.comms.toFixed(0)+' dBm</span></div>'
+      +'<div class="bwrap"><div class="bfill" style="width:'+cp+'%;background:#4488ff"></div></div></div>'
+      +'<div class="prow"><span>'+a.lat.toFixed(5)+', '+a.lon.toFixed(5)+'</span>'
+      +'<span>'+a.heading.toFixed(0)+'&deg; | '+a.alt.toFixed(0)+'ft</span></div>'
+      +'</div>';
+  }
+  document.getElementById("grid").innerHTML=html;
+}
+
+function refresh(){
+  fetch("/api/assets").then(function(r){return r.json()}).then(function(a){
+    renderStats(a);renderGrid(a);
+  }).catch(function(e){console.warn("err",e)});
+}
+setInterval(refresh,1000);
+refresh();
+setInterval(function(){
+  document.getElementById("clock").textContent=new Date().toLocaleTimeString("en-US",
+    {hour12:true,hour:"2-digit",minute:"2-digit",second:"2-digit"});
+},1000);
+</script>
+</body>
+</html>

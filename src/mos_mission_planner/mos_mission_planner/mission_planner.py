@@ -1,312 +1,209 @@
+#!/usr/bin/env python3
 """
-MOS Mission Planner — MERPH Brain (Full Version)
-Mission Execution, Resource Planning & Human-integration
-
-Supports all 6 Mavrix1 mission sets:
-  1. ISR — Intelligence, Surveillance, Reconnaissance
-  2. SECURITY — Force Protection, Perimeter Defense
-  3. PRECISION_EFFECTS — Targeting, Strike Coordination
-  4. LOGISTICS — Resupply, Casualty Evacuation
-  5. SAR — Search and Rescue
-  6. EW_SIGINT — Electronic Warfare, Signals Intelligence
-
-Each mission type decomposes into domain-specific task chains
-with priority-weighted asset allocation.
+MOS Mission Planner — Phase 4b
+Decomposes 6 mission types into waypoint patterns and assigns to available assets.
 """
 
 import rclpy
 from rclpy.node import Node
-from mos_interfaces.msg import MissionIntent, TaskOrder
 from std_msgs.msg import String
-
-import json
-import uuid
-import time
-
-
-# ── Mission Decomposition Templates ──
-# Each mission type breaks down into ordered task chains
-# with domain preferences and required capabilities.
+import json, math, random, time
 
 MISSION_TEMPLATES = {
-    "ISR": {
-        "name": "Intelligence, Surveillance, Reconnaissance",
-        "tasks": [
-            {"type": "DEPLOY_ISR",    "domain": "AIR",      "desc": "Deploy aerial ISR platforms to AO",
-             "duration_min": 5,  "params": ["altitude=150", "pattern=RACETRACK"]},
-            {"type": "ROUTE_RECON",   "domain": "AIR",      "desc": "Conduct route reconnaissance",
-             "duration_min": 20, "params": ["sensor=EO_IR", "coverage=100pct"]},
-            {"type": "GROUND_RECON",  "domain": "GROUND",   "desc": "Advance ground sensors along axis",
-             "duration_min": 30, "params": ["formation=WEDGE", "speed=CAUTIOUS"]},
-            {"type": "SIGNALS_SCAN",  "domain": "AIR",      "desc": "Passive SIGINT collection",
-             "duration_min": 15, "params": ["band=WIDEBAND", "mode=PASSIVE"]},
-            {"type": "RELAY",         "domain": "AIR",      "desc": "Establish comms relay overhead",
-             "duration_min": 60, "params": ["altitude=500", "mode=MESH_RELAY"]},
-            {"type": "OBSERVE",       "domain": "AIR",      "desc": "Persistent overwatch of NAIs",
-             "duration_min": 45, "params": ["pattern=ORBIT", "sensor=MULTI"]},
-        ],
+    'ISR': {
+        'domains': ['AIR'],
+        'count': 3,
+        'pattern': 'RACETRACK',
+        'loop': True,
+        'desc': 'Aerial reconnaissance racetrack',
     },
-    "SECURITY": {
-        "name": "Force Protection & Perimeter Defense",
-        "tasks": [
-            {"type": "ESTABLISH_OP",  "domain": "GROUND",   "desc": "Establish observation posts",
-             "duration_min": 10, "params": ["sectors=4", "overlap=15deg"]},
-            {"type": "PATROL_ROUTE",  "domain": "GROUND",   "desc": "Conduct mounted patrol routes",
-             "duration_min": 60, "params": ["pattern=RANDOM", "speed=PATROL"]},
-            {"type": "AERIAL_OVERWATCH", "domain": "AIR",   "desc": "Continuous aerial overwatch",
-             "duration_min": 45, "params": ["altitude=200", "pattern=FIGURE8"]},
-            {"type": "TRIPWIRE",      "domain": "GROUND",   "desc": "Deploy sensor tripwire line",
-             "duration_min": 15, "params": ["sensor_type=ACOUSTIC_SEISMIC", "spacing=50m"]},
-            {"type": "QRF_STANDBY",   "domain": "GROUND",   "desc": "Position quick reaction force",
-             "duration_min": 0,  "params": ["readiness=2MIN", "loadout=HEAVY"]},
-            {"type": "COUNTER_UAS",   "domain": "AIR",      "desc": "Counter-UAS patrol screen",
-             "duration_min": 60, "params": ["altitude=100", "sensor=RADAR_RF"]},
-        ],
+    'SECURITY': {
+        'domains': ['GROUND'],
+        'count': 4,
+        'pattern': 'PERIMETER',
+        'loop': True,
+        'desc': 'Perimeter security patrol',
     },
-    "PRECISION_EFFECTS": {
-        "name": "Precision Strike & Effects Coordination",
-        "tasks": [
-            {"type": "TARGET_DEVELOP","domain": "AIR",      "desc": "Develop target with ISR",
-             "duration_min": 10, "params": ["sensor=EO_IR", "patt=ORBIT"]},
-            {"type": "PID_CONFIRM",   "domain": "AIR",      "desc": "Positive ID confirmation",
-             "duration_min": 5,  "params": ["sensor=ZOOM_EO", "record=TRUE"]},
-            {"type": "STRIKE_COORD",  "domain": "AIR",      "desc": "Coordinate strike geometry",
-             "duration_min": 3,  "params": ["deconflict=TRUE", "clearance=HPL_REQUIRED"]},
-            {"type": "EFFECTS_DELIVERY","domain": "AIR",     "desc": "Deliver precision effects",
-             "duration_min": 1,  "params": ["method=DIRECT", "munition=GUIDED"]},
-            {"type": "BDA",           "domain": "AIR",      "desc": "Battle damage assessment",
-             "duration_min": 10, "params": ["sensor=EO_IR", "passes=2"]},
-            {"type": "SCREEN",        "domain": "GROUND",   "desc": "Ground screen for squirters",
-             "duration_min": 30, "params": ["formation=LINE", "spacing=100m"]},
-        ],
+    'PRECISION_EFFECTS': {
+        'domains': ['AIR', 'GROUND'],
+        'count': 4,
+        'pattern': 'CONVERGE',
+        'loop': False,
+        'desc': 'Multi-domain precision strike',
     },
-    "LOGISTICS": {
-        "name": "Resupply & Casualty Evacuation",
-        "tasks": [
-            {"type": "ROUTE_CLEAR",   "domain": "AIR",      "desc": "Clear supply route ahead",
-             "duration_min": 15, "params": ["altitude=100", "sensor=EO_IR"]},
-            {"type": "SUPPLY_MOVE",   "domain": "GROUND",   "desc": "Move supply vehicles to objective",
-             "duration_min": 30, "params": ["cargo=AMMO_WATER", "speed=BEST"]},
-            {"type": "AERIAL_RESUPPLY","domain": "AIR",      "desc": "Drone resupply drop",
-             "duration_min": 10, "params": ["payload=EMERGENCY", "drop=PRECISION"]},
-            {"type": "CASEVAC_PREP",  "domain": "GROUND",   "desc": "Prepare casualty collection point",
-             "duration_min": 5,  "params": ["security=LOCAL", "marking=IR_STROBE"]},
-            {"type": "CASEVAC_MOVE",  "domain": "GROUND",   "desc": "Transport casualties to CCP",
-             "duration_min": 20, "params": ["priority=URGENT", "route=SECURE"]},
-            {"type": "OVERWATCH",     "domain": "AIR",      "desc": "Security overwatch for convoy",
-             "duration_min": 45, "params": ["altitude=200", "standoff=500m"]},
-        ],
+    'LOGISTICS': {
+        'domains': ['GROUND'],
+        'count': 2,
+        'pattern': 'ROUTE',
+        'loop': False,
+        'desc': 'Supply route logistics run',
     },
-    "SAR": {
-        "name": "Search and Rescue",
-        "tasks": [
-            {"type": "SEARCH_GRID",   "domain": "AIR",      "desc": "Aerial grid search pattern",
-             "duration_min": 30, "params": ["pattern=EXPANDING_SQUARE", "altitude=80"]},
-            {"type": "THERMAL_SCAN",  "domain": "AIR",      "desc": "IR/thermal sweep for survivors",
-             "duration_min": 20, "params": ["sensor=IR_THERMAL", "sensitivity=HIGH"]},
-            {"type": "GROUND_SWEEP",  "domain": "GROUND",   "desc": "Ground team systematic sweep",
-             "duration_min": 45, "params": ["formation=LINE", "spacing=25m"]},
-            {"type": "MARITIME_SEARCH","domain": "MARITIME", "desc": "Maritime surface search",
-             "duration_min": 30, "params": ["pattern=SECTOR", "speed=SEARCH"]},
-            {"type": "BEACON_LOCATE", "domain": "AIR",      "desc": "Locate emergency beacons",
-             "duration_min": 10, "params": ["freq=406MHZ", "mode=DF"]},
-            {"type": "EXTRACT",       "domain": "GROUND",   "desc": "Extract and secure survivors",
-             "duration_min": 15, "params": ["method=GROUND", "security=LOCAL"]},
-            {"type": "RELAY",         "domain": "AIR",      "desc": "Comms relay for SAR coordination",
-             "duration_min": 60, "params": ["altitude=500", "mode=MESH_RELAY"]},
-        ],
+    'SAR': {
+        'domains': ['AIR', 'GROUND'],
+        'count': 4,
+        'pattern': 'SEARCH_GRID',
+        'loop': True,
+        'desc': 'Search and rescue grid',
     },
-    "EW_SIGINT": {
-        "name": "Electronic Warfare & Signals Intelligence",
-        "tasks": [
-            {"type": "SIGINT_COLLECT","domain": "AIR",      "desc": "Airborne SIGINT collection",
-             "duration_min": 30, "params": ["band=30MHZ_6GHZ", "mode=INTERCEPT"]},
-            {"type": "EMITTER_LOCATE","domain": "AIR",      "desc": "Geolocate hostile emitters",
-             "duration_min": 15, "params": ["method=TDOA", "accuracy=50m"]},
-            {"type": "GROUND_SIGINT", "domain": "GROUND",   "desc": "Ground-based signals collection",
-             "duration_min": 45, "params": ["band=VHF_UHF", "mode=MONITOR"]},
-            {"type": "JAMMING",       "domain": "AIR",      "desc": "Targeted communications jamming",
-             "duration_min": 10, "params": ["target=SPECIFIC", "power=FOCUSED", "clearance=HPL_REQUIRED"]},
-            {"type": "CYBER_PROBE",   "domain": "GROUND",   "desc": "Network reconnaissance probe",
-             "duration_min": 20, "params": ["mode=PASSIVE", "target=WIFI_CELLULAR"]},
-            {"type": "MARITIME_EW",   "domain": "MARITIME",  "desc": "Maritime electronic surveillance",
-             "duration_min": 30, "params": ["band=RADAR_COMMS", "mode=PASSIVE"]},
-        ],
+    'EW_SIGINT': {
+        'domains': ['AIR', 'MARITIME'],
+        'count': 3,
+        'pattern': 'ORBIT',
+        'loop': True,
+        'desc': 'EW/SIGINT collection orbit',
     },
 }
 
 
 class MissionPlanner(Node):
-    """
-    Full MOS Mission Planner — decomposes commander's intent
-    into domain-specific task chains for all 6 Mavrix1 mission sets.
-    Supports simultaneous multi-mission management.
-    """
-
     def __init__(self):
-        super().__init__("mos_mission_planner")
-        self.get_logger().info("=" * 60)
-        self.get_logger().info("  MOS MISSION PLANNER — MERPH BRAIN (FULL)")
-        self.get_logger().info("  Supported mission types:")
-        for mtype in MISSION_TEMPLATES:
-            name = MISSION_TEMPLATES[mtype]["name"]
-            tasks = len(MISSION_TEMPLATES[mtype]["tasks"])
-            self.get_logger().info(f"    ✓ {mtype:22s} ({tasks} task templates)")
-        self.get_logger().info("=" * 60)
+        super().__init__('mos_mission_planner')
 
-        # Active missions tracking
-        self.active_missions = {}
+        self.create_subscription(String, '/mos/mission_command', self.on_mission, 10)
+        self.create_subscription(String, '/mos/heartbeat', self.on_heartbeat, 10)
 
-        # Subscribers
-        self.create_subscription(
-            MissionIntent, "/mos/mission/intent",
-            self._on_mission_intent, 10
-        )
+        self.waypoint_pub = self.create_publisher(String, '/mos/waypoints/assign', 10)
+        self.status_pub = self.create_publisher(String, '/mos/mission/status', 10)
 
-        # Publishers
-        self._task_pub = self.create_publisher(TaskOrder, "/mos/tasks/orders", 10)
-        self._status_pub = self.create_publisher(String, "/mos/mission/status", 10)
+        self.assets = {}
+        self.get_logger().info('[MOS PLANNER] Mission Planner online — Phase 4b')
 
-        # Mission status check every 10 seconds
-        self.create_timer(10.0, self._mission_status_check)
+    def on_heartbeat(self, msg):
+        try:
+            d = json.loads(msg.data)
+            aid = d.get('asset_id', '')
+            if aid:
+                self.assets[aid] = d
+        except Exception:
+            pass
 
-        self.get_logger().info("Mission Planner online. Awaiting commander's intent...")
+    def get_available(self, domains, count):
+        avail = []
+        for a in self.assets.values():
+            if a.get('asset_type') in domains and a.get('mission_status', 0) == 0:
+                avail.append(a)
+        avail.sort(key=lambda x: x.get('battery', 0), reverse=True)
+        return avail[:count]
 
-    def _on_mission_intent(self, msg: MissionIntent):
-        """Receive and decompose a mission intent."""
-        self.get_logger().info("")
-        self.get_logger().info("=" * 50)
-        self.get_logger().info(f"  NEW MISSION ORDER RECEIVED")
-        self.get_logger().info(f"  ID:       {msg.mission_id}")
-        self.get_logger().info(f"  Type:     {msg.mission_type}")
-        self.get_logger().info(f"  Intent:   {msg.commander_intent}")
-        self.get_logger().info(f"  AO:       {msg.area_of_operations}")
-        self.get_logger().info(f"  Priority: {msg.priority}")
-        if msg.objectives:
-            for obj in msg.objectives:
-                self.get_logger().info(f"  Objective: {obj}")
-        self.get_logger().info("=" * 50)
+    def make_waypoints(self, pattern, clat, clon, idx, total):
+        r = 0.003
 
-        template = MISSION_TEMPLATES.get(msg.mission_type)
+        if pattern == 'RACETRACK':
+            off = idx * 0.001
+            return [
+                {'lat': clat + r + off, 'lon': clon - r},
+                {'lat': clat + r + off, 'lon': clon + r},
+                {'lat': clat - r + off, 'lon': clon + r},
+                {'lat': clat - r + off, 'lon': clon - r},
+            ]
 
-        if not template:
-            self.get_logger().error(
-                f"Unknown mission type: {msg.mission_type}. "
-                f"Valid types: {list(MISSION_TEMPLATES.keys())}"
-            )
-            self._publish_status(msg.mission_id, "REJECTED",
-                                 f"Unknown mission type: {msg.mission_type}")
-            return
+        elif pattern == 'PERIMETER':
+            a0 = (idx / total) * 2 * math.pi
+            pts = []
+            for j in range(4):
+                a = a0 + j * (math.pi / 2)
+                pts.append({'lat': clat + r * math.cos(a), 'lon': clon + r * math.sin(a)})
+            return pts
 
-        self.get_logger().info(
-            f"[PLANNER] Decomposing {msg.mission_type}: {template['name']}"
-        )
+        elif pattern == 'CONVERGE':
+            a = (idx / total) * 2 * math.pi
+            return [
+                {'lat': clat + r * 2 * math.cos(a), 'lon': clon + r * 2 * math.sin(a)},
+                {'lat': clat + r * 0.3 * math.cos(a), 'lon': clon + r * 0.3 * math.sin(a)},
+            ]
 
-        # Track this mission
-        mission_record = {
-            "mission_id": msg.mission_id,
-            "mission_type": msg.mission_type,
-            "intent": msg.commander_intent,
-            "ao": msg.area_of_operations,
-            "priority": msg.priority,
-            "status": "PLANNING",
-            "tasks": [],
-            "start_time": time.time(),
-        }
+        elif pattern == 'ROUTE':
+            off = idx * 0.0005
+            return [
+                {'lat': clat - r + off, 'lon': clon},
+                {'lat': clat + off, 'lon': clon + r * 0.5},
+                {'lat': clat + r + off, 'lon': clon},
+            ]
 
-        # Decompose into tasks
-        task_count = 0
-        for task_template in template["tasks"]:
-            task_id = str(uuid.uuid4())
-            task_count += 1
+        elif pattern == 'SEARCH_GRID':
+            gs = r / 2
+            row = idx // 2
+            col = idx % 2
+            bl = clat - r + row * gs
+            bo = clon - r + col * gs * 2
+            d = 1 if col == 0 else -1
+            return [
+                {'lat': bl, 'lon': bo},
+                {'lat': bl, 'lon': bo + d * gs},
+                {'lat': bl + gs * 0.5, 'lon': bo + d * gs},
+                {'lat': bl + gs * 0.5, 'lon': bo},
+            ]
 
-            # Build task order
-            order = TaskOrder()
-            order.task_id = task_id
-            order.mission_id = msg.mission_id
-            order.task_type = task_template["type"]
-            order.priority = msg.priority
-            order.assigned_asset_id = ""  # Will be assigned by allocator or sim
+        elif pattern == 'ORBIT':
+            rad = r * (1 + idx * 0.3)
+            pts = []
+            for j in range(6):
+                a = (j / 6) * 2 * math.pi + idx * (math.pi / 3)
+                pts.append({'lat': clat + rad * math.cos(a), 'lon': clon + rad * math.sin(a)})
+            return pts
 
-            # Merge template params with mission context
-            params = list(task_template["params"])
-            params.append(f"domain={task_template['domain']}")
-            params.append(f"ao={msg.area_of_operations}")
-            params.append(f"duration={task_template['duration_min']}min")
-            params.append(f"description={task_template['desc']}")
-            params.append(f"sequence={task_count}")
-            order.parameters = params
+        return [{'lat': clat, 'lon': clon}]
 
-            self._task_pub.publish(order)
+    def on_mission(self, msg):
+        try:
+            data = json.loads(msg.data)
+            mtype = data.get('mission_type', 'ISR')
+            mid = data.get('mission_id', 'UNK')
 
-            mission_record["tasks"].append({
-                "task_id": task_id[:8],
-                "type": task_template["type"],
-                "domain": task_template["domain"],
-                "desc": task_template["desc"],
-                "status": "PUBLISHED",
-            })
+            tmpl = MISSION_TEMPLATES.get(mtype)
+            if not tmpl:
+                self.get_logger().warn(f'[MOS PLANNER] Unknown type: {mtype}')
+                return
 
-            self.get_logger().info(
-                f"  [{task_count}] {task_template['type']:20s} "
-                f"domain={task_template['domain']:10s} "
-                f"→ {task_template['desc']}"
-            )
+            self.get_logger().info(f'[MOS PLANNER] *** MISSION {mid}: {mtype} ***')
+            self.get_logger().info(f'  {tmpl["desc"]} | Pattern: {tmpl["pattern"]}')
 
-        mission_record["status"] = "EXECUTING"
-        self.active_missions[msg.mission_id] = mission_record
+            available = self.get_available(tmpl['domains'], tmpl['count'])
 
-        self.get_logger().info(
-            f"[PLANNER] Mission {msg.mission_id} decomposed into "
-            f"{task_count} tasks across "
-            f"{len(set(t['domain'] for t in template['tasks']))} domains"
-        )
+            if not available:
+                self.get_logger().warn(f'[MOS PLANNER] No available assets for {mtype}!')
+                self.pub_status(mid, 'NO_ASSETS', 0)
+                return
 
-        self._publish_status(
-            msg.mission_id, "EXECUTING",
-            f"Decomposed into {task_count} tasks"
-        )
+            clat = sum(a['lat'] for a in available) / len(available)
+            clon = sum(a['lon'] for a in available) / len(available)
+            clat += random.uniform(-0.002, 0.002)
+            clon += random.uniform(-0.002, 0.002)
 
-    def _mission_status_check(self):
-        """Periodic check and report on active missions."""
-        if not self.active_missions:
-            return
+            count = 0
+            for i, asset in enumerate(available):
+                wps = self.make_waypoints(tmpl['pattern'], clat, clon, i, len(available))
+                wp_msg = String()
+                wp_msg.data = json.dumps({
+                    'asset_id': asset['asset_id'],
+                    'waypoints': wps,
+                    'loop': tmpl['loop'],
+                })
+                self.waypoint_pub.publish(wp_msg)
+                count += 1
+                self.get_logger().info(
+                    f'  -> {asset["callsign"]} tasked {len(wps)} waypoints (loop={tmpl["loop"]})')
 
-        self.get_logger().info(
-            f"[PLANNER SITREP] Active missions: {len(self.active_missions)}"
-        )
-        for mid, mission in self.active_missions.items():
-            elapsed = int(time.time() - mission["start_time"])
-            self.get_logger().info(
-                f"  {mid}: {mission['mission_type']} "
-                f"status={mission['status']} "
-                f"tasks={len(mission['tasks'])} "
-                f"elapsed={elapsed}s"
-            )
+            self.pub_status(mid, 'ACTIVE', count)
+            self.get_logger().info(f'[MOS PLANNER] *** {count} assets tasked ***')
 
-    def _publish_status(self, mission_id: str, status: str, detail: str):
-        """Publish mission status update."""
-        msg = String()
-        msg.data = json.dumps({
-            "mission_id": mission_id,
-            "status": status,
-            "detail": detail,
-            "time": time.time(),
+        except Exception as e:
+            self.get_logger().error(f'[MOS PLANNER] Error: {e}')
+
+    def pub_status(self, mid, status, count):
+        m = String()
+        m.data = json.dumps({
+            'mission_id': mid,
+            'status': status,
+            'task_count': count,
+            'timestamp': time.time(),
         })
-        self._status_pub.publish(msg)
+        self.status_pub.publish(m)
 
 
-def main(args=None):
-    rclpy.init(args=args)
+def main():
+    rclpy.init()
     node = MissionPlanner()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
