@@ -4,7 +4,7 @@
 #  Clears all previous processes and starts the full stack
 # ══════════════════════════════════════════════════════════════════
 
-set -e
+set +e
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'

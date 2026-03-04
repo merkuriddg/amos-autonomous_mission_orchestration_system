@@ -1,484 +1,788 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MOS — Mission Operating System</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a0e17;
-            color: #c0c8d8;
-            font-family: 'Consolas', 'Courier New', monospace;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-        #sidebar {
-            width: 320px;
-            background: #0d1220;
-            border-right: 1px solid #1a2a3a;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-        #sidebar h1 {
-            text-align: center;
-            padding: 12px;
-            font-size: 18px;
-            color: #00ff88;
-            border-bottom: 1px solid #1a2a3a;
-            letter-spacing: 3px;
-        }
-        #sidebar h1 span {
-            color: #556;
-            font-size: 11px;
-            display: block;
-            letter-spacing: 1px;
-        }
-        .panel {
-            padding: 10px;
-            border-bottom: 1px solid #1a2a3a;
-        }
-        .panel-title {
-            font-size: 10px;
-            color: #558;
-            letter-spacing: 2px;
-            margin-bottom: 6px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 4px;
-        }
-        .stat-box {
-            background: #111828;
-            padding: 6px;
-            text-align: center;
-            border-radius: 3px;
-        }
-        .stat-val {
-            font-size: 20px;
-            font-weight: bold;
-            color: #00aaff;
-        }
-        .stat-label {
-            font-size: 8px;
-            color: #556;
-            letter-spacing: 1px;
-        }
-        .stat-air .stat-val { color: #00ccff; }
-        .stat-gnd .stat-val { color: #00ff88; }
-        .stat-sea .stat-val { color: #ff8800; }
-        .stat-idle .stat-val { color: #888; }
-        .stat-exec .stat-val { color: #ffaa00; }
-        .stat-fault .stat-val { color: #ff4444; }
-        .autonomy-bar {
-            display: flex;
-            gap: 2px;
-            margin-top: 4px;
-        }
-        .auto-btn {
-            flex: 1;
-            padding: 4px 2px;
-            background: #1a2a3a;
-            border: 1px solid #2a3a4a;
-            color: #668;
-            font-size: 8px;
-            text-align: center;
-            cursor: pointer;
-            border-radius: 2px;
-            font-family: inherit;
-            letter-spacing: 1px;
-        }
-        .auto-btn:hover { background: #2a3a4a; color: #aab; }
-        .auto-btn.active { background: #00441a; color: #00ff88; border-color: #00ff88; }
-        .mission-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px;
-            margin-top: 6px;
-        }
-        .mission-btn {
-            padding: 6px 4px;
-            background: #1a2a3a;
-            border: 1px solid #2a3a4a;
-            color: #8af;
-            font-size: 9px;
-            cursor: pointer;
-            border-radius: 2px;
-            font-family: inherit;
-            letter-spacing: 1px;
-            text-align: center;
-        }
-        .mission-btn:hover { background: #2a4a5a; color: #adf; }
-        .swarm-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 4px;
-            margin-top: 6px;
-        }
-        .swarm-btn {
-            padding: 6px 4px;
-            background: #2a1a1a;
-            border: 1px solid #4a2a2a;
-            color: #f88;
-            font-size: 9px;
-            cursor: pointer;
-            border-radius: 2px;
-            font-family: inherit;
-            letter-spacing: 1px;
-            text-align: center;
-        }
-        .swarm-btn:hover { background: #3a2a2a; color: #faa; }
-        #log {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            font-size: 10px;
-        }
-        .log-entry {
-            padding: 3px 0;
-            border-bottom: 1px solid #0a0e17;
-            color: #6a7a8a;
-        }
-        .log-entry .time { color: #334; }
-        .log-entry .tag { color: #00aaff; }
-        .log-entry .threat-tag { color: #ff4444; }
-        #map { flex: 1; }
-        .leaflet-container { background: #0a0e17 !important; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOS — Mission Operating System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overflow:hidden}
+
+#header{background:linear-gradient(90deg,#0d1117,#1a1a2e);padding:8px 20px;display:flex;
+  align-items:center;justify-content:space-between;border-bottom:1px solid #00ff8844;height:48px}
+#header h1{font-size:18px;letter-spacing:3px}
+#header h1 span{color:#00ff88}
+#header .subtitle{font-size:10px;color:#888}
+#header .right{text-align:right;display:flex;align-items:center;gap:12px}
+#help-btn{background:none;border:1px solid #00ffff44;color:#00ffff;padding:4px 10px;
+  font-family:'Courier New',monospace;font-size:11px;cursor:pointer;border-radius:3px;letter-spacing:1px}
+#help-btn:hover{background:#00ffff22}
+
+#main{display:flex;height:calc(100vh - 48px)}
+
+#sidebar{width:300px;background:#0d1117;border-right:1px solid #00ff8833;
+  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+
+.panel{padding:10px;border-bottom:1px solid #00ff8822}
+.panel h3{font-size:11px;color:#00ff88;margin-bottom:8px;letter-spacing:2px}
+
+#map-container{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+/* ── Node Status ── */
+#node-status{position:absolute;top:10px;right:10px;z-index:1000;background:#0d1117dd;
+  border:1px solid #00ff8844;border-radius:4px;padding:6px 10px;font-size:9px;color:#888}
+#node-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+#node-status .on{background:#00ff88}
+#node-status .off{background:#ff4444}
+
+/* ── Detail Panel ── */
+#detail-panel{width:0;overflow:hidden;background:#0d1117;border-left:1px solid #00ff8833;
+  transition:width 0.3s ease;flex-shrink:0;display:flex;flex-direction:column}
+#detail-panel.open{width:280px}
+#detail-content{padding:12px;overflow-y:auto;flex:1;position:relative}
+#detail-close{position:absolute;top:8px;right:8px;background:none;border:none;
+  color:#ff4444;font-size:16px;cursor:pointer}
+.detail-header{text-align:center;padding-bottom:10px;border-bottom:1px solid #00ff8833;margin-bottom:10px}
+.detail-header .callsign{font-size:16px;font-weight:bold;letter-spacing:2px}
+.detail-header .sub{font-size:10px;color:#888}
+.detail-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid #111}
+.detail-row .label{color:#888}
+.detail-row .value{color:#00ff88;text-align:right}
+.bar-wrap{background:#1a1a2e;border-radius:3px;height:14px;margin:4px 0;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.5s;display:flex;align-items:center;
+  justify-content:flex-end;padding-right:4px;font-size:9px;color:#000;font-weight:bold}
+.detail-section{margin-top:10px;padding-top:8px;border-top:1px solid #00ff8822}
+.detail-section h4{font-size:10px;color:#00ff88;margin-bottom:6px;letter-spacing:1px}
+.detail-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px}
+
+/* ── Map Toolbar ── */
+#map-toolbar{position:absolute;top:10px;left:10px;z-index:1000;display:flex;gap:4px;align-items:center;flex-wrap:wrap;max-width:500px}
+#map-toolbar .tbtn{background:#0d1117dd;color:#00ff88;border:1px solid #00ff8844;
+  padding:6px 10px;font-family:'Courier New',monospace;font-size:10px;cursor:pointer;
+  border-radius:3px;letter-spacing:1px}
+#map-toolbar .tbtn:hover{background:#00ff8833}
+#map-toolbar .tbtn.active{background:#00ff8855;border-color:#00ff88}
+#map-toolbar select{background:#0d1117dd;color:#00ff88;border:1px solid #00ff8844;
+  padding:5px;font-family:'Courier New',monospace;font-size:10px;border-radius:3px}
+#wp-info{position:absolute;bottom:10px;left:10px;z-index:1000;background:#0d1117dd;
+  padding:8px 12px;border:1px solid #00ffff44;border-radius:4px;font-size:10px;
+  color:#00ffff;display:none}
+
+/* ── Stats & Buttons ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.stat-box{background:#1a1a2e;padding:6px;border-radius:4px;text-align:center}
+.stat-box .value{font-size:18px;font-weight:bold}
+.stat-box .label{font-size:8px;color:#888}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.btn{background:#1a1a2e;color:#00ff88;border:1px solid #00ff8844;padding:8px 4px;
+  font-family:'Courier New',monospace;font-size:10px;cursor:pointer;border-radius:3px;
+  letter-spacing:1px;transition:all 0.2s}
+.btn:hover{background:#00ff8833}
+.btn:active{transform:scale(0.95)}
+.btn.warn{color:#ff6644;border-color:#ff664444}
+.btn.warn:hover{background:#ff664433}
+.btn.info{color:#4488ff;border-color:#4488ff44}
+.btn.info:hover{background:#4488ff33}
+.btn.cyan{color:#00ffff;border-color:#00ffff44}
+.btn.cyan:hover{background:#00ffff33}
+.btn.flash{animation:btnFlash 0.5s ease}
+@keyframes btnFlash{0%{box-shadow:0 0 0 0 #00ff8888}50%{box-shadow:0 0 12px 4px #00ff8844}100%{box-shadow:0 0 0 0 transparent}}
+.btn.flash-warn{animation:btnFlashWarn 0.5s ease}
+@keyframes btnFlashWarn{0%{box-shadow:0 0 0 0 #ff664488}50%{box-shadow:0 0 12px 4px #ff664444}100%{box-shadow:0 0 0 0 transparent}}
+
+.swarm-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px}
+.form-domain{margin-top:6px;display:flex;align-items:center;gap:6px;font-size:10px}
+.form-domain select{background:#1a1a2e;color:#00ff88;border:1px solid #00ff8844;
+  padding:4px;font-family:'Courier New',monospace;font-size:10px;border-radius:3px;flex:1}
+
+.autonomy-bar{display:flex;gap:2px;margin-top:4px}
+.auto-level{flex:1;text-align:center;padding:6px 2px;font-size:8px;background:#1a1a2e;
+  border:1px solid #333;cursor:pointer;border-radius:2px;transition:all 0.2s}
+.auto-level.active{background:#00ff8844;border-color:#00ff88}
+.auto-level:hover{background:#00ff8822}
+
+#log-panel{flex:1;min-height:80px;overflow:hidden;display:flex;flex-direction:column}
+#log{flex:1;overflow-y:auto;font-size:10px;color:#888;padding:4px;background:#0a0e14;border-radius:3px}
+#log div{padding:2px 0;border-bottom:1px solid #111}
+#log .time{color:#555}
+#log .threat-entry{color:#ff6644}
+#log .cmd-entry{color:#4488ff}
+#log .wp-entry{color:#00ffff}
+
+/* ── Help Overlay ── */
+#help-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.9);z-index:9999;overflow-y:auto;padding:40px}
+#help-overlay.open{display:block}
+#help-content{max-width:700px;margin:0 auto;color:#ccc;line-height:1.8}
+#help-content h2{color:#00ff88;font-size:18px;margin:24px 0 12px 0;letter-spacing:2px;
+  border-bottom:1px solid #00ff8844;padding-bottom:6px}
+#help-content h3{color:#00ffff;font-size:13px;margin:16px 0 6px 0}
+#help-content p{font-size:12px;margin:6px 0}
+#help-content .key{background:#1a1a2e;padding:2px 8px;border-radius:3px;color:#00ff88;
+  font-size:11px;border:1px solid #00ff8844}
+#help-content .warn-text{color:#ff6644}
+#help-content .info-text{color:#4488ff}
+#help-content .cyan-text{color:#00ffff}
+#help-content table{width:100%;border-collapse:collapse;margin:8px 0;font-size:11px}
+#help-content th{color:#00ff88;text-align:left;padding:6px;border-bottom:1px solid #00ff8844}
+#help-content td{padding:6px;border-bottom:1px solid #111}
+#help-content td:first-child{color:#00ffff;white-space:nowrap}
+#help-close{position:fixed;top:20px;right:30px;background:none;border:1px solid #ff444488;
+  color:#ff4444;padding:8px 16px;font-family:'Courier New',monospace;font-size:14px;
+  cursor:pointer;border-radius:4px;z-index:10000}
+#help-close:hover{background:#ff444422}
+
+.leaflet-container{background:#0a0a0a !important}
+</style>
 </head>
 <body>
 
-<div id="sidebar">
-    <h1>&#x2B21; MOS<span>MISSION OPERATING SYSTEM</span></h1>
+<!-- ═══════ HELP OVERLAY ═══════ -->
+<div id="help-overlay">
+  <button id="help-close" onclick="toggleHelp()">✕ CLOSE</button>
+  <div id="help-content">
+    <h2>⬡ MOS — OPERATOR'S GUIDE</h2>
+    <p>Mission Operating System (MOS) — pronounced "moz" — is the command and control interface
+    for the Mavrix1 Robotic Platoon. This guide covers every control on your C2 console.</p>
 
-    <div class="panel">
-        <div class="panel-title">PLATOON STATUS</div>
-        <div class="stats-grid">
-            <div class="stat-box">
-                <div class="stat-val" id="s-total">0</div>
-                <div class="stat-label">TOTAL</div>
-            </div>
-            <div class="stat-box stat-air">
-                <div class="stat-val" id="s-air">0</div>
-                <div class="stat-label">AIR</div>
-            </div>
-            <div class="stat-box stat-gnd">
-                <div class="stat-val" id="s-gnd">0</div>
-                <div class="stat-label">GROUND</div>
-            </div>
-            <div class="stat-box stat-idle">
-                <div class="stat-val" id="s-idle">0</div>
-                <div class="stat-label">IDLE</div>
-            </div>
-            <div class="stat-box stat-exec">
-                <div class="stat-val" id="s-exec">0</div>
-                <div class="stat-label">EXEC</div>
-            </div>
-            <div class="stat-box stat-fault">
-                <div class="stat-val" id="s-fault">0</div>
-                <div class="stat-label">FAULT</div>
-            </div>
-        </div>
-    </div>
+    <h2>📊 PLATOON STATUS</h2>
+    <table>
+      <tr><th>Field</th><th>Meaning</th></tr>
+      <tr><td>TOTAL</td><td>Total number of connected assets (should be 25)</td></tr>
+      <tr><td>ACTIVE</td><td>Assets currently executing a mission or en route</td></tr>
+      <tr><td>THREATS</td><td>Active threat contacts detected in the last 30 seconds</td></tr>
+      <tr><td>AIR / GROUND / SEA</td><td>Count of assets by domain</td></tr>
+    </table>
 
-    <div class="panel">
-        <div class="panel-title">AUTONOMY LEVEL</div>
-        <div class="autonomy-bar">
-            <button class="auto-btn" onclick="setAutonomy(0)">MANUAL</button>
-            <button class="auto-btn active" onclick="setAutonomy(1)">ASSIST</button>
-            <button class="auto-btn" onclick="setAutonomy(2)">COLLAB</button>
-            <button class="auto-btn" onclick="setAutonomy(3)">SWARM</button>
-            <button class="auto-btn" onclick="setAutonomy(4)">COGNT</button>
-        </div>
-    </div>
+    <h2>🎯 MISSION ORDERS</h2>
+    <p>Click a mission button to deploy assets to execute that mission type.
+    The Mission Planner decomposes the mission into tasks and assigns available assets.</p>
+    <table>
+      <tr><th>Button</th><th>Mission Type</th><th>Assets Used</th></tr>
+      <tr><td>ISR</td><td>Intelligence, Surveillance, Reconnaissance</td><td>AIR primary</td></tr>
+      <tr><td>SECURITY</td><td>Perimeter security and patrol</td><td>GROUND primary</td></tr>
+      <tr><td class="warn-text">PRECISION FX</td><td>Precision effects / strike</td><td>AIR + GROUND</td></tr>
+      <tr><td class="info-text">LOGISTICS</td><td>Resupply and transport</td><td>GROUND (MULE)</td></tr>
+      <tr><td>SAR</td><td>Search and Rescue</td><td>AIR + GROUND</td></tr>
+      <tr><td>EW/SIGINT</td><td>Electronic Warfare / Signals Intelligence</td><td>AIR + MARITIME</td></tr>
+    </table>
+    <p>💡 Watch the <span class="key">ACTIVITY LOG</span> for confirmation that the mission was received and tasks were created.</p>
 
-    <div class="panel">
-        <div class="panel-title">MISSION ORDERS</div>
-        <div class="mission-controls">
-            <button class="mission-btn" onclick="sendMission('ISR')">ISR</button>
-            <button class="mission-btn" onclick="sendMission('SECURITY')">SECURITY</button>
-            <button class="mission-btn" onclick="sendMission('PRECISION_EFFECTS')">PRECISION</button>
-            <button class="mission-btn" onclick="sendMission('LOGISTICS')">LOGISTICS</button>
-            <button class="mission-btn" onclick="sendMission('SAR')">SAR</button>
-            <button class="mission-btn" onclick="sendMission('EW_SIGINT')">EW/SIGINT</button>
-        </div>
-    </div>
+    <h2>🔄 SWARM COMMANDS</h2>
+    <p>These affect <strong>ALL assets</strong> simultaneously:</p>
+    <table>
+      <tr><th>Button</th><th>Action</th></tr>
+      <tr><td class="info-text">RTB</td><td>Return To Base — all assets navigate back to their starting positions</td></tr>
+      <tr><td>HOLD</td><td>All assets stop in place and hold current position</td></tr>
+      <tr><td class="warn-text">SCATTER</td><td>Emergency disperse — all assets move to random nearby positions</td></tr>
+    </table>
 
-    <div class="panel">
-        <div class="panel-title">SWARM COMMANDS</div>
-        <div class="swarm-controls">
-            <button class="swarm-btn" onclick="sendSwarm('RTB')">RTB</button>
-            <button class="swarm-btn" onclick="sendSwarm('HOLD')">HOLD</button>
-            <button class="swarm-btn" onclick="sendSwarm('SCATTER')">SCATTER</button>
-        </div>
-    </div>
+    <h2>🔷 FORMATIONS</h2>
+    <p>Formations reposition assets into geometric patterns. Select a <span class="key">DOMAIN</span> filter first:</p>
+    <table>
+      <tr><th>Formation</th><th>Pattern</th></tr>
+      <tr><td class="cyan-text">LINE</td><td>Assets spread in a horizontal line (East-West)</td></tr>
+      <tr><td class="cyan-text">COLUMN</td><td>Assets form a vertical column (North-South)</td></tr>
+      <tr><td class="cyan-text">WEDGE</td><td>V-shape with lead asset at front</td></tr>
+      <tr><td class="cyan-text">DIAMOND</td><td>Diamond/rhombus pattern (best with 4+ assets)</td></tr>
+      <tr><td class="cyan-text">ORBIT</td><td>Circle formation around center point</td></tr>
+    </table>
+    <p>💡 Set DOMAIN to <span class="key">AIR</span> to only move air assets, etc.</p>
 
-    <div class="panel">
-        <div class="panel-title">THREATS</div>
-        <div id="threat-count" style="font-size: 14px; color: #ff4444;">0 active threats</div>
-    </div>
+    <h2>🤖 AUTONOMY LEVELS</h2>
+    <p>Controls how much independence the platoon has. Higher levels require HPL authorization.</p>
+    <table>
+      <tr><th>Level</th><th>Name</th><th>Description</th></tr>
+      <tr><td>0</td><td>MANUAL</td><td>Full human control — every action requires operator input</td></tr>
+      <tr><td>1</td><td>ASSISTED</td><td>Assets follow orders with basic obstacle avoidance (default)</td></tr>
+      <tr><td>2</td><td>COLLABORATIVE</td><td>Assets coordinate with each other on tasks</td></tr>
+      <tr><td>3</td><td>SWARM</td><td>Full swarm intelligence — ⚠️ Requires HPL authorization</td></tr>
+      <tr><td>4</td><td>COGNITIVE</td><td>Full autonomous decision-making — ⚠️ Requires HPL authorization</td></tr>
+    </table>
 
-    <div id="log">
-        <div class="panel-title">ACTIVITY LOG</div>
-    </div>
+    <h2>📍 WAYPOINT MODE</h2>
+    <p>Assign custom routes to individual assets:</p>
+    <table>
+      <tr><th>Step</th><th>Action</th></tr>
+      <tr><td>1</td><td>Click <span class="key">📍 WP MODE</span> on the map toolbar (turns green when active)</td></tr>
+      <tr><td>2</td><td>Click on the map to place waypoints (numbered diamond markers appear)</td></tr>
+      <tr><td>3</td><td>Select an asset from the <span class="key">-- assign to --</span> dropdown</td></tr>
+      <tr><td>4</td><td>Check <span class="key">LOOP</span> if you want the asset to repeat the route endlessly</td></tr>
+      <tr><td>5</td><td>Click <span class="key">ASSIGN</span> to send the route to that asset</td></tr>
+      <tr><td>6</td><td>Repeat steps 3-5 with a different asset to assign the SAME waypoints to multiple assets</td></tr>
+    </table>
+    <p>💡 Click <span class="key">CLEAR</span> to remove all waypoint markers and start over.</p>
+
+    <h2>📋 ASSET DETAIL PANEL</h2>
+    <p>Click any asset marker on the map to open the detail panel on the right side:</p>
+    <table>
+      <tr><th>Field</th><th>Info</th></tr>
+      <tr><td>Battery bar</td><td>Green >50%, yellow >20%, red <20%</td></tr>
+      <tr><td>Comms bar</td><td>Signal strength in dBm</td></tr>
+      <tr><td>Waypoints</td><td>Shows current/total waypoint progress + loop indicator ↻</td></tr>
+    </table>
+    <p>Individual asset commands:</p>
+    <table>
+      <tr><th>Button</th><th>Action</th></tr>
+      <tr><td class="info-text">RTB</td><td>Send this single asset back to its starting position</td></tr>
+      <tr><td>HOLD</td><td>Stop this asset and cancel its current mission</td></tr>
+      <tr><td class="cyan-text">SEND HERE</td><td>Click this, then click the map — asset moves to that point</td></tr>
+      <tr><td class="warn-text">CANCEL</td><td>Cancel all orders for this asset (same as HOLD)</td></tr>
+    </table>
+
+    <h2>🗺️ MAP LEGEND</h2>
+    <table>
+      <tr><th>Marker</th><th>Meaning</th></tr>
+      <tr><td style="color:#4488ff">● Blue dot</td><td>AIR asset</td></tr>
+      <tr><td style="color:#44ff44">● Green dot</td><td>GROUND asset</td></tr>
+      <tr><td style="color:#ff8844">● Orange dot</td><td>MARITIME asset</td></tr>
+      <tr><td style="color:#ffff00">● Yellow core</td><td>Asset is EN ROUTE to target</td></tr>
+      <tr><td style="color:#00ff88">● Green core</td><td>Asset is executing mission at target</td></tr>
+      <tr><td style="color:#888">● Gray core</td><td>Asset is IDLE</td></tr>
+      <tr><td style="color:#ff4444">◌ Red dashed</td><td>Detected threat contact</td></tr>
+      <tr><td style="color:#00ffff">◇ Cyan diamond</td><td>Waypoint marker (numbered)</td></tr>
+      <tr><td>Dashed line</td><td>Active route path (color matches domain)</td></tr>
+    </table>
+
+    <h2>⌨️ TIPS</h2>
+    <p>• Hover over any marker to see a quick tooltip with callsign, status, and battery<br>
+    • The Activity Log color-codes entries: <span class="warn-text">orange = threats</span>,
+      <span class="info-text">blue = commands</span>, <span class="cyan-text">cyan = waypoints</span><br>
+    • Threats auto-expire after 30 seconds if not refreshed by the detection system<br>
+    • Use SCATTER in emergencies, then RTB to regroup<br>
+    • Formations use the center-of-mass of the selected domain as the formation center</p>
+  </div>
 </div>
 
-<div id="map"></div>
+<!-- ═══════ HEADER ═══════ -->
+<div id="header">
+  <div>
+    <h1>⬡ <span>MOS</span></h1>
+    <div class="subtitle">MISSION OPERATING SYSTEM — PHASE 4</div>
+  </div>
+  <div class="right">
+    <button id="help-btn" onclick="toggleHelp()">? HELP</button>
+    <div style="text-align:right">
+      <div style="font-size:11px" id="clock"></div>
+      <div style="font-size:9px;color:#888" id="asset-count">ASSETS: --</div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+
+    <div class="panel">
+      <h3>▶ PLATOON STATUS</h3>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="value" id="s-total">--</div><div class="label">TOTAL</div></div>
+        <div class="stat-box"><div class="value" id="s-active" style="color:#00ff88">--</div><div class="label">ACTIVE</div></div>
+        <div class="stat-box"><div class="value" id="s-threat" style="color:#ff4444">--</div><div class="label">THREATS</div></div>
+        <div class="stat-box"><div class="value" id="s-air" style="color:#4488ff">--</div><div class="label">AIR</div></div>
+        <div class="stat-box"><div class="value" id="s-gnd" style="color:#44ff44">--</div><div class="label">GROUND</div></div>
+        <div class="stat-box"><div class="value" id="s-sea" style="color:#ff8844">--</div><div class="label">SEA</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>▶ MISSION ORDERS</h3>
+      <div class="btn-grid">
+        <button class="btn" onclick="sendMission('ISR',this)">ISR</button>
+        <button class="btn" onclick="sendMission('SECURITY',this)">SECURITY</button>
+        <button class="btn warn" onclick="sendMission('PRECISION_EFFECTS',this)">PRECISION FX</button>
+        <button class="btn info" onclick="sendMission('LOGISTICS',this)">LOGISTICS</button>
+        <button class="btn" onclick="sendMission('SAR',this)">SAR</button>
+        <button class="btn" onclick="sendMission('EW_SIGINT',this)">EW/SIGINT</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>▶ SWARM COMMANDS</h3>
+      <div class="swarm-grid">
+        <button class="btn info" onclick="sendSwarm('RTB',this)">RTB</button>
+        <button class="btn" onclick="sendSwarm('HOLD',this)">HOLD</button>
+        <button class="btn warn" onclick="sendSwarm('SCATTER',this)">SCATTER</button>
+      </div>
+      <h3 style="margin-top:10px">▶ FORMATIONS</h3>
+      <div class="form-domain">
+        <span style="color:#888">DOMAIN:</span>
+        <select id="form-domain">
+          <option value="ALL">ALL</option>
+          <option value="AIR">AIR</option>
+          <option value="GROUND">GROUND</option>
+          <option value="MARITIME">MARITIME</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <button class="btn cyan" onclick="sendFormation('FORM_LINE',this)">LINE</button>
+        <button class="btn cyan" onclick="sendFormation('FORM_COLUMN',this)">COLUMN</button>
+        <button class="btn cyan" onclick="sendFormation('FORM_WEDGE',this)">WEDGE</button>
+        <button class="btn cyan" onclick="sendFormation('FORM_DIAMOND',this)">DIAMOND</button>
+        <button class="btn cyan" onclick="sendFormation('FORM_ORBIT',this)">ORBIT</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>▶ AUTONOMY LEVEL</h3>
+      <div class="autonomy-bar">
+        <div class="auto-level" onclick="setAutonomy(0,this)">0<br>MAN</div>
+        <div class="auto-level active" onclick="setAutonomy(1,this)">1<br>AST</div>
+        <div class="auto-level" onclick="setAutonomy(2,this)">2<br>COL</div>
+        <div class="auto-level" onclick="setAutonomy(3,this)">3<br>SWM</div>
+        <div class="auto-level" onclick="setAutonomy(4,this)">4<br>COG</div>
+      </div>
+    </div>
+
+    <div class="panel" id="log-panel">
+      <h3>▶ ACTIVITY LOG</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <div id="map-container">
+    <div id="map-toolbar">
+      <button class="tbtn" id="btn-wp-mode" onclick="toggleWpMode()">📍 WP MODE</button>
+      <select id="wp-asset-select"><option value="">-- assign to --</option></select>
+      <label style="font-size:10px;color:#00ffff"><input type="checkbox" id="wp-loop"> LOOP</label>
+      <button class="tbtn" onclick="assignWaypoints()">ASSIGN</button>
+      <button class="tbtn" onclick="clearWpMarkers()">CLEAR</button>
+    </div>
+    <div id="wp-info"></div>
+    <div id="node-status">
+      <span class="dot" id="nd-sim"></span>SIM
+      <span class="dot" id="nd-c2"></span>C2
+      <span style="margin-left:6px;color:#00ff88" id="nd-count">--</span>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <div id="detail-panel">
+    <div id="detail-content">
+      <button id="detail-close" onclick="closeDetail()">✕</button>
+      <div class="detail-header">
+        <div class="callsign" id="d-callsign">--</div>
+        <div class="sub" id="d-sub">--</div>
+      </div>
+
+      <div class="detail-row"><span class="label">STATUS</span><span class="value" id="d-status">--</span></div>
+
+      <div class="detail-section">
+        <h4>BATTERY</h4>
+        <div class="bar-wrap"><div class="bar-fill" id="d-batt-bar" style="width:0%;background:#00ff88">--</div></div>
+      </div>
+
+      <div class="detail-section">
+        <h4>COMMS SIGNAL</h4>
+        <div class="bar-wrap"><div class="bar-fill" id="d-comms-bar" style="width:0%;background:#4488ff">--</div></div>
+      </div>
+
+      <div class="detail-row"><span class="label">LAT</span><span class="value" id="d-lat">--</span></div>
+      <div class="detail-row"><span class="label">LON</span><span class="value" id="d-lon">--</span></div>
+      <div class="detail-row"><span class="label">ALT</span><span class="value" id="d-alt">--</span></div>
+      <div class="detail-row"><span class="label">HEADING</span><span class="value" id="d-hdg">--</span></div>
+      <div class="detail-row"><span class="label">SPEED</span><span class="value" id="d-spd">--</span></div>
+      <div class="detail-row"><span class="label">WAYPOINTS</span><span class="value" id="d-wp">--</span></div>
+
+      <div class="detail-section">
+        <h4>INDIVIDUAL COMMANDS</h4>
+        <div class="detail-btn-grid">
+          <button class="btn info" onclick="assetRTB()">RTB</button>
+          <button class="btn" onclick="assetHold()">HOLD</button>
+          <button class="btn cyan" onclick="assetSendHere()">SEND HERE</button>
+          <button class="btn warn" onclick="assetCancel()">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-/* ================================================================
-   MAP
-   ================================================================ */
-var map = L.map('map', { center: [35.14, -79.01], zoom: 14, zoomControl: false });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: 'MOS C2', maxZoom: 19
-}).addTo(map);
-L.control.zoom({ position: 'topright' }).addTo(map);
+// ══════════════════════════════════════════════
+//  MAP INIT
+// ══════════════════════════════════════════════
+const map = L.map('map', {center:[34.0,-118.0], zoom:15, zoomControl:false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'CartoDB', maxZoom:19}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
 
-/* ================================================================
-   STATE
-   ================================================================ */
-var assetMarkers = {};
-var assetLastKey = {};
-var threatMarkers = {};
-var threatLastKey = {};
-var hasAutoFitted = false;
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+const markers = {};
+const threatMarkers = {};
+const pathLines = {};
+let wpMarkers = [];
+let wpLine = null;
+let wpMode = false;
+let sendHereMode = false;
+let selectedAssetId = null;
+let currentAssets = [];
+let lastWaypoints = []; // For multi-assign
 
-var DCOLOR  = { "AIR": "#00ccff", "GROUND": "#00ff88", "MARITIME": "#ff8800" };
-var SNAME   = ["IDLE", "EN_ROUTE", "EXEC", "DONE", "FAULT"];
-var SCOLOR  = ["#888888", "#ffaa00", "#00ff88", "#00aaff", "#ff4444"];
+const domainColors = {AIR:'#4488ff', GROUND:'#44ff44', MARITIME:'#ff8844'};
+const statusColors = {0:'#888888', 1:'#ffff00', 2:'#00ff88', 3:'#4488ff', 5:'#ff0000'};
+const statusNames = {0:'IDLE', 1:'EN_ROUTE', 2:'EXEC', 3:'DONE', 5:'FAULT'};
 
-/* ================================================================
-   ASSET RENDERING
-   ================================================================ */
-function renderAssets(assets) {
-    if (!assets || assets.length === 0) return;
-
-    var seen = {};
-    for (var i = 0; i < assets.length; i++) {
-        var a = assets[i];
-        seen[a.asset_id] = true;
-
-        var key = a.asset_type + '-' + a.mission_status;
-        var color = DCOLOR[a.asset_type] || "#fff";
-        var sc = SCOLOR[a.mission_status] || "#888";
-        var radius = a.asset_type === "AIR" ? 8 : a.asset_type === "MARITIME" ? 9 : 7;
-
-        var tip = '<b style="color:#00ff88">' + a.callsign + '</b> (' + a.asset_id + ')<br/>' +
-            a.asset_type + ' | <span style="color:#00aaff">' + (SNAME[a.mission_status]||'UNK') + '</span><br/>' +
-            'BAT: <span style="color:#00aaff">' + (a.battery||0).toFixed(1) + '%</span> | COMMS: ' + (a.comms||0) + 'dBm<br/>' +
-            'LAT: ' + a.lat.toFixed(5) + ' LON: ' + a.lon.toFixed(5);
-
-        if (assetMarkers[a.asset_id]) {
-            assetMarkers[a.asset_id].setLatLng([a.lat, a.lon]);
-            if (assetLastKey[a.asset_id] !== key) {
-                assetMarkers[a.asset_id].setStyle({ fillColor: color, color: sc });
-                assetLastKey[a.asset_id] = key;
-            }
-            assetMarkers[a.asset_id].setTooltipContent(tip);
-        } else {
-            var m = L.circleMarker([a.lat, a.lon], {
-                radius: radius,
-                fillColor: color,
-                color: sc,
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.8
-            }).addTo(map);
-            m.bindTooltip(tip, { direction: 'top', offset: [0, -10], opacity: 0.95 });
-            assetMarkers[a.asset_id] = m;
-            assetLastKey[a.asset_id] = key;
-        }
-    }
-
-    /* Remove stale */
-    var ids = Object.keys(assetMarkers);
-    for (var j = 0; j < ids.length; j++) {
-        if (!seen[ids[j]]) {
-            map.removeLayer(assetMarkers[ids[j]]);
-            delete assetMarkers[ids[j]];
-            delete assetLastKey[ids[j]];
-        }
-    }
-
-    /* Auto-fit once */
-    if (!hasAutoFitted && Object.keys(assetMarkers).length > 0) {
-        var bounds = [];
-        var mk = Object.keys(assetMarkers);
-        for (var b = 0; b < mk.length; b++) {
-            bounds.push(assetMarkers[mk[b]].getLatLng());
-        }
-        map.fitBounds(L.latLngBounds(bounds).pad(0.15));
-        hasAutoFitted = true;
-    }
+// ══════════════════════════════════════════════
+//  HELP PANEL
+// ══════════════════════════════════════════════
+function toggleHelp(){
+  document.getElementById('help-overlay').classList.toggle('open');
 }
 
-/* ================================================================
-   STATS
-   ================================================================ */
-function renderStats(assets) {
-    var total = assets.length, air = 0, gnd = 0, sea = 0, idle = 0, exec = 0, fault = 0;
-    for (var i = 0; i < assets.length; i++) {
-        var a = assets[i];
-        if (a.asset_type === "AIR") air++;
-        else if (a.asset_type === "GROUND") gnd++;
-        else if (a.asset_type === "MARITIME") sea++;
-        if (a.mission_status === 0) idle++;
-        else if (a.mission_status === 2) exec++;
-        else if (a.mission_status === 4) fault++;
-    }
-    document.getElementById('s-total').textContent = total;
-    document.getElementById('s-air').textContent = air;
-    document.getElementById('s-gnd').textContent = gnd + (sea > 0 ? '+' + sea : '');
-    document.getElementById('s-idle').textContent = idle;
-    document.getElementById('s-exec').textContent = exec;
-    document.getElementById('s-fault').textContent = fault;
+// ══════════════════════════════════════════════
+//  BUTTON FEEDBACK
+// ══════════════════════════════════════════════
+function flashBtn(el, type){
+  if(!el) return;
+  el.classList.remove('flash','flash-warn');
+  void el.offsetWidth; // reflow
+  el.classList.add(type === 'warn' ? 'flash-warn' : 'flash');
+  setTimeout(()=>el.classList.remove('flash','flash-warn'), 600);
 }
 
-/* ================================================================
-   THREATS
-   ================================================================ */
-function renderThreats(threats) {
-    if (!threats) threats = [];
-    document.getElementById('threat-count').textContent =
-        threats.length + ' active threat' + (threats.length !== 1 ? 's' : '');
-
-    var seen = {};
-    for (var i = 0; i < threats.length; i++) {
-        var t = threats[i];
-        var tid = t.contact_id || t.id || ('t' + i);
-        seen[tid] = true;
-        var color = t.threat_level === "CRITICAL" ? "#ff0000" :
-                    t.threat_level === "HIGH" ? "#ff4444" :
-                    t.threat_level === "MEDIUM" ? "#ff8800" : "#ffaa00";
-        var tip = '<b style="color:#ff4444">THREAT</b> ' +
-            (t.classification || t.type || 'UNKNOWN') + '<br/>' +
-            (t.threat_level || 'UNK') + ' | ' + tid;
-
-        if (threatMarkers[tid]) {
-            threatMarkers[tid].setLatLng([t.lat || 0, t.lon || 0]);
-            if (threatLastKey[tid] !== t.threat_level) {
-                threatMarkers[tid].setStyle({ color: color, fillColor: color });
-                threatLastKey[tid] = t.threat_level;
-            }
-            threatMarkers[tid].setTooltipContent(tip);
-        } else {
-            var tm = L.circleMarker([t.lat || 0, t.lon || 0], {
-                radius: 12, color: color, fillColor: color,
-                fillOpacity: 0.3, weight: 2, dashArray: '4 4'
-            }).addTo(map);
-            tm.bindTooltip(tip, { direction: 'top', offset: [0, -10] });
-            threatMarkers[tid] = tm;
-            threatLastKey[tid] = t.threat_level;
-        }
-    }
-    var tids = Object.keys(threatMarkers);
-    for (var j = 0; j < tids.length; j++) {
-        if (!seen[tids[j]]) {
-            map.removeLayer(threatMarkers[tids[j]]);
-            delete threatMarkers[tids[j]];
-            delete threatLastKey[tids[j]];
-        }
-    }
+// ══════════════════════════════════════════════
+//  ICON FACTORIES
+// ══════════════════════════════════════════════
+function makeIcon(domain, status, selected) {
+  const dc = domainColors[domain]||'#fff';
+  const sc = statusColors[status]||'#888';
+  const ring = selected ? `box-shadow:0 0 12px ${dc}, 0 0 4px #fff;` : `box-shadow:0 0 6px ${dc}44;`;
+  const size = selected ? 24 : 20;
+  return L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+    html:`<div style="width:${size}px;height:${size}px;border-radius:50%;
+      border:2px solid ${dc};background:radial-gradient(circle at center,${sc} 30%,transparent 70%);
+      ${ring}"></div>`});
+}
+function makeThreatIcon(){
+  return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
+    html:`<div style="width:24px;height:24px;border-radius:50%;border:2px dashed #ff4444;
+      background:radial-gradient(circle at center,#ff000066 30%,transparent 70%);
+      box-shadow:0 0 10px #ff000044;"></div>`});
+}
+function makeWpIcon(num){
+  return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+    html:`<div style="width:22px;height:22px;background:#00ffff22;border:2px solid #00ffff;
+      transform:rotate(45deg);display:flex;align-items:center;justify-content:center;
+      font-size:10px;color:#00ffff;font-weight:bold;font-family:monospace;">
+      <span style="transform:rotate(-45deg)">${num}</span></div>`});
 }
 
-/* ================================================================
-   POLLING — 1 second interval via REST
-   ================================================================ */
-function poll() {
-    fetch('/api/assets')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            renderAssets(data);
-            renderStats(data);
-        })
-        .catch(function(e) { console.log('asset poll err', e); });
+// ══════════════════════════════════════════════
+//  ASSET MARKERS & PATHS
+// ══════════════════════════════════════════════
+function updateAssets(assets){
+  currentAssets = assets;
+  const seen = {};
+  assets.forEach(a => {
+    const id = a.asset_id; seen[id] = true;
+    const ll = [a.lat, a.lon];
+    const sn = statusNames[a.mission_status]||'UNK';
+    const tip = `${a.callsign} [${a.asset_type}]\n${sn} | Batt:${a.battery}%`;
+    const sel = id === selectedAssetId;
 
-    fetch('/api/threats')
-        .then(function(r) { return r.json(); })
-        .then(function(data) { renderThreats(data); })
-        .catch(function(e) {});
+    if(markers[id]){
+      markers[id].setLatLng(ll);
+      markers[id].setIcon(makeIcon(a.asset_type, a.mission_status, sel));
+      markers[id].setTooltipContent(tip);
+    } else {
+      markers[id] = L.marker(ll,{icon:makeIcon(a.asset_type,a.mission_status,sel)})
+        .bindTooltip(tip,{permanent:false,direction:'top',offset:[0,-12]})
+        .on('click', () => selectAsset(id))
+        .addTo(map);
+    }
+
+    // Path polylines
+    const wps = a.waypoints || [];
+    if(pathLines[id]){ map.removeLayer(pathLines[id]); delete pathLines[id]; }
+    if(wps.length > 0 && a.mission_status === 1){
+      const remaining = wps.slice(a.wp_index || 0);
+      const pts = [ll, ...remaining.map(w=>[w.lat,w.lon])];
+      if(pts.length >= 2){
+        pathLines[id] = L.polyline(pts,{
+          color:domainColors[a.asset_type]||'#fff',weight:2,dashArray:'6,4',opacity:0.6
+        }).addTo(map);
+      }
+    }
+  });
+  Object.keys(markers).forEach(id=>{if(!seen[id]){map.removeLayer(markers[id]);delete markers[id];}});
+  Object.keys(pathLines).forEach(id=>{if(!seen[id]){map.removeLayer(pathLines[id]);delete pathLines[id];}});
+
+  // Stats
+  document.getElementById('s-total').textContent = assets.length;
+  document.getElementById('s-active').textContent = assets.filter(a=>a.mission_status>0&&a.mission_status<5).length;
+  document.getElementById('s-air').textContent = assets.filter(a=>a.asset_type==='AIR').length;
+  document.getElementById('s-gnd').textContent = assets.filter(a=>a.asset_type==='GROUND').length;
+  document.getElementById('s-sea').textContent = assets.filter(a=>a.asset_type==='MARITIME').length;
+  document.getElementById('asset-count').textContent = 'ASSETS: '+assets.length;
+
+  // Node status
+  const simOk = assets.length > 0;
+  document.getElementById('nd-sim').className = 'dot ' + (simOk ? 'on' : 'off');
+  document.getElementById('nd-c2').className = 'dot on';
+  document.getElementById('nd-count').textContent = assets.length + ' connected';
+
+  updateAssetDropdown(assets);
+  if(selectedAssetId) updateDetailPanel();
 }
 
-setInterval(poll, 1000);
+function updateAssetDropdown(assets){
+  const sel = document.getElementById('wp-asset-select');
+  const cur = sel.value;
+  const sorted = [...assets].sort((a,b)=>a.callsign.localeCompare(b.callsign));
+  const opts = '<option value="">-- assign to --</option>' +
+    sorted.map(a=>`<option value="${a.asset_id}">${a.callsign} [${a.asset_type}]</option>`).join('');
+  sel.innerHTML = opts;
+  sel.value = cur;
+}
+
+// ══════════════════════════════════════════════
+//  THREATS
+// ══════════════════════════════════════════════
+function updateThreats(threats){
+  const seen = {};
+  threats.forEach(t=>{
+    const id = t.contact_id; seen[id] = true;
+    const ll = [t.lat, t.lon];
+    const tip = `⚠ ${id}\n${t.threat_type} [${t.threat_level}]\nConf:${(t.confidence*100).toFixed(0)}%`;
+    if(threatMarkers[id]){
+      threatMarkers[id].setLatLng(ll); threatMarkers[id].setTooltip(tip);
+    } else {
+      threatMarkers[id] = L.marker(ll,{icon:makeThreatIcon()})
+        .bindTooltip(tip,{permanent:false,direction:'top',offset:[0,-14]}).addTo(map);
+    }
+  });
+  Object.keys(threatMarkers).forEach(id=>{if(!seen[id]){map.removeLayer(threatMarkers[id]);delete threatMarkers[id];}});
+  document.getElementById('s-threat').textContent = threats.length;
+}
+
+// ══════════════════════════════════════════════
+//  DETAIL PANEL
+// ══════════════════════════════════════════════
+function selectAsset(id){
+  selectedAssetId = id;
+  document.getElementById('detail-panel').classList.add('open');
+  // Also set the waypoint dropdown to this asset
+  document.getElementById('wp-asset-select').value = id;
+  updateDetailPanel();
+  currentAssets.forEach(a=>{
+    if(markers[a.asset_id]) markers[a.asset_id].setIcon(makeIcon(a.asset_type,a.mission_status,a.asset_id===id));
+  });
+}
+
+function closeDetail(){
+  selectedAssetId = null;
+  document.getElementById('detail-panel').classList.remove('open');
+  currentAssets.forEach(a=>{
+    if(markers[a.asset_id]) markers[a.asset_id].setIcon(makeIcon(a.asset_type,a.mission_status,false));
+  });
+  sendHereMode = false;
+  document.getElementById('map').style.cursor = '';
+}
+
+function updateDetailPanel(){
+  const a = currentAssets.find(x=>x.asset_id===selectedAssetId);
+  if(!a) return;
+  const sn = statusNames[a.mission_status]||'UNK';
+  const sc = statusColors[a.mission_status]||'#888';
+
+  document.getElementById('d-callsign').textContent = a.callsign;
+  document.getElementById('d-callsign').style.color = domainColors[a.asset_type]||'#fff';
+  document.getElementById('d-sub').textContent = `${a.asset_id} | ${a.asset_type}`;
+  document.getElementById('d-status').innerHTML = `<span style="color:${sc}">● ${sn}</span>`;
+  document.getElementById('d-lat').textContent = a.lat.toFixed(6);
+  document.getElementById('d-lon').textContent = a.lon.toFixed(6);
+  document.getElementById('d-alt').textContent = a.alt.toFixed(1) + ' ft';
+  document.getElementById('d-hdg').textContent = a.heading.toFixed(1) + '°';
+  document.getElementById('d-spd').textContent = a.speed;
+
+  const bp = Math.max(0, Math.min(100, a.battery));
+  const bc = bp > 50 ? '#00ff88' : bp > 20 ? '#ffaa00' : '#ff4444';
+  const bb = document.getElementById('d-batt-bar');
+  bb.style.width = bp+'%'; bb.style.background = bc; bb.textContent = bp.toFixed(0)+'%';
+
+  const cp = Math.max(0, Math.min(100, ((a.comms + 90) / 60) * 100));
+  const cb = document.getElementById('d-comms-bar');
+  cb.style.width = cp+'%'; cb.textContent = a.comms.toFixed(0)+' dBm';
+
+  const wpc = a.wp_count || 0;
+  const wpi = a.wp_index || 0;
+  const wpl = a.wp_loop ? ' ↻' : '';
+  document.getElementById('d-wp').textContent = wpc > 0 ? `${wpi+1}/${wpc}${wpl}` : 'NONE';
+}
+
+function assetRTB(){
+  if(!selectedAssetId) return;
+  const a = currentAssets.find(x=>x.asset_id===selectedAssetId);
+  if(!a) return;
+  fetch('/api/send_waypoints',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({asset_id:selectedAssetId,
+      waypoints:[{lat:a.base_lat,lon:a.base_lon}],loop:false})});
+}
+function assetHold(){
+  if(!selectedAssetId) return;
+  fetch('/api/send_waypoints',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({asset_id:selectedAssetId,waypoints:[],cancel:true})});
+}
+function assetCancel(){ assetHold(); }
+function assetSendHere(){
+  if(!selectedAssetId) return;
+  sendHereMode = true;
+  document.getElementById('map').style.cursor = 'crosshair';
+  document.getElementById('wp-info').style.display = 'block';
+  document.getElementById('wp-info').textContent = 'Click map to send ' +
+    (currentAssets.find(x=>x.asset_id===selectedAssetId)?.callsign||'asset') + ' to location';
+}
+
+// ══════════════════════════════════════════════
+//  WAYPOINT MODE
+// ══════════════════════════════════════════════
+function toggleWpMode(){
+  wpMode = !wpMode;
+  const btn = document.getElementById('btn-wp-mode');
+  btn.classList.toggle('active', wpMode);
+  document.getElementById('wp-info').style.display = wpMode ? 'block' : 'none';
+  document.getElementById('map').style.cursor = wpMode ? 'crosshair' : '';
+  if(wpMode) document.getElementById('wp-info').textContent = 'Click map to place waypoints';
+}
+
+function clearWpMarkers(){
+  wpMarkers.forEach(m=>map.removeLayer(m));
+  wpMarkers = [];
+  lastWaypoints = [];
+  if(wpLine){ map.removeLayer(wpLine); wpLine = null; }
+  document.getElementById('wp-info').textContent = 'Waypoints cleared';
+}
+
+function assignWaypoints(){
+  const assetId = document.getElementById('wp-asset-select').value;
+  if(!assetId){ alert('Select an asset from the dropdown first'); return; }
+  if(wpMarkers.length === 0 && lastWaypoints.length === 0){ alert('Place waypoints on map first (enable WP MODE)'); return; }
+
+  const loop = document.getElementById('wp-loop').checked;
+
+  // Use current markers if available, otherwise reuse last assigned set
+  let wps;
+  if(wpMarkers.length > 0){
+    wps = wpMarkers.map(m=>({lat:m.getLatLng().lat, lon:m.getLatLng().lng}));
+    lastWaypoints = [...wps]; // Save for multi-assign
+  } else {
+    wps = [...lastWaypoints];
+  }
+
+  fetch('/api/send_waypoints',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({asset_id:assetId, waypoints:wps, loop:loop})})
+    .then(r=>r.json()).then(d=>{
+      const name = currentAssets.find(a=>a.asset_id===assetId)?.callsign || assetId;
+      document.getElementById('wp-info').textContent =
+        `✓ ${wps.length} waypoints assigned to ${name} — select another asset to assign same route`;
+    });
+
+  // DON'T clear markers — allow re-assigning to another asset
+  // User clicks CLEAR when done
+}
+
+map.on('click', function(e){
+  if(sendHereMode && selectedAssetId){
+    fetch('/api/send_waypoints',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({asset_id:selectedAssetId,
+        waypoints:[{lat:e.latlng.lat, lon:e.latlng.lng}],loop:false})});
+    sendHereMode = false;
+    document.getElementById('map').style.cursor = '';
+    document.getElementById('wp-info').style.display = 'none';
+    return;
+  }
+  if(!wpMode) return;
+  const num = wpMarkers.length + 1;
+  const m = L.marker(e.latlng, {icon:makeWpIcon(num)}).addTo(map);
+  wpMarkers.push(m);
+  if(wpLine) map.removeLayer(wpLine);
+  if(wpMarkers.length >= 2){
+    wpLine = L.polyline(wpMarkers.map(x=>x.getLatLng()),{
+      color:'#00ffff',weight:2,dashArray:'8,6',opacity:0.7}).addTo(map);
+  }
+  document.getElementById('wp-info').textContent = `${wpMarkers.length} waypoint(s) — select asset & click ASSIGN`;
+});
+
+// ══════════════════════════════════════════════
+//  LOGS & AUTONOMY
+// ══════════════════════════════════════════════
+function updateLogs(logs){
+  const el = document.getElementById('log');
+  const last = logs.slice(-30);
+  el.innerHTML = last.map(l=>{
+    let cls='';
+    if(l.text.startsWith('THREAT')) cls='threat-entry';
+    else if(l.text.startsWith('CMD')) cls='cmd-entry';
+    return `<div class="${cls}"><span class="time">${l.time}</span> ${l.text}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+function updateAutonomy(state){
+  document.querySelectorAll('.auto-level').forEach((el,i)=>{
+    el.classList.toggle('active', i===state.current_level);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  POLLING
+// ══════════════════════════════════════════════
+async function poll(){
+  try{
+    const [aR,tR,lR,auR] = await Promise.all([
+      fetch('/api/assets'),fetch('/api/threats'),fetch('/api/logs'),fetch('/api/autonomy')]);
+    updateAssets(await aR.json());
+    updateThreats(await tR.json());
+    updateLogs(await lR.json());
+    updateAutonomy(await auR.json());
+  }catch(e){ console.warn('Poll error:', e); }
+}
+setInterval(poll,1000);
 poll();
 
-/* ================================================================
-   USER ACTIONS
-   ================================================================ */
-var missionCounter = 1;
+setInterval(()=>{
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',
+    {hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
 
-function sendMission(mtype) {
-    var id = 'MVRX-' + String(missionCounter++).padStart(3, '0');
-    var intents = {
-        'ISR': 'Conduct ISR sweep of AO',
-        'SECURITY': 'Establish perimeter defense',
-        'PRECISION_EFFECTS': 'Neutralize target in AO',
-        'LOGISTICS': 'Emergency resupply to forward element',
-        'SAR': 'Search and rescue in designated sector',
-        'EW_SIGINT': 'Map enemy communications network'
-    };
-    fetch('/api/send_mission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            mission_id: id, mission_type: mtype,
-            commander_intent: intents[mtype] || 'Execute',
-            objectives: ['Primary objective'],
-            area_of_operations: 'AO-ALPHA', priority: 1
-        })
-    }).then(function(r) { return r.json(); })
-      .then(function(d) { addLog('MISSION', id + ' ' + mtype + ' sent'); })
-      .catch(function(e) { addLog('ERROR', 'Mission send failed'); });
+// ══════════════════════════════════════════════
+//  COMMAND FUNCTIONS
+// ══════════════════════════════════════════════
+async function sendMission(type, el){
+  flashBtn(el, 'ok');
+  const r = await fetch('/api/send_mission',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mission_id:'MVRX-'+Math.random().toString(36).substr(2,6).toUpperCase(),
+      mission_type:type, commander_intent:'Execute '+type, objectives:['Primary'],
+      area_of_operations:'AO-ALPHA', priority:1})});
+  const d = await r.json();
+  console.log('Mission response:', d);
 }
-
-function sendSwarm(behavior) {
-    fetch('/api/send_swarm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ behavior: behavior, domain: 'ALL' })
-    }).then(function(r) { return r.json(); })
-      .then(function(d) { addLog('SWARM', behavior + ' command sent'); })
-      .catch(function(e) { addLog('ERROR', 'Swarm send failed'); });
+async function sendSwarm(behavior, el){
+  flashBtn(el, behavior==='SCATTER' ? 'warn' : 'ok');
+  const r = await fetch('/api/send_swarm',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({behavior:behavior, domain:'ALL'})});
+  const d = await r.json();
+  console.log('Swarm response:', d);
 }
-
-function setAutonomy(level) {
-    var names = ['MANUAL', 'ASSISTED', 'COLLABORATIVE', 'SWARM', 'COGNITIVE'];
-    fetch('/api/set_autonomy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_level: level })
-    }).then(function(r) { return r.json(); })
-      .then(function(d) {
-        addLog('AUTONOMY', 'Set to ' + names[level]);
-        var btns = document.querySelectorAll('.auto-btn');
-        for (var i = 0; i < btns.length; i++) {
-            if (i === level) btns[i].classList.add('active');
-            else btns[i].classList.remove('active');
-        }
-    }).catch(function(e) { addLog('ERROR', 'Autonomy set failed'); });
+async function sendFormation(formation, el){
+  flashBtn(el, 'ok');
+  const domain = document.getElementById('form-domain').value;
+  const r = await fetch('/api/send_swarm',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({behavior:formation, domain:domain})});
+  const d = await r.json();
+  console.log('Formation response:', d);
 }
-
-/* ================================================================
-   ACTIVITY LOG
-   ================================================================ */
-function addLog(tag, msg) {
-    var logDiv = document.getElementById('log');
-    var now = new Date().toLocaleTimeString();
-    var tc = (tag === 'THREAT' || tag === 'ERROR') ? 'threat-tag' : 'tag';
-    var e = document.createElement('div');
-    e.className = 'log-entry';
-    e.innerHTML = '<span class="time">' + now + '</span> <span class="' + tc + '">[' + tag + ']</span> ' + msg;
-    if (logDiv.children.length > 1) logDiv.insertBefore(e, logDiv.children[1]);
-    else logDiv.appendChild(e);
-    while (logDiv.children.length > 101) logDiv.removeChild(logDiv.lastChild);
+async function setAutonomy(level, el){
+  const r = await fetch('/api/set_autonomy',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({target_level:level})});
+  const d = await r.json();
+  console.log('Autonomy response:', d);
 }
-
-addLog('SYSTEM', 'MOS C2 Console initialized');
 </script>
 </body>
 </html>
+
