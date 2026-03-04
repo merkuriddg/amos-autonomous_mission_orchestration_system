@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MOS - Hardware Abstraction Layer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88}
+#header{background:#0d1117;padding:12px 20px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #00ff8844}
+#header h1{font-size:16px;letter-spacing:3px}
+#header h1 span{color:#00ff88}
+.nav-links{display:flex;gap:10px}
+.nav-links a{color:#4488ff;text-decoration:none;font-size:11px;border:1px solid #4488ff44;
+  padding:4px 10px;border-radius:3px}
+#main{padding:20px;max-width:1400px;margin:0 auto}
+.status-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:#0d1117;border:1px solid #00ff8822;border-radius:6px;padding:16px;text-align:center}
+.stat-card .big{font-size:28px;font-weight:bold}
+.stat-card .label{font-size:9px;color:#666;letter-spacing:2px;margin-top:4px}
+.stat-card.ok .big{color:#00ff88}
+.stat-card.warn .big{color:#ffaa00}
+.stat-card.err .big{color:#ff4444}
+.section{margin-bottom:24px}
+.section h2{font-size:13px;letter-spacing:3px;color:#00ff88;margin-bottom:12px;
+  border-bottom:1px solid #00ff8822;padding-bottom:6px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.config-box{background:#0d1117;border:1px solid #222;border-radius:6px;padding:16px}
+.config-box h3{font-size:11px;color:#4488ff;margin-bottom:8px}
+.cfg-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid #111}
+.cfg-row .k{color:#666}
+.cfg-row .v{color:#00ff88}
+.cfg-row .v.off{color:#ff4444}
+.vehicle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.vehicle-card{background:#0d1117;border:1px solid #222;border-radius:6px;padding:14px;position:relative}
+.vehicle-card.connected{border-color:#00ff8844}
+.vehicle-card.disconnected{border-color:#ff444444}
+.vehicle-card .name{font-size:13px;font-weight:bold;margin-bottom:6px}
+.vehicle-card .source{position:absolute;top:10px;right:10px;font-size:9px;padding:2px 8px;border-radius:10px}
+.source.mavlink{background:#4488ff22;color:#4488ff;border:1px solid #4488ff44}
+.source.nav2{background:#00ff8822;color:#00ff88;border:1px solid #00ff8844}
+.source.sim{background:#88888822;color:#888;border:1px solid #88888844}
+.v-row{display:flex;justify-content:space-between;padding:2px 0;font-size:10px}
+.v-row .k{color:#555}
+.btn-row{display:flex;gap:6px;margin-top:8px}
+.btn-sm{background:#1a1a2e;color:#4488ff;border:1px solid #4488ff44;padding:4px 10px;
+  cursor:pointer;font-family:inherit;font-size:9px;border-radius:3px}
+.btn-sm:hover{background:#4488ff22}
+.btn-sm.danger{color:#ff4444;border-color:#ff444444}
+.btn-sm.danger:hover{background:#ff444422}
+.log-area{background:#0d1117;border:1px solid #222;border-radius:6px;padding:12px;
+  max-height:300px;overflow-y:auto;font-size:10px}
+.log-entry{padding:2px 0;border-bottom:1px solid #0a0a0a}
+.log-entry.CRITICAL{color:#ff4444}
+.log-entry.WARNING{color:#ffaa00}
+.log-entry.INFO{color:#00ff88}
+.connect-form{background:#0d1117;border:1px solid #00ff8844;border-radius:6px;padding:16px;margin-bottom:16px}
+.connect-form h3{font-size:11px;color:#00ff88;margin-bottom:8px}
+.form-row{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.form-row label{font-size:10px;color:#666;width:80px}
+.form-row input,.form-row select{background:#0a0a0a;border:1px solid #333;color:#00ff88;
+  padding:4px 8px;font-family:inherit;font-size:10px;border-radius:3px;flex:1}
+.emergency-btn{background:#ff0000;color:white;border:none;padding:12px 24px;font-size:14px;
+  font-weight:bold;font-family:inherit;cursor:pointer;border-radius:6px;width:100%;
+  letter-spacing:3px;margin-top:12px}
+.emergency-btn:hover{background:#cc0000}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>&#x2699; <span>MOS</span> HARDWARE ABSTRACTION LAYER</h1>
+  <div class="nav-links">
+    <a href="/">C2</a><a href="/awacs">AWACS</a>
+    <a href="/ew" style="color:#ff0066">⚡EW</a>
+    <a href="/sigint">📡SIGINT</a>
+    <a href="/cyber">🔓CYBER</a><a href="/dashboard">TWIN</a>
+    <a href="/tactical3d">3D</a><a href="/echelon">ECHELON</a>
+  </div>
+</div>
+<div id="main">
+  <div class="status-bar">
+    <div class="stat-card ok" id="sc-mavros"><div class="big" id="s-mavros">&#x2714;</div><div class="label">MAVROS</div></div>
+    <div class="stat-card ok" id="sc-nav2"><div class="big" id="s-nav2">&#x2714;</div><div class="label">NAV2</div></div>
+    <div class="stat-card ok"><div class="big" id="s-real">0</div><div class="label">REAL VEHICLES</div></div>
+    <div class="stat-card ok"><div class="big" id="s-connected">0</div><div class="label">CONNECTED</div></div>
+    <div class="stat-card ok"><div class="big" id="s-mode">SIM</div><div class="label">DEFAULT MODE</div></div>
+  </div>
+
+  <div class="connect-form">
+    <h3>&#x2795; CONNECT REAL VEHICLE</h3>
+    <div class="form-row">
+      <label>ASSET ID</label><input id="f-id" placeholder="MVRX-HW01" value="MVRX-HW01"/>
+      <label>CALLSIGN</label><input id="f-cs" placeholder="REAPER-1" value="REAPER-1"/>
+    </div>
+    <div class="form-row">
+      <label>TYPE</label>
+      <select id="f-type"><option>AIR</option><option>GROUND</option><option>MARITIME</option></select>
+      <label>SOURCE</label>
+      <select id="f-src"><option>mavlink</option><option>nav2</option></select>
+    </div>
+    <div class="form-row">
+      <label>CONNECTION</label><input id="f-conn" placeholder="udp://:14540@127.0.0.1:14557" value="udp://:14540@127.0.0.1:14557"/>
+    </div>
+    <div class="form-row">
+      <button class="btn-sm" onclick="connectVehicle()" style="width:100%">&#x26A1; CONNECT VEHICLE</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>REAL VEHICLES</h2>
+    <div class="vehicle-grid" id="vehicle-grid"></div>
+  </div>
+
+  <div class="config-grid">
+    <div class="config-box">
+      <h3>SAFETY LIMITS</h3>
+      <div id="safety-cfg"></div>
+    </div>
+    <div class="config-box">
+      <h3>DDIL SETTINGS</h3>
+      <div id="ddil-cfg"></div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:16px">
+    <h2>HAL EVENT LOG</h2>
+    <div class="log-area" id="event-log"></div>
+  </div>
+
+  <button class="emergency-btn" onclick="emergencyStop()">&#x26A0; EMERGENCY STOP ALL</button>
+</div>
+
+<script>
+var events=[];
+
+async function connectVehicle(){
+  var data={
+    asset_id:document.getElementById('f-id').value,
+    callsign:document.getElementById('f-cs').value,
+    type:document.getElementById('f-type').value,
+    source:document.getElementById('f-src').value,
+    connection:document.getElementById('f-conn').value
+  };
+  try{
+    var r=await fetch('/api/hal/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    var j=await r.json();
+    addEvent('INFO','CONNECT','Sent connect request for '+data.callsign);
+  }catch(e){addEvent('WARNING','ERROR','Connect failed: '+e);}
+}
+
+function emergencyStop(){
+  if(!confirm('⚠ EMERGENCY STOP — This will disarm ALL real vehicles. Continue?')) return;
+  fetch('/api/hal/emergency_stop',{method:'POST'});
+  addEvent('CRITICAL','ESTOP','Emergency stop activated');
+}
+
+function addEvent(sev,type,detail){
+  events.unshift({severity:sev,type:type,detail:detail,time:new Date().toLocaleTimeString()});
+  if(events.length>200) events.pop();
+  renderLog();
+}
+
+function renderLog(){
+  var el=document.getElementById('event-log');
+  el.innerHTML=events.map(function(e){
+    return '<div class="log-entry '+e.severity+'"><span style="color:#555">'+e.time+'</span> ['+e.type+'] '+e.detail+'</div>';
+  }).join('');
+}
+
+async function refresh(){
+  try{
+    var r=await fetch('/api/hal/status');
+    var d=await r.json();
+
+    // Status cards
+    var mavOk=d.mavros_available;
+    var navOk=d.nav2_available;
+    document.getElementById('s-mavros').innerHTML=mavOk?'&#x2714;':'&#x2718;';
+    document.getElementById('sc-mavros').className='stat-card '+(mavOk?'ok':'err');
+    document.getElementById('s-nav2').innerHTML=navOk?'&#x2714;':'&#x2718;';
+    document.getElementById('sc-nav2').className='stat-card '+(navOk?'ok':'err');
+    document.getElementById('s-mode').textContent=(d.default_source||'sim').toUpperCase();
+
+    var vehs=d.vehicles||{};
+    var keys=Object.keys(vehs);
+    document.getElementById('s-real').textContent=keys.length;
+    var conn=keys.filter(function(k){return vehs[k].connected}).length;
+    document.getElementById('s-connected').textContent=conn;
+
+    // Vehicle cards
+    var grid=document.getElementById('vehicle-grid');
+    if(keys.length===0){
+      grid.innerHTML='<div style="color:#555;font-size:11px;padding:20px">No real vehicles configured. All assets running in simulation mode.<br><br>To connect a real drone:<br>1. Start MAVROS: <span style="color:#4488ff">ros2 launch mavros px4.launch.py</span><br>2. Edit <span style="color:#4488ff">hal_config.yaml</span> or use the form above<br>3. Restart MOS</div>';
+    }else{
+      grid.innerHTML=keys.map(function(k){
+        var v=vehs[k];
+        var cls=v.connected?'connected':'disconnected';
+        return '<div class="vehicle-card '+cls+'">'
+          +'<div class="name">'+v.callsign+' <span style="color:#555;font-size:9px">'+k+'</span></div>'
+          +'<span class="source '+v.source+'">'+v.source.toUpperCase()+'</span>'
+          +'<div class="v-row"><span class="k">STATUS</span><span style="color:'+(v.connected?'#00ff88':'#ff4444')+'">'+(v.connected?'CONNECTED':'DISCONNECTED')+'</span></div>'
+          +'<div class="v-row"><span class="k">ARMED</span><span style="color:'+(v.armed?'#ffaa00':'#888')+'">'+(v.armed?'ARMED':'DISARMED')+'</span></div>'
+          +'<div class="v-row"><span class="k">MODE</span><span style="color:#4488ff">'+v.mode+'</span></div>'
+          +'<div class="v-row"><span class="k">BATTERY</span><span style="color:'+(v.battery>50?'#00ff88':v.battery>25?'#ffaa00':'#ff4444')+'">'+v.battery.toFixed(1)+'%</span></div>'
+          +'<div class="v-row"><span class="k">HEARTBEAT</span><span style="color:#888">'+(v.last_hb>=0?v.last_hb.toFixed(1)+'s ago':'N/A')+'</span></div>'
+          +'<div class="btn-row">'
+          +'<button class="btn-sm" onclick="sendCmd(\''+k+'\',\'ARM\')">ARM</button>'
+          +'<button class="btn-sm" onclick="sendCmd(\''+k+'\',\'TAKEOFF\')">TAKEOFF</button>'
+          +'<button class="btn-sm" onclick="sendCmd(\''+k+'\',\'LAND\')">LAND</button>'
+          +'<button class="btn-sm" onclick="sendCmd(\''+k+'\',\'RTB\')">RTL</button>'
+          +'<button class="btn-sm danger" onclick="sendCmd(\''+k+'\',\'DISARM\')">DISARM</button>'
+          +'</div></div>';
+      }).join('');
+    }
+
+    // Safety config
+    var safety=d.safety||{};
+    var shtml='';
+    for(var sk in safety){
+      shtml+='<div class="cfg-row"><span class="k">'+sk+'</span><span class="v">'+safety[sk]+'</span></div>';
+    }
+    document.getElementById('safety-cfg').innerHTML=shtml||'<div style="color:#555">Using defaults</div>';
+
+  }catch(e){}
+
+  // Events
+  try{
+    var eR=await fetch('/api/hal/events');
+    var evts=await eR.json();
+    evts.forEach(function(e){
+      if(!events.find(function(x){return x.detail===e.detail&&Math.abs(x._ts-(e.timestamp||0))<1})){
+        events.unshift({severity:e.severity,type:e.type,detail:e.detail,time:new Date(e.timestamp*1000).toLocaleTimeString(),_ts:e.timestamp});
+      }
+    });
+    if(events.length>200) events=events.slice(0,200);
+    renderLog();
+  }catch(e){}
+}
+
+function sendCmd(assetId,action){
+  fetch('/api/hal/command',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({asset_id:assetId,action:action})});
+  addEvent('INFO','CMD',action+' sent to '+assetId);
+}
+
+setInterval(refresh,2000);refresh();
+</script>
+</body>
+</html>

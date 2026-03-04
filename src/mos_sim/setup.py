@@ -13,6 +13,7 @@ setup(
     entry_points={
         'console_scripts': [
             'simulated_platoon = mos_sim.simulated_platoon:main',
+            'sensor_fusion = mos_sim.sensor_fusion:main',
         ],
     },
 )

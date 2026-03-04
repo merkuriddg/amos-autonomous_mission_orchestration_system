@@ -1,0 +1,478 @@
+###############################################################################
+# MOS EW/SIGINT/CYBER CONFIGURATION
+# The complete electronic warfare arsenal configuration
+###############################################################################
+ew:
+  # ── RF Environment Simulation ──────────────────────────────────────
+  simulation:
+    spectrum_bins: 512            # FFT bins for spectrum display
+    update_rate_hz: 2.0           # Spectrum update rate
+    noise_floor_dbm: -110         # Ambient noise floor
+    center_freq_mhz: 450.0       # Default center frequency
+    bandwidth_mhz: 100.0         # Default scan bandwidth
+    emitter_spawn_rate_s: 8.0     # New emitter every N seconds
+    max_emitters: 50              # Max tracked emitters
+
+  # ── Signal Categories ──────────────────────────────────────────────
+  signal_types:
+    COMMS_VHF:
+      freq_range: [30, 300]
+      description: "VHF Voice/Data Communications"
+      threat_weight: 0.6
+      examples: ["Analog FM voice", "Marine VHF", "Air band"]
+    COMMS_UHF:
+      freq_range: [300, 3000]
+      description: "UHF Tactical Communications"
+      threat_weight: 0.8
+      examples: ["SINCGARS", "Harris radios", "Motorola trunked"]
+    COMMS_HF:
+      freq_range: [3, 30]
+      description: "HF Long-Range Communications"
+      threat_weight: 0.5
+      examples: ["ALE", "NVIS", "Shortwave broadcast"]
+    WIFI:
+      freq_range: [2400, 2500]
+      freq_range_5g: [5150, 5850]
+      description: "IEEE 802.11 WiFi"
+      threat_weight: 0.4
+      examples: ["802.11ax", "Mesh networks", "Drone WiFi C2"]
+    BLUETOOTH:
+      freq_range: [2402, 2480]
+      description: "Bluetooth / BLE"
+      threat_weight: 0.2
+      examples: ["BLE beacons", "Audio devices", "IoT sensors"]
+    CELLULAR:
+      freq_range: [700, 2600]
+      description: "Cellular LTE/5G/GSM"
+      threat_weight: 0.7
+      examples: ["LTE Band 14 FirstNet", "GSM 900", "5G NR"]
+    RADAR:
+      freq_range: [1000, 40000]
+      description: "RADAR Emissions"
+      threat_weight: 0.9
+      examples: ["Search radar", "Fire control", "Weather radar"]
+    DRONE_C2:
+      freq_range: [900, 5800]
+      description: "Drone Command & Control Links"
+      threat_weight: 1.0
+      examples: ["DJI OcuSync", "MAVLink telemetry", "FPV video"]
+    GPS_INTERFERENCE:
+      freq_range: [1575, 1576]
+      description: "GPS L1 Interference/Spoofing"
+      threat_weight: 1.0
+      examples: ["GPS jammer", "GPS spoofer", "Meaconing"]
+    ISM_BAND:
+      freq_range: [902, 928]
+      description: "ISM Band Devices"
+      threat_weight: 0.1
+      examples: ["LoRa", "Zigbee", "Z-Wave", "Baby monitors"]
+    P25_DMR:
+      freq_range: [136, 900]
+      description: "Public Safety Trunked Radio"
+      threat_weight: 0.3
+      examples: ["P25 Phase I/II", "DMR Tier II/III", "NXDN"]
+    SATCOM:
+      freq_range: [1500, 30000]
+      description: "Satellite Communications"
+      threat_weight: 0.7
+      examples: ["Iridium", "Inmarsat", "MUOS", "Starlink"]
+    ADS_B:
+      freq_range: [1090, 1090]
+      description: "Aircraft Transponders"
+      threat_weight: 0.1
+      examples: ["ADS-B Out", "Mode S", "TCAS"]
+    AIS:
+      freq_range: [161, 162]
+      description: "Maritime Vessel Tracking"
+      threat_weight: 0.1
+      examples: ["AIS Class A/B", "SAR transponder"]
+    REMOTE_ID:
+      freq_range: [2400, 2500]
+      description: "FAA Remote ID Broadcast"
+      threat_weight: 0.3
+      examples: ["Standard Remote ID", "Broadcast Remote ID"]
+
+  # ── Emitter Classification ─────────────────────────────────────────
+  classifications:
+    FRIENDLY:
+      color: "#00ff00"
+      response: "MONITOR"
+      description: "Known friendly asset RF emission"
+    NEUTRAL:
+      color: "#ffff00"
+      response: "LOG"
+      description: "Civilian/commercial — no threat"
+    SUSPECT:
+      color: "#ff8800"
+      response: "INVESTIGATE"
+      description: "Unusual pattern or location"
+    HOSTILE:
+      color: "#ff0000"
+      response: "TRACK_REPORT"
+      description: "Confirmed threat emitter"
+    JAMMER:
+      color: "#ff00ff"
+      response: "LOCATE_COUNTER"
+      description: "Active electronic attack source"
+
+  # ── Jamming Profiles ───────────────────────────────────────────────
+  jamming_profiles:
+    NOISE:
+      description: "Broadband noise jamming"
+      bandwidth_mhz: 20
+      effectiveness: 0.7
+      power_required_dbm: 33
+    SPOT:
+      description: "Narrowband spot jamming"
+      bandwidth_mhz: 1
+      effectiveness: 0.9
+      power_required_dbm: 27
+    SWEEP:
+      description: "Swept frequency jamming"
+      bandwidth_mhz: 50
+      effectiveness: 0.5
+      power_required_dbm: 36
+    DECEPTIVE:
+      description: "False signal injection"
+      bandwidth_mhz: 5
+      effectiveness: 0.8
+      power_required_dbm: 20
+    DRFM:
+      description: "Digital RF Memory — radar spoofing"
+      bandwidth_mhz: 10
+      effectiveness: 0.95
+      power_required_dbm: 30
+
+  # ── EW Asset Payload Configuration ─────────────────────────────────
+  # Which MOS assets carry EW payloads
+  ew_assets:
+    MVRX-A03:
+      role: "SIGINT_PRIMARY"
+      payloads: ["RTL-SDR", "HackRF", "DF_ARRAY"]
+      capabilities: ["spectrum_monitor", "signal_classify", "direction_find"]
+    MVRX-A04:
+      role: "EW_ATTACK"
+      payloads: ["HackRF", "USRP_B205"]
+      capabilities: ["spectrum_monitor", "jamming", "spoofing_detect"]
+    MVRX-A05:
+      role: "CYBER_RECON"
+      payloads: ["WIFI_ADAPTER", "RTL-SDR", "BT_ADAPTER"]
+      capabilities: ["wifi_scan", "bt_scan", "spectrum_monitor", "deauth"]
+    MVRX-G03:
+      role: "GROUND_SIGINT"
+      payloads: ["USRP_B205", "DF_ARRAY", "JETSON_DRAGONOS"]
+      capabilities: ["spectrum_monitor", "signal_classify", "direction_find", "record"]
+    MVRX-G04:
+      role: "CYBER_GROUND"
+      payloads: ["WIFI_PINEAPPLE", "PACKET_SQUIRREL", "RTL-SDR"]
+      capabilities: ["wifi_scan", "network_tap", "mitm", "spectrum_monitor"]
+    AWACS-1:
+      role: "SIGINT_FUSION"
+      payloads: ["USRP_X310", "DF_ARRAY", "SATCOM_RX"]
+      capabilities: ["wideband_monitor", "signal_classify", "direction_find", "sigint_fusion"]
+    AWACS-2:
+      role: "EW_COORDINATOR"
+      payloads: ["USRP_X310", "HackRF"]
+      capabilities: ["wideband_monitor", "jamming_coord", "spectrum_deconflict"]
+
+  # ── Hardware Payloads ──────────────────────────────────────────────
+  payloads:
+    RTL-SDR:
+      name: "RTL-SDR v3/v4"
+      weight_oz: 0.5
+      freq_range_mhz: [0.5, 1766]
+      bandwidth_mhz: 2.4
+      sample_rate_msps: 2.4
+      direction: "RX"
+      interface: "USB"
+      power_w: 0.5
+      cost_usd: 30
+      dragonos_tools: ["gqrx", "sdr++", "rtl_433", "dump1090", "multimon-ng"]
+    HackRF:
+      name: "HackRF One"
+      weight_oz: 8
+      freq_range_mhz: [1, 6000]
+      bandwidth_mhz: 20
+      sample_rate_msps: 20
+      direction: "TX/RX"
+      interface: "USB"
+      power_w: 1.5
+      cost_usd: 350
+      dragonos_tools: ["gnu_radio", "gqrx", "sdr++", "inspectrum", "urh"]
+    USRP_B205:
+      name: "Ettus USRP B205mini-i"
+      weight_oz: 5
+      freq_range_mhz: [70, 6000]
+      bandwidth_mhz: 56
+      sample_rate_msps: 61.44
+      direction: "TX/RX FULL_DUPLEX"
+      interface: "USB 3.0"
+      power_w: 3.0
+      cost_usd: 1500
+      dragonos_tools: ["gnu_radio", "osmo-bts", "gr-gsm", "srsRAN"]
+    USRP_X310:
+      name: "Ettus USRP X310"
+      weight_oz: 80
+      freq_range_mhz: [10, 6000]
+      bandwidth_mhz: 160
+      sample_rate_msps: 200
+      direction: "TX/RX FULL_DUPLEX"
+      interface: "10GbE / PCIe"
+      power_w: 45
+      cost_usd: 8000
+      dragonos_tools: ["gnu_radio", "srsRAN", "osmo-bts"]
+    WIFI_ADAPTER:
+      name: "Alfa AWUS036ACH"
+      weight_oz: 2
+      freq_range_mhz: [2400, 5850]
+      direction: "TX/RX"
+      interface: "USB"
+      power_w: 0.5
+      cost_usd: 50
+      tools: ["kismet", "aircrack-ng", "bettercap", "hcxdumptool"]
+    WIFI_PINEAPPLE:
+      name: "Hak5 WiFi Pineapple Mark VII"
+      weight_oz: 3
+      freq_range_mhz: [2400, 5850]
+      direction: "TX/RX DUAL_RADIO"
+      interface: "USB-C"
+      power_w: 2.5
+      cost_usd: 120
+      tools: ["pineap", "recon", "evil_portal", "deauth"]
+    PACKET_SQUIRREL:
+      name: "Hak5 Packet Squirrel"
+      weight_oz: 2
+      interface: "Ethernet"
+      power_w: 1.0
+      cost_usd: 80
+      tools: ["tcpdump", "nmap", "dns_spoof", "payload_inject"]
+    BT_ADAPTER:
+      name: "Sena UD100 Long Range BT"
+      weight_oz: 1
+      freq_range_mhz: [2402, 2480]
+      direction: "TX/RX"
+      interface: "USB"
+      range_m: 300
+      tools: ["bluehydra", "bettercap", "hcitool"]
+    DF_ARRAY:
+      name: "KerberosSDR 4-Ch Coherent"
+      weight_oz: 12
+      freq_range_mhz: [24, 1766]
+      channels: 4
+      interface: "USB"
+      power_w: 2.0
+      cost_usd: 500
+      tools: ["krakensdr_doa", "direction_finding"]
+    JETSON_DRAGONOS:
+      name: "NVIDIA Jetson Orin Nano + DragonOS"
+      weight_oz: 5
+      interface: "USB/GPIO/PCIe"
+      power_w: 15
+      cost_usd: 500
+      description: "Full AI-enabled SIGINT platform running DragonOS"
+      tools: ["ALL_DRAGONOS_TOOLS", "tensorflow", "pytorch"]
+    SATCOM_RX:
+      name: "Nooelec SAWbird+ LNA + RTL-SDR"
+      weight_oz: 3
+      freq_range_mhz: [1525, 1559]
+      direction: "RX"
+      interface: "USB"
+      power_w: 0.5
+      cost_usd: 80
+      tools: ["satdump", "gpredict", "satnogs"]
+
+  # ── DragonOS Tool Inventory ────────────────────────────────────────
+  dragonos_tools:
+    # -- Spectrum & Reception --
+    gnu_radio:
+      name: "GNU Radio"
+      category: "SIGNAL_PROCESSING"
+      description: "Signal processing framework with flowgraph GUI"
+      ros2_bridge: true
+      binary: "gnuradio-companion"
+      capabilities: ["demod", "decode", "filter", "analyze", "transmit"]
+    gqrx:
+      name: "GQRX"
+      category: "RECEIVER"
+      description: "SDR receiver with waterfall and audio"
+      binary: "gqrx"
+      remote_control: "tcp://127.0.0.1:7356"
+      capabilities: ["receive", "waterfall", "record", "demod_fm_am_ssb"]
+    sdr_plus_plus:
+      name: "SDR++"
+      category: "RECEIVER"
+      description: "Modern cross-platform SDR receiver"
+      binary: "sdrpp"
+      capabilities: ["receive", "waterfall", "scanner", "multi_vfo"]
+    cubicsdr:
+      name: "CubicSDR"
+      category: "RECEIVER"
+      binary: "CubicSDR"
+      capabilities: ["receive", "waterfall", "scanner"]
+    # -- Decoders --
+    sdr_trunk:
+      name: "SDR Trunk"
+      category: "DECODER"
+      description: "Trunked radio decoder (P25, DMR, NXDN)"
+      binary: "java -jar sdrtrunk.jar"
+      capabilities: ["p25_decode", "dmr_decode", "nxdn_decode", "alias"]
+    multimon_ng:
+      name: "multimon-ng"
+      category: "DECODER"
+      description: "Multi-mode digital decoder"
+      binary: "multimon-ng"
+      capabilities: ["pocsag", "flex", "eas", "dtmf", "zvei", "afsk"]
+    rtl_433:
+      name: "rtl_433"
+      category: "DECODER"
+      description: "ISM band generic data receiver"
+      binary: "rtl_433"
+      json_output: true
+      capabilities: ["weather_stations", "tire_pressure", "doorbells", "sensors"]
+    dump1090:
+      name: "dump1090"
+      category: "DECODER"
+      description: "ADS-B aircraft transponder decoder"
+      binary: "dump1090-mutability"
+      web_ui: "http://127.0.0.1:8080"
+      json_api: "http://127.0.0.1:8080/data/aircraft.json"
+      capabilities: ["adsb_decode", "mlat", "aircraft_tracking"]
+    direwolf:
+      name: "Direwolf"
+      category: "DECODER"
+      description: "AX.25 packet radio / APRS TNC"
+      binary: "direwolf"
+      capabilities: ["aprs", "packet_radio", "ax25", "kiss_tnc"]
+      atak_integration: true
+    # -- Analysis --
+    inspectrum:
+      name: "inspectrum"
+      category: "ANALYSIS"
+      description: "Signal analysis tool for recorded IQ data"
+      binary: "inspectrum"
+      capabilities: ["iq_analysis", "signal_identification", "timing"]
+    urh:
+      name: "Universal Radio Hacker"
+      category: "ANALYSIS"
+      description: "Protocol analysis and reverse engineering"
+      binary: "urh"
+      capabilities: ["protocol_reverse", "signal_generator", "fuzzing", "simulation"]
+    sigdigger:
+      name: "SigDigger"
+      category: "ANALYSIS"
+      binary: "SigDigger"
+      capabilities: ["signal_analysis", "measurement", "inspection"]
+    baudline:
+      name: "Baudline"
+      category: "ANALYSIS"
+      description: "Time-frequency signal analyzer"
+      binary: "baudline"
+      capabilities: ["fft", "spectrogram", "histogram", "correlation"]
+    # -- Satellite --
+    gpredict:
+      name: "GPredict"
+      category: "SATELLITE"
+      description: "Satellite tracking and prediction"
+      binary: "gpredict"
+      capabilities: ["sat_track", "pass_prediction", "doppler", "rotor_control"]
+    satdump:
+      name: "SatDump"
+      category: "SATELLITE"
+      description: "Satellite data decoder (NOAA, GOES, Meteor)"
+      binary: "satdump"
+      capabilities: ["weather_sat", "image_decode", "live_decode"]
+    # -- Network/Cyber --
+    kismet:
+      name: "Kismet"
+      category: "CYBER"
+      description: "Wireless network detector and sniffer"
+      binary: "kismet"
+      rest_api: "http://127.0.0.1:2501"
+      capabilities: ["wifi_detect", "bt_detect", "zigbee", "mousejack", "rtl433"]
+    aircrack_ng:
+      name: "Aircrack-ng Suite"
+      category: "CYBER"
+      description: "WiFi security assessment toolkit"
+      binary: "aircrack-ng"
+      capabilities: ["monitor_mode", "packet_capture", "deauth", "wpa_crack", "wep_crack"]
+    bettercap:
+      name: "Bettercap"
+      category: "CYBER"
+      description: "Network attack and monitoring framework"
+      binary: "bettercap"
+      web_ui: "http://127.0.0.1:80"
+      capabilities: ["arp_spoof", "dns_spoof", "wifi_recon", "bt_recon", "hid_attack"]
+    nmap:
+      name: "Nmap"
+      category: "CYBER"
+      description: "Network discovery and security auditing"
+      binary: "nmap"
+      capabilities: ["host_discover", "port_scan", "os_detect", "vuln_scan", "scripting"]
+    wireshark:
+      name: "Wireshark/tshark"
+      category: "CYBER"
+      description: "Network protocol analyzer"
+      binary: "wireshark"
+      cli: "tshark"
+      capabilities: ["packet_capture", "protocol_decode", "stream_follow", "statistics"]
+    # -- Cellular --
+    gr_gsm:
+      name: "gr-gsm"
+      category: "CELLULAR"
+      description: "GSM signal decoder for GNU Radio"
+      binary: "grgsm_livemon"
+      capabilities: ["gsm_decode", "cell_search", "imsi_collect", "sms_decode"]
+    kalibrate:
+      name: "kalibrate-rtl"
+      category: "CELLULAR"
+      description: "GSM tower frequency scanner/calibrator"
+      binary: "kal"
+      capabilities: ["gsm_scan", "freq_calibrate", "tower_locate"]
+    srsran:
+      name: "srsRAN"
+      category: "CELLULAR"
+      description: "Open-source 4G/5G software radio suite"
+      binary: "srsenb"
+      capabilities: ["lte_cell", "lte_ue", "5g_gnb", "core_network"]
+    # -- Direction Finding --
+    krakensdr:
+      name: "KrakenSDR DOA"
+      category: "DIRECTION_FINDING"
+      description: "Coherent multi-channel direction finding"
+      binary: "krakensdr_doa"
+      web_ui: "http://127.0.0.1:8042"
+      capabilities: ["aoa_estimate", "tdoa", "heatmap", "emitter_locate"]
+    # -- Counter-UAS --
+    droneid_decoder:
+      name: "DJI DroneID Decoder"
+      category: "COUNTER_UAS"
+      description: "Decode DJI drone identification broadcasts"
+      binary: "dji_droneid"
+      capabilities: ["dji_detect", "serial_extract", "pilot_locate", "flight_path"]
+    remoteid_rx:
+      name: "RemoteID Receiver"
+      category: "COUNTER_UAS"
+      description: "FAA Remote ID broadcast receiver"
+      binary: "remoteid_rx"
+      capabilities: ["remoteid_decode", "uas_track", "operator_locate"]
+
+  # ── Cyber Operations Config ────────────────────────────────────────
+  cyber:
+    scan_interval_s: 15.0
+    wifi_channels: [1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161]
+    bt_scan_duration_s: 10
+    network_scan_range: "10.0.0.0/24"
+    vuln_scan_enabled: true
+    ids_enabled: true             # Intrusion Detection System
+    ros2_dds_monitor: true        # Monitor ROS 2 DDS for anomalies
+    honeypot_enabled: false       # Honeypot services
+    auto_deauth_hostile: false    # Auto-deauth hostile drone WiFi (DANGEROUS)
+
+  # ── Direction Finding ──────────────────────────────────────────────
+  direction_finding:
+    method: "AOA"                 # AOA (Angle of Arrival) or TDOA
+    min_assets_for_fix: 2         # Minimum DF assets for geolocation
+    bearing_accuracy_deg: 5.0     # Simulated bearing accuracy
+    update_rate_hz: 1.0
+    geolocation_algorithm: "triangulation"  # triangulation | least_squares
+

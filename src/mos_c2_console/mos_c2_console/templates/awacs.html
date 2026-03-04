@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MOS - AWACS Airborne C2</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ffff}
+#header{background:#0d1117;padding:10px 20px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #00ffff44}
+#header h1{font-size:16px;letter-spacing:3px}
+#header h1 span{color:#00ffff}
+.nav-links{display:flex;gap:10px}
+.nav-links a{color:#4488ff;text-decoration:none;font-size:11px;border:1px solid #4488ff44;
+  padding:4px 10px;border-radius:3px}
+#main{display:flex;height:calc(100vh - 48px)}
+#map{flex:1}
+#sidebar{width:320px;background:#0d1117;border-left:1px solid #00ffff22;overflow-y:auto;padding:16px}
+.section{margin-bottom:16px}
+.section h3{font-size:11px;letter-spacing:2px;color:#00ffff;margin-bottom:8px;border-bottom:1px solid #00ffff22;padding-bottom:4px}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid #111}
+.stat-row .lbl{color:#666}
+.stat-row .val{color:#00ff88}
+.asset-item{padding:4px 8px;margin:2px 0;background:#0d1117;border-left:3px solid #333;font-size:10px}
+.asset-item.covered{border-left-color:#00ffff}
+.asset-item.warning{border-left-color:#ffaa00}
+.asset-item.critical{border-left-color:#ff4444}
+.track-item{padding:4px 8px;margin:2px 0;font-size:10px;border-left:3px solid #ffff00}
+.track-item.fused{border-left-color:#00ff88}
+.threat-item{padding:4px 8px;margin:2px 0;font-size:10px;border-left:3px solid #ff4444}
+.gauge{text-align:center;padding:12px}
+.gauge .big{font-size:36px;font-weight:bold}
+.gauge .label{font-size:9px;color:#666;letter-spacing:2px;margin-top:4px}
+.gauge-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.leaflet-container{background:#0a0a0a !important}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>&#x2708; <span>MOS</span> AWACS — AIRBORNE C2</h1>
+  <div class="nav-links">
+    <a href="/">C2</a><a href="/ew" style="color:#ff0066">⚡EW</a>
+    <a href="/sigint">📡SIGINT</a>
+    <a href="/cyber">🔓CYBER</a>
+    <a href="/dashboard">TWIN</a><a href="/tactical3d">3D</a><a href="/echelon">ECHELON</a>
+  </div>
+</div>
+<div id="main">
+  <div id="map"></div>
+  <div id="sidebar">
+    <div class="gauge-row">
+      <div class="gauge"><div class="big" id="g-covered">0</div><div class="label">ASSETS COVERED</div></div>
+      <div class="gauge"><div class="big" id="g-tracks" style="color:#ffff00">0</div><div class="label">SENSOR TRACKS</div></div>
+    </div>
+    <div class="gauge-row">
+      <div class="gauge"><div class="big" id="g-threats" style="color:#ff4444">0</div><div class="label">THREATS IN COV</div></div>
+      <div class="gauge"><div class="big" id="g-relay" style="color:#00ff88">OFF</div><div class="label">MESH RELAY</div></div>
+    </div>
+    <div class="section" id="awacs-info"><h3>AWACS STATUS</h3><div style="color:#555">Waiting...</div></div>
+    <div class="section" id="covered-list"><h3>COVERED ASSETS</h3></div>
+    <div class="section" id="track-list"><h3>SENSOR TRACKS (COP)</h3></div>
+    <div class="section" id="threat-list"><h3>THREATS IN COVERAGE</h3></div>
+    <div class="section" id="sust-list"><h3>SUSTAINMENT ALERTS</h3></div>
+  </div>
+</div>
+<script>
+var map=L.map('map',{center:[27.8497,-82.5212],zoom:14,zoomControl:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+
+var DC={AIR:'#4488ff',GROUND:'#44ff44',MARITIME:'#ff8844'};
+var markers={};
+var covCircles={};
+var relayLines=L.layerGroup().addTo(map);
+var trackMarkers=L.layerGroup().addTo(map);
+
+function makeIcon(domain,isAwacs){
+  var c=isAwacs?'#00ffff':DC[domain]||'#fff';
+  var sz=isAwacs?20:12;
+  return L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;border:2px solid '+c+
+    ';background:'+c+'33;box-shadow:0 0 '+(isAwacs?8:4)+'px '+c+'88;"></div>'});
+}
+
+async function refresh(){
+  try{
+    var aR=await fetch('/api/assets'); var assets=await aR.json();
+    var wR=await fetch('/api/awacs'); var awacs_list=await wR.json();
+    var cR=await fetch('/api/awacs/cop'); var cop=await cR.json();
+    var tR=await fetch('/api/threats'); var threats=await tR.json();
+
+    // Draw all assets
+    assets.forEach(function(a){
+      var id=a.asset_id;
+      var isA=a.callsign&&a.callsign.indexOf('AWACS')===0;
+      var ll=[a.lat,a.lon];
+      if(markers[id]){markers[id].setLatLng(ll);markers[id].setIcon(makeIcon(a.asset_type,isA));}
+      else{markers[id]=L.marker(ll,{icon:makeIcon(a.asset_type,isA)}).bindTooltip(a.callsign,{permanent:false,direction:'top',offset:[0,-10]}).addTo(map);}
+    });
+
+    relayLines.clearLayers();
+    trackMarkers.clearLayers();
+
+    // Process AWACS status
+    if(awacs_list.length>0){
+      var w=awacs_list[0];
+      document.getElementById('g-covered').textContent=w.assets_covered;
+      document.getElementById('g-tracks').textContent=w.sensor_tracks;
+      document.getElementById('g-threats').textContent=w.active_threats;
+      document.getElementById('g-relay').textContent=w.mesh_relay_active?'ON':'OFF';
+      document.getElementById('g-relay').style.color=w.mesh_relay_active?'#00ff88':'#ff4444';
+
+      // AWACS info
+      document.getElementById('awacs-info').innerHTML='<h3>'+w.callsign+' STATUS</h3>'
+        +'<div class="stat-row"><span class="lbl">POSITION</span><span class="val">'+w.lat.toFixed(5)+', '+w.lon.toFixed(5)+'</span></div>'
+        +'<div class="stat-row"><span class="lbl">ALTITUDE</span><span class="val">'+w.alt.toFixed(0)+' ft</span></div>'
+        +'<div class="stat-row"><span class="lbl">COVERAGE</span><span class="val">'+w.coverage_radius_m+' m</span></div>'
+        +'<div class="stat-row"><span class="lbl">ASSETS</span><span class="val">'+w.assets_covered+'</span></div>'
+        +'<div class="stat-row"><span class="lbl">TRACKS</span><span class="val">'+w.sensor_tracks+'</span></div>';
+
+      // Coverage circle
+      awacs_list.forEach(function(aw){
+        var id=aw.awacs_id;
+        if(covCircles[id]){covCircles[id].setLatLng([aw.lat,aw.lon]);covCircles[id].setRadius(aw.coverage_radius_m);}
+        else{covCircles[id]=L.circle([aw.lat,aw.lon],{radius:aw.coverage_radius_m,color:'#00ffff',weight:1.5,fillOpacity:0.03,dashArray:'8,4'}).addTo(map);}
+
+        // Relay lines
+        (aw.covered_assets||[]).forEach(function(ca){
+          var a=assets.find(function(x){return x.asset_id===ca.asset_id});
+          if(a){
+            var q=ca.link_quality;
+            var c=q>70?'#00ffff':q>40?'#ffaa00':'#ff4444';
+            L.polyline([[aw.lat,aw.lon],[a.lat,a.lon]],{color:c,weight:1,opacity:0.3,dashArray:'3,6'}).addTo(relayLines);
+          }
+        });
+      });
+
+      // Covered assets list
+      var cl='<h3>COVERED ASSETS ('+w.assets_covered+')</h3>';
+      (w.covered_assets||[]).forEach(function(c){
+        var dc=DC[c.type]||'#888';
+        cl+='<div class="asset-item covered" style="border-left-color:'+dc+'">'+c.callsign+' <span style="color:#555">'+c.distance+'m | '+c.link_quality.toFixed(0)+'% link</span></div>';
+      });
+      document.getElementById('covered-list').innerHTML=cl;
+
+      // Threats
+      var tl='<h3>THREATS ('+w.active_threats+')</h3>';
+      (w.threats||[]).forEach(function(t){
+        var tc=t.threat_level==='CRITICAL'?'#ff4444':'#ffaa00';
+        tl+='<div class="threat-item">'+t.contact_id+' <span style="color:'+tc+'">'+t.threat_level+'</span> <span style="color:#555">'+t.distance+'m</span></div>';
+      });
+      document.getElementById('threat-list').innerHTML=tl;
+
+      // Sustainment
+      var sl='<h3>SUSTAINMENT ALERTS ('+w.sust_alerts+')</h3>';
+      (w.sustainment_warnings||[]).forEach(function(s){
+        var sc=s.level==='CRITICAL'?'critical':'warning';
+        sl+='<div class="asset-item '+sc+'">'+s.callsign+' <span style="color:'+(s.level==='CRITICAL'?'#ff4444':'#ffaa00')+'">'+s.battery.toFixed(0)+'% '+s.level+'</span></div>';
+      });
+      document.getElementById('sust-list').innerHTML=sl;
+    }
+
+    // COP tracks
+    var trl='<h3>SENSOR TRACKS ('+cop.length+')</h3>';
+    cop.forEach(function(t){
+      var c=t.fused?'#00ff88':'#ffff00';
+      var sz=t.fused?10:8;
+      L.circleMarker([t.lat,t.lon],{radius:sz/2,color:c,fillColor:c,fillOpacity:0.4,weight:1})
+        .bindTooltip(t.track_id+': '+t.classification+' ('+Math.round(t.confidence*100)+'%'+(t.fused?' FUSED':'')+')',{direction:'top'})
+        .addTo(trackMarkers);
+      trl+='<div class="track-item'+(t.fused?' fused':'')+'">'+t.track_id+' '+t.classification+' <span style="color:#888">'+Math.round(t.confidence*100)+'% | '+t.sources+' src</span></div>';
+    });
+    document.getElementById('track-list').innerHTML=trl;
+
+  }catch(e){console.warn(e);}
+}
+setInterval(refresh,1500);refresh();
+</script>
+</body>
+</html>

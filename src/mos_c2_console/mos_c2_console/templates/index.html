@@ -5,7 +5,284 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MOS — Mission Operating System</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+
+// ================================================
+//  PHASE 5: COMMS MESH OVERLAY
+// ================================================
+var lastAssets=[],lastThreats=[];
+var meshEnabled = false;
+var meshLayer = null;
+
+function toggleMesh(){
+  meshEnabled = !meshEnabled;
+  document.getElementById('btn-mesh').classList.toggle('active', meshEnabled);
+  if(!meshEnabled && meshLayer) meshLayer.clearLayers();
+}
+
+function drawMesh(assets){
+  if(!meshLayer) meshLayer = L.layerGroup().addTo(map);
+  meshLayer.clearLayers();
+  if(!meshEnabled) return;
+  var MESH_RANGE = 0.012;
+  for(var i=0;i<assets.length;i++){
+    for(var j=i+1;j<assets.length;j++){
+      var a=assets[i], b=assets[j];
+      var dlat=a.lat-b.lat, dlon=a.lon-b.lon;
+      var dist=Math.sqrt(dlat*dlat+dlon*dlon);
+      if(dist<MESH_RANGE){
+        var color=dist<0.004?'#00ff88':dist<0.008?'#ffaa00':'#ff4444';
+        var opacity=0.15+0.25*(1-dist/MESH_RANGE);
+        L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{
+          color:color,weight:1,opacity:opacity,dashArray:'4,4'
+        }).addTo(meshLayer);
+      }
+    }
+  }
+}
+
+// ================================================
+//  PHASE 5: SENSOR FUSION OVERLAY
+// ================================================
+var sensorsEnabled = false;
+var sensorLayer = null;
+var SENSOR_COLORS = {EO_IR:'#ffff00',SIGINT:'#ff44ff',RADAR:'#00ffff',LIDAR:'#44ff44',SONAR:'#4488ff'};
+
+function toggleSensors(){
+  sensorsEnabled = !sensorsEnabled;
+  document.getElementById('btn-sensors').classList.toggle('active', sensorsEnabled);
+  if(!sensorsEnabled && sensorLayer) sensorLayer.clearLayers();
+}
+
+function updateSensorMarkers(detections){
+  if(!sensorLayer) sensorLayer = L.layerGroup().addTo(map);
+  sensorLayer.clearLayers();
+  if(!sensorsEnabled || !detections) return;
+  for(var i=0;i<detections.length;i++){
+    var d=detections[i];
+    var color=SENSOR_COLORS[d.sensor_type]||'#fff';
+    var size=d.fused?14:10;
+    var glow=d.fused?'box-shadow:0 0 6px '+color+';':'';
+    var icon=L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+      html:'<div style="width:'+size+'px;height:'+size+'px;background:'+color+'33;border:1px solid '+color+';transform:rotate(45deg);'+glow+'"></div>'});
+    var tip=d.sensor_type+': '+d.classification+'<br>Conf: '+(d.confidence*100).toFixed(0)+'%<br>Src: '+d.source_callsign+(d.fused?' [FUSED x'+d.sources+']':'');
+    L.marker([d.lat,d.lon],{icon:icon}).bindTooltip(tip,{permanent:false,direction:'top',offset:[0,-8]}).addTo(sensorLayer);
+  }
+}
+
+// ================================================
+//  PHASE 5: SUSTAINMENT MONITORING
+// ================================================
+function updateSustainment(data){
+  if(!data||!data.length) return;
+  var critical=[];
+  var warning=[];
+  for(var i=0;i<data.length;i++){
+    if(data[i].level==='CRITICAL') critical.push(data[i]);
+    else if(data[i].level==='WARNING') warning.push(data[i]);
+  }
+  var el=document.getElementById('sust-warnings');
+  if(!el) return;
+  if(critical.length===0&&warning.length===0){
+    el.innerHTML='<span style="color:#00ff88">ALL NOMINAL</span>';
+    return;
+  }
+  var html='';
+  for(var i=0;i<critical.length;i++){
+    var d=critical[i];
+    html+='<div style="color:#ff4444;padding:2px 0">[!] '+d.callsign+' CRITICAL '+d.battery.toFixed(0)+'% - AUTO RTB</div>';
+  }
+  for(var i=0;i<warning.length;i++){
+    var d=warning[i];
+    html+='<div style="color:#ffaa00;padding:2px 0">[w] '+d.callsign+' '+d.battery.toFixed(0)+'% - '+d.time_remaining.toFixed(0)+'min rem</div>';
+  }
+  el.innerHTML=html;
+}
+
+
+
+// ================================================
+//  PHASE 6: AI COA DISPLAY
+// ================================================
+function updateCOA(coas){
+  var el=document.getElementById('coa-list');
+  if(!el||!coas||!coas.length){if(el)el.innerHTML='<span style="color:#555">No recommendations</span>';return;}
+  var html='';
+  for(var i=coas.length-1;i>=Math.max(0,coas.length-8);i--){
+    var c=coas[i];
+    var sc=c.status==='AUTO_EXECUTED'?'#ffaa00':c.status==='PENDING'?'#ff44ff':'#555';
+    var pc={5:'#ff4444',4:'#ff8844',3:'#ffaa00',2:'#4488ff',1:'#888'}[c.priority]||'#888';
+    html+='<div style="padding:3px 0;border-bottom:1px solid #111">';
+    html+='<span style="color:'+pc+'">P'+c.priority+'</span> ';
+    html+='<span style="color:'+sc+'">'+c.type+'</span> ';
+    html+='<span style="color:#888">'+c.description.substring(0,40)+'</span> ';
+    html+='<span style="color:'+sc+';float:right">'+c.status+'</span>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+// ================================================
+//  PHASE 6: GEOFENCE DRAWING & DISPLAY
+// ================================================
+var gfMode=false;
+var gfVertices=[];
+var gfTempMarkers=[];
+var gfTempPoly=null;
+var gfLayer=null;
+
+function toggleGeofenceMode(){
+  gfMode=!gfMode;
+  document.getElementById('btn-geofence').classList.toggle('active',gfMode);
+  var tb=document.getElementById('gf-toolbar');
+  if(tb) tb.style.display=gfMode?'flex':'none';
+  if(!gfMode) cancelGeofence();
+}
+
+function onMapClickGF(e){
+  if(!gfMode) return;
+  gfVertices.push({lat:e.latlng.lat,lon:e.latlng.lng});
+  var m=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:4,color:'#ff4444',fillColor:'#ff4444',fillOpacity:0.8}).addTo(map);
+  gfTempMarkers.push(m);
+  if(gfTempPoly) map.removeLayer(gfTempPoly);
+  if(gfVertices.length>=2){
+    var lls=gfVertices.map(function(v){return[v.lat,v.lon]});
+    gfTempPoly=L.polygon(lls,{color:'#ff4444',weight:2,fillOpacity:0.15,dashArray:'6,4'}).addTo(map);
+  }
+  var vs=document.getElementById('gf-verts');
+  if(vs) vs.textContent=gfVertices.length+' vertices';
+}
+
+function finishGeofence(){
+  if(gfVertices.length<3){alert('Need at least 3 vertices');return;}
+  var gfType=document.getElementById('gf-type').value;
+  var gfName=document.getElementById('gf-name').value||('Zone '+(Math.random()*1000|0));
+  fetch('/api/geofence/add',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({polygon:gfVertices,type:gfType,name:gfName})
+  }).then(function(){cancelGeofence();});
+}
+
+function cancelGeofence(){
+  gfVertices=[];
+  gfTempMarkers.forEach(function(m){map.removeLayer(m)});
+  gfTempMarkers=[];
+  if(gfTempPoly){map.removeLayer(gfTempPoly);gfTempPoly=null;}
+  var vs=document.getElementById('gf-verts');
+  if(vs) vs.textContent='0 vertices';
+}
+
+function renderGeofences(zones){
+  if(!gfLayer) gfLayer=L.layerGroup().addTo(map);
+  gfLayer.clearLayers();
+  if(!zones) return;
+  var colors={KEEP_OUT:'#ff4444',KEEP_IN:'#4488ff',ROE_RESTRICTED:'#ffaa00',ALERT_ZONE:'#ff44ff'};
+  zones.forEach(function(z){
+    if(!z.polygon||z.polygon.length<3) return;
+    var lls=z.polygon.map(function(p){return[p.lat,p.lon||p.lng]});
+    var c=colors[z.type]||'#ff4444';
+    L.polygon(lls,{color:c,weight:2,fillOpacity:0.1,dashArray:'8,4'})
+      .bindTooltip(z.name+' ('+z.type+')',{permanent:false,direction:'center'})
+      .addTo(gfLayer);
+  });
+}
+
+function updateViolations(violations){
+  if(!violations||!violations.length) return;
+  violations.forEach(function(v){
+    var existing=document.querySelectorAll('.violation-flash');
+    if(existing.length>5) return;
+  });
+}
+
+// Hook geofence clicks into map
+var origMapClick=null;
+if(typeof map!=='undefined'){
+  map.on('click',function(e){
+    if(gfMode){onMapClickGF(e);return;}
+    if(gfMode){onMapClickGF(e);return;}
+  });
+}
+
+
+
+// ================================================
+//  PHASE 7: TAK STATUS PANEL
+// ================================================
+function updateTAKPanel(assets,threats){
+  var be=document.getElementById('tak-blue');
+  var re=document.getElementById('tak-red');
+  if(be) be.textContent=assets?assets.length:0;
+  if(re) re.textContent=threats?threats.length:0;
+}
+
+function downloadKML(){
+  fetch('/api/assets').then(function(r){return r.json()}).then(function(assets){
+    var kml='<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>MOS Force Positions</name>\n';
+    var sc={AIR:'ff0000ff',GROUND:'ff00ff00',MARITIME:'ff0088ff'};
+    assets.forEach(function(a){
+      kml+='<Placemark>\n<name>'+a.callsign+'</name>\n<description>'+a.asset_type+' | Batt: '+a.battery.toFixed(0)+'%</description>\n';
+      kml+='<Style><IconStyle><color>'+( sc[a.asset_type]||'ffffffff')+'</color></IconStyle></Style>\n';
+      kml+='<Point><coordinates>'+a.lon+','+a.lat+','+(a.alt||0)+'</coordinates></Point>\n</Placemark>\n';
+    });
+    kml+='</Document>\n</kml>';
+    var blob=new Blob([kml],{type:'application/vnd.google-earth.kml+xml'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='mos_positions.kml';a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+// ================================================
+//  PHASE 7: AWACS COVERAGE OVERLAY
+// ================================================
+var awacsEnabled=false;
+var awacsLayer=null;
+
+function toggleAWACS(){
+  awacsEnabled=!awacsEnabled;
+  document.getElementById('btn-awacs').classList.toggle('active',awacsEnabled);
+  if(!awacsEnabled&&awacsLayer) awacsLayer.clearLayers();
+}
+
+function drawAWACS(assets){
+  if(!awacsLayer) awacsLayer=L.layerGroup().addTo(map);
+  awacsLayer.clearLayers();
+  if(!awacsEnabled) return;
+  var awacs=assets.filter(function(a){return a.callsign&&(a.callsign.indexOf('OVERWATCH')===0||a.asset_id&&a.asset_id.indexOf('AWACS')>=0)});
+  if(!awacs.length){
+    awacs=assets.filter(function(a){return a.asset_type==='AIR'&&a.alt>150});
+  }
+  awacs.forEach(function(a){
+    // Coverage cone
+    L.circle([a.lat,a.lon],{
+      radius:a.alt*6,
+      color:'#00ffff',weight:1,fillOpacity:0.04,dashArray:'6,4'
+    }).addTo(awacsLayer);
+    // Sensor range ring
+    L.circle([a.lat,a.lon],{
+      radius:a.alt*12,
+      color:'#00ffff22',weight:1,fillOpacity:0.02,dashArray:'12,6'
+    }).addTo(awacsLayer);
+    // Label
+    L.marker([a.lat,a.lon],{
+      icon:L.divIcon({className:'',iconSize:[120,20],iconAnchor:[60,-20],
+        html:'<div style="text-align:center;font-size:9px;color:#00ffff;text-shadow:0 0 4px #00ffff">&#x2708; '+a.callsign+' AWACS</div>'})
+    }).addTo(awacsLayer);
+    // Relay lines to all assets in range
+    var range=a.alt*12/111000;
+    assets.forEach(function(b){
+      if(b.asset_id===a.asset_id) return;
+      var d=Math.sqrt(Math.pow(a.lat-b.lat,2)+Math.pow(a.lon-b.lon,2));
+      if(d<range){
+        L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{
+          color:'#00ffff',weight:0.5,opacity:0.2,dashArray:'2,6'
+        }).addTo(awacsLayer);
+      }
+    });
+  });
+}
+
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overflow:hidden}
@@ -266,6 +543,9 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
   </div>
   <div class="right">
     <a href="/dashboard" target="_blank" style="color:#00ffff;border:1px solid #00ffff44;padding:4px 10px;font-size:11px;text-decoration:none;border-radius:3px;letter-spacing:1px">◉ TWIN</a>
+    <a href="/tactical3d" target="_blank" style="color:#00ffff;border:1px solid #00ffff44;padding:4px 10px;font-size:11px;text-decoration:none;border-radius:3px;letter-spacing:1px">&#x25C8; 3D</a>
+    <a href="/echelon" target="_blank" style="color:#ff44ff;border:1px solid #ff44ff44;padding:4px 10px;font-size:11px;text-decoration:none;border-radius:3px;letter-spacing:1px">&#x2B21; ECHELON</a>
+    <a href="/aar" target="_blank" style="color:#ff8844;border:1px solid #ff884444;padding:4px 10px;font-size:11px;text-decoration:none;border-radius:3px;letter-spacing:1px">&#x25B6; AAR</a>
     <button id="help-btn" onclick="toggleHelp()">? HELP</button>
     <div style="text-align:right">
       <div style="font-size:11px" id="clock"></div>
@@ -338,6 +618,52 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
       </div>
     </div>
 
+    <div class="panel" id="coa-panel">
+      <h3>&#x1F9E0; AI RECOMMENDATIONS</h3>
+      <div id="coa-list" style="font-size:10px;color:#888;max-height:120px;overflow-y:auto">Waiting for AI...</div>
+    </div>
+
+    <div class="panel" id="sust-panel">
+      <h3>&#x25B6; SUSTAINMENT</h3>
+      <div id="sust-warnings" style="font-size:10px;color:#888;max-height:80px;overflow-y:auto">Monitoring...</div>
+    </div>
+
+    <div class="panel" id="tak-panel">
+      <h3>&#x1F4E1; ATAK / TAK BRIDGE</h3>
+      <div style="font-size:10px">
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">STATUS</span>
+          <span id="tak-status" style="color:#00ff88">&#x25CF; BROADCASTING</span>
+        </div>
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">PROTOCOL</span>
+          <span style="color:#4488ff">CoT XML v2.0</span>
+        </div>
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">MULTICAST</span>
+          <span style="color:#4488ff">239.2.3.1:6969</span>
+        </div>
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">BLUE FORCE</span>
+          <span id="tak-blue" style="color:#00ff88">0</span>
+        </div>
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">RED FORCE</span>
+          <span id="tak-red" style="color:#ff4444">0</span>
+        </div>
+        <div class="erow" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #111">
+          <span style="color:#888">RATE</span>
+          <span id="tak-rate" style="color:#888">2s interval</span>
+        </div>
+        <div style="margin-top:8px">
+          <button onclick="downloadKML()" style="background:#1a1a2e;color:#4488ff;border:1px solid #4488ff44;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:9px;border-radius:3px;width:100%">&#x2B73; EXPORT KML</button>
+        </div>
+        <div style="margin-top:4px;font-size:9px;color:#555;text-align:center">
+          Connect ATAK: Settings &gt; Network &gt; Multicast: 239.2.3.1:6969
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="log-panel">
       <h3>▶ ACTIVITY LOG</h3>
       <div id="log"></div>
@@ -346,6 +672,10 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
 
   <div id="map-container">
     <div id="map-toolbar">
+      <button class="tbtn" id="btn-mesh" onclick="toggleMesh()">&#x25C8; MESH</button>
+      <button class="tbtn" id="btn-sensors" onclick="toggleSensors()">&#x25C9; SENSORS</button>
+      <button class="tbtn" id="btn-awacs" onclick="toggleAWACS()">&#x2708; AWACS</button>
+      <button class="tbtn" id="btn-geofence" onclick="toggleGeofenceMode()">&#x2B22; GEOFENCE</button>
       <button class="tbtn" id="btn-wp-mode" onclick="toggleWpMode()">📍 WP MODE</button>
       <select id="wp-asset-select"><option value="">-- assign to --</option></select>
       <label style="font-size:10px;color:#00ffff"><input type="checkbox" id="wp-loop"> LOOP</label>
@@ -358,6 +688,22 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff88;overfl
       <span class="dot" id="nd-c2"></span>C2
       <span style="margin-left:6px;color:#00ff88" id="nd-count">--</span>
     </div>
+        <div id="gf-toolbar" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);
+      z-index:1000;background:#0d1117ee;padding:8px 16px;border-radius:6px;border:1px solid #ff444444;
+      display:none;align-items:center;gap:8px;font-size:11px">
+      <span style="color:#ff4444">&#x2B22; GEOFENCE MODE</span>
+      <select id="gf-type" style="background:#1a1a2e;color:#00ff88;border:1px solid #333;padding:4px;font-family:inherit;font-size:10px">
+        <option value="KEEP_OUT">KEEP OUT</option>
+        <option value="KEEP_IN">KEEP IN</option>
+        <option value="ROE_RESTRICTED">ROE RESTRICTED</option>
+        <option value="ALERT_ZONE">ALERT ZONE</option>
+      </select>
+      <input id="gf-name" placeholder="Zone name" style="background:#1a1a2e;color:#00ff88;border:1px solid #333;padding:4px 8px;font-family:inherit;font-size:10px;width:100px"/>
+      <button onclick="finishGeofence()" style="background:#ff444422;color:#ff4444;border:1px solid #ff4444;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:10px;border-radius:3px">FINISH</button>
+      <button onclick="cancelGeofence()" style="background:#1a1a2e;color:#888;border:1px solid #333;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:10px;border-radius:3px">CANCEL</button>
+      <span id="gf-verts" style="color:#555">0 vertices</span>
+    </div>
+
     <div id="map"></div>
   </div>
 
@@ -527,7 +873,10 @@ function updateAssets(assets){
   document.getElementById('nd-c2').className = 'dot on';
   document.getElementById('nd-count').textContent = assets.length + ' connected';
 
+  lastAssets=assets;
   updateAssetDropdown(assets);
+  drawMesh(assets);
+  drawAWACS(assets);
   if(selectedAssetId) updateDetailPanel();
 }
 
@@ -740,6 +1089,12 @@ async function poll(){
     updateThreats(await tR.json());
     updateLogs(await lR.json());
     updateAutonomy(await auR.json());
+    try{var senR=await fetch('/api/sensors');updateSensorMarkers(await senR.json());}catch(e){}
+    try{var susR=await fetch('/api/sustainment');updateSustainment(await susR.json());}catch(e){}
+    try{var coaR=await fetch('/api/ai/coa');updateCOA(await coaR.json());}catch(e){}
+    try{var gfR=await fetch('/api/geofences');renderGeofences(await gfR.json());}catch(e){}
+    try{var gvR=await fetch('/api/geofence/violations');updateViolations(await gvR.json());}catch(e){}
+    try{updateTAKPanel(lastAssets,lastThreats);}catch(e){}
   }catch(e){ console.warn('Poll error:', e); }
 }
 setInterval(poll,1000);
@@ -783,6 +1138,283 @@ async function setAutonomy(level, el){
   const d = await r.json();
   console.log('Autonomy response:', d);
 }
+
+
+// ================================================
+//  PHASE 5: COMMS MESH OVERLAY
+// ================================================
+var lastAssets=[],lastThreats=[];
+var meshEnabled = false;
+var meshLayer = null;
+
+function toggleMesh(){
+  meshEnabled = !meshEnabled;
+  document.getElementById('btn-mesh').classList.toggle('active', meshEnabled);
+  if(!meshEnabled && meshLayer) meshLayer.clearLayers();
+}
+
+function drawMesh(assets){
+  if(!meshLayer) meshLayer = L.layerGroup().addTo(map);
+  meshLayer.clearLayers();
+  if(!meshEnabled) return;
+  var MESH_RANGE = 0.012;
+  for(var i=0;i<assets.length;i++){
+    for(var j=i+1;j<assets.length;j++){
+      var a=assets[i], b=assets[j];
+      var dlat=a.lat-b.lat, dlon=a.lon-b.lon;
+      var dist=Math.sqrt(dlat*dlat+dlon*dlon);
+      if(dist<MESH_RANGE){
+        var color=dist<0.004?'#00ff88':dist<0.008?'#ffaa00':'#ff4444';
+        var opacity=0.15+0.25*(1-dist/MESH_RANGE);
+        L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{
+          color:color,weight:1,opacity:opacity,dashArray:'4,4'
+        }).addTo(meshLayer);
+      }
+    }
+  }
+}
+
+// ================================================
+//  PHASE 5: SENSOR FUSION OVERLAY
+// ================================================
+var sensorsEnabled = false;
+var sensorLayer = null;
+var SENSOR_COLORS = {EO_IR:'#ffff00',SIGINT:'#ff44ff',RADAR:'#00ffff',LIDAR:'#44ff44',SONAR:'#4488ff'};
+
+function toggleSensors(){
+  sensorsEnabled = !sensorsEnabled;
+  document.getElementById('btn-sensors').classList.toggle('active', sensorsEnabled);
+  if(!sensorsEnabled && sensorLayer) sensorLayer.clearLayers();
+}
+
+function updateSensorMarkers(detections){
+  if(!sensorLayer) sensorLayer = L.layerGroup().addTo(map);
+  sensorLayer.clearLayers();
+  if(!sensorsEnabled || !detections) return;
+  for(var i=0;i<detections.length;i++){
+    var d=detections[i];
+    var color=SENSOR_COLORS[d.sensor_type]||'#fff';
+    var size=d.fused?14:10;
+    var glow=d.fused?'box-shadow:0 0 6px '+color+';':'';
+    var icon=L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+      html:'<div style="width:'+size+'px;height:'+size+'px;background:'+color+'33;border:1px solid '+color+';transform:rotate(45deg);'+glow+'"></div>'});
+    var tip=d.sensor_type+': '+d.classification+'<br>Conf: '+(d.confidence*100).toFixed(0)+'%<br>Src: '+d.source_callsign+(d.fused?' [FUSED x'+d.sources+']':'');
+    L.marker([d.lat,d.lon],{icon:icon}).bindTooltip(tip,{permanent:false,direction:'top',offset:[0,-8]}).addTo(sensorLayer);
+  }
+}
+
+// ================================================
+//  PHASE 5: SUSTAINMENT MONITORING
+// ================================================
+function updateSustainment(data){
+  if(!data||!data.length) return;
+  var critical=[];
+  var warning=[];
+  for(var i=0;i<data.length;i++){
+    if(data[i].level==='CRITICAL') critical.push(data[i]);
+    else if(data[i].level==='WARNING') warning.push(data[i]);
+  }
+  var el=document.getElementById('sust-warnings');
+  if(!el) return;
+  if(critical.length===0&&warning.length===0){
+    el.innerHTML='<span style="color:#00ff88">ALL NOMINAL</span>';
+    return;
+  }
+  var html='';
+  for(var i=0;i<critical.length;i++){
+    var d=critical[i];
+    html+='<div style="color:#ff4444;padding:2px 0">[!] '+d.callsign+' CRITICAL '+d.battery.toFixed(0)+'% - AUTO RTB</div>';
+  }
+  for(var i=0;i<warning.length;i++){
+    var d=warning[i];
+    html+='<div style="color:#ffaa00;padding:2px 0">[w] '+d.callsign+' '+d.battery.toFixed(0)+'% - '+d.time_remaining.toFixed(0)+'min rem</div>';
+  }
+  el.innerHTML=html;
+}
+
+
+
+// ================================================
+//  PHASE 6: AI COA DISPLAY
+// ================================================
+function updateCOA(coas){
+  var el=document.getElementById('coa-list');
+  if(!el||!coas||!coas.length){if(el)el.innerHTML='<span style="color:#555">No recommendations</span>';return;}
+  var html='';
+  for(var i=coas.length-1;i>=Math.max(0,coas.length-8);i--){
+    var c=coas[i];
+    var sc=c.status==='AUTO_EXECUTED'?'#ffaa00':c.status==='PENDING'?'#ff44ff':'#555';
+    var pc={5:'#ff4444',4:'#ff8844',3:'#ffaa00',2:'#4488ff',1:'#888'}[c.priority]||'#888';
+    html+='<div style="padding:3px 0;border-bottom:1px solid #111">';
+    html+='<span style="color:'+pc+'">P'+c.priority+'</span> ';
+    html+='<span style="color:'+sc+'">'+c.type+'</span> ';
+    html+='<span style="color:#888">'+c.description.substring(0,40)+'</span> ';
+    html+='<span style="color:'+sc+';float:right">'+c.status+'</span>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+// ================================================
+//  PHASE 6: GEOFENCE DRAWING & DISPLAY
+// ================================================
+var gfMode=false;
+var gfVertices=[];
+var gfTempMarkers=[];
+var gfTempPoly=null;
+var gfLayer=null;
+
+function toggleGeofenceMode(){
+  gfMode=!gfMode;
+  document.getElementById('btn-geofence').classList.toggle('active',gfMode);
+  var tb=document.getElementById('gf-toolbar');
+  if(tb) tb.style.display=gfMode?'flex':'none';
+  if(!gfMode) cancelGeofence();
+}
+
+function onMapClickGF(e){
+  if(!gfMode) return;
+  gfVertices.push({lat:e.latlng.lat,lon:e.latlng.lng});
+  var m=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:4,color:'#ff4444',fillColor:'#ff4444',fillOpacity:0.8}).addTo(map);
+  gfTempMarkers.push(m);
+  if(gfTempPoly) map.removeLayer(gfTempPoly);
+  if(gfVertices.length>=2){
+    var lls=gfVertices.map(function(v){return[v.lat,v.lon]});
+    gfTempPoly=L.polygon(lls,{color:'#ff4444',weight:2,fillOpacity:0.15,dashArray:'6,4'}).addTo(map);
+  }
+  var vs=document.getElementById('gf-verts');
+  if(vs) vs.textContent=gfVertices.length+' vertices';
+}
+
+function finishGeofence(){
+  if(gfVertices.length<3){alert('Need at least 3 vertices');return;}
+  var gfType=document.getElementById('gf-type').value;
+  var gfName=document.getElementById('gf-name').value||('Zone '+(Math.random()*1000|0));
+  fetch('/api/geofence/add',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({polygon:gfVertices,type:gfType,name:gfName})
+  }).then(function(){cancelGeofence();});
+}
+
+function cancelGeofence(){
+  gfVertices=[];
+  gfTempMarkers.forEach(function(m){map.removeLayer(m)});
+  gfTempMarkers=[];
+  if(gfTempPoly){map.removeLayer(gfTempPoly);gfTempPoly=null;}
+  var vs=document.getElementById('gf-verts');
+  if(vs) vs.textContent='0 vertices';
+}
+
+function renderGeofences(zones){
+  if(!gfLayer) gfLayer=L.layerGroup().addTo(map);
+  gfLayer.clearLayers();
+  if(!zones) return;
+  var colors={KEEP_OUT:'#ff4444',KEEP_IN:'#4488ff',ROE_RESTRICTED:'#ffaa00',ALERT_ZONE:'#ff44ff'};
+  zones.forEach(function(z){
+    if(!z.polygon||z.polygon.length<3) return;
+    var lls=z.polygon.map(function(p){return[p.lat,p.lon||p.lng]});
+    var c=colors[z.type]||'#ff4444';
+    L.polygon(lls,{color:c,weight:2,fillOpacity:0.1,dashArray:'8,4'})
+      .bindTooltip(z.name+' ('+z.type+')',{permanent:false,direction:'center'})
+      .addTo(gfLayer);
+  });
+}
+
+function updateViolations(violations){
+  if(!violations||!violations.length) return;
+  violations.forEach(function(v){
+    var existing=document.querySelectorAll('.violation-flash');
+    if(existing.length>5) return;
+  });
+}
+
+// Hook geofence clicks into map
+var origMapClick=null;
+if(typeof map!=='undefined'){
+  map.on('click',function(e){
+    if(gfMode){onMapClickGF(e);return;}
+    if(gfMode){onMapClickGF(e);return;}
+  });
+}
+
+
+
+// ================================================
+//  PHASE 7: TAK STATUS PANEL
+// ================================================
+function updateTAKPanel(assets,threats){
+  var be=document.getElementById('tak-blue');
+  var re=document.getElementById('tak-red');
+  if(be) be.textContent=assets?assets.length:0;
+  if(re) re.textContent=threats?threats.length:0;
+}
+
+function downloadKML(){
+  fetch('/api/assets').then(function(r){return r.json()}).then(function(assets){
+    var kml='<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>MOS Force Positions</name>\n';
+    var sc={AIR:'ff0000ff',GROUND:'ff00ff00',MARITIME:'ff0088ff'};
+    assets.forEach(function(a){
+      kml+='<Placemark>\n<name>'+a.callsign+'</name>\n<description>'+a.asset_type+' | Batt: '+a.battery.toFixed(0)+'%</description>\n';
+      kml+='<Style><IconStyle><color>'+( sc[a.asset_type]||'ffffffff')+'</color></IconStyle></Style>\n';
+      kml+='<Point><coordinates>'+a.lon+','+a.lat+','+(a.alt||0)+'</coordinates></Point>\n</Placemark>\n';
+    });
+    kml+='</Document>\n</kml>';
+    var blob=new Blob([kml],{type:'application/vnd.google-earth.kml+xml'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='mos_positions.kml';a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+// ================================================
+//  PHASE 7: AWACS COVERAGE OVERLAY
+// ================================================
+var awacsEnabled=false;
+var awacsLayer=null;
+
+function toggleAWACS(){
+  awacsEnabled=!awacsEnabled;
+  document.getElementById('btn-awacs').classList.toggle('active',awacsEnabled);
+  if(!awacsEnabled&&awacsLayer) awacsLayer.clearLayers();
+}
+
+function drawAWACS(assets){
+  if(!awacsLayer) awacsLayer=L.layerGroup().addTo(map);
+  awacsLayer.clearLayers();
+  if(!awacsEnabled) return;
+  var awacs=assets.filter(function(a){return a.callsign&&(a.callsign.indexOf('OVERWATCH')===0||a.asset_id&&a.asset_id.indexOf('AWACS')>=0)});
+  if(!awacs.length){
+    awacs=assets.filter(function(a){return a.asset_type==='AIR'&&a.alt>150});
+  }
+  awacs.forEach(function(a){
+    // Coverage cone
+    L.circle([a.lat,a.lon],{
+      radius:a.alt*6,
+      color:'#00ffff',weight:1,fillOpacity:0.04,dashArray:'6,4'
+    }).addTo(awacsLayer);
+    // Sensor range ring
+    L.circle([a.lat,a.lon],{
+      radius:a.alt*12,
+      color:'#00ffff22',weight:1,fillOpacity:0.02,dashArray:'12,6'
+    }).addTo(awacsLayer);
+    // Label
+    L.marker([a.lat,a.lon],{
+      icon:L.divIcon({className:'',iconSize:[120,20],iconAnchor:[60,-20],
+        html:'<div style="text-align:center;font-size:9px;color:#00ffff;text-shadow:0 0 4px #00ffff">&#x2708; '+a.callsign+' AWACS</div>'})
+    }).addTo(awacsLayer);
+    // Relay lines to all assets in range
+    var range=a.alt*12/111000;
+    assets.forEach(function(b){
+      if(b.asset_id===a.asset_id) return;
+      var d=Math.sqrt(Math.pow(a.lat-b.lat,2)+Math.pow(a.lon-b.lon,2));
+      if(d<range){
+        L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{
+          color:'#00ffff',weight:0.5,opacity:0.2,dashArray:'2,6'
+        }).addTo(awacsLayer);
+      }
+    });
+  });
+}
+
 </script>
 </body>
 </html>

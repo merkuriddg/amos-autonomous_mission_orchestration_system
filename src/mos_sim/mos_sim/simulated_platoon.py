@@ -36,6 +36,9 @@ ASSETS = [
     {'id': 'MVRX-M01', 'type': 'MARITIME', 'callsign': 'TRITON-1', 'lat': BASE_LAT - 0.010, 'lon': BASE_LON - 0.005, 'alt': 0.0},
     {'id': 'MVRX-M02', 'type': 'MARITIME', 'callsign': 'TRITON-2', 'lat': BASE_LAT - 0.012, 'lon': BASE_LON + 0.004, 'alt': 0.0},
     {'id': 'MVRX-M03', 'type': 'MARITIME', 'callsign': 'TRITON-3', 'lat': BASE_LAT - 0.014, 'lon': BASE_LON - 0.003, 'alt': 0.0},
+    # AWACS — 2 (Autonomous Airborne C2 Nodes)
+    {'id': 'MVRX-W01', 'type': 'AIR', 'callsign': 'AWACS-1', 'lat': BASE_LAT + 0.000, 'lon': BASE_LON + 0.000, 'alt': 300.0},
+    {'id': 'MVRX-W02', 'type': 'AIR', 'callsign': 'AWACS-2', 'lat': BASE_LAT + 0.010, 'lon': BASE_LON - 0.008, 'alt': 280.0},
 ]
 
 SPEED = {'AIR': 0.0003, 'GROUND': 0.00012, 'MARITIME': 0.00015}
@@ -74,7 +77,7 @@ class SimulatedPlatoon(Node):
 
         self.timer = self.create_timer(0.5, self.tick)
         self.get_logger().info(
-            f'[MOS SIM] Platoon online — {len(self.state)} assets at MacDill AFB')
+            f'[MOS SIM] Platoon + AWACS online — {len(self.state)} assets at MacDill AFB')
 
     def on_waypoints(self, msg):
         try:
