@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMOS — Login</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff41;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.login-box{background:#111;border:1px solid #00ff41;padding:40px;width:420px}
+h1{text-align:center;letter-spacing:8px;margin-bottom:5px;font-size:2em}
+.sub{text-align:center;color:#666;font-size:.75em;margin-bottom:25px}
+input{width:100%;padding:10px;margin:8px 0;background:#0a0a0a;border:1px solid #333;color:#00ff41;font-family:inherit;font-size:1em}
+input:focus{outline:none;border-color:#00ff41}
+button{width:100%;padding:12px;background:transparent;border:1px solid #00ff41;color:#00ff41;font-family:inherit;font-size:1em;cursor:pointer;margin-top:10px;letter-spacing:3px}
+button:hover{background:#00ff41;color:#000}
+.error{color:#ff4444;text-align:center;margin-bottom:10px;font-size:.85em}
+.accounts{margin-top:20px;border-top:1px solid #222;padding-top:15px}
+.accounts h3{color:#666;font-size:.75em;margin-bottom:8px}
+table{width:100%;font-size:.75em;border-collapse:collapse}
+td{padding:3px 6px;border-bottom:1px solid #1a1a1a}
+.r{color:#666}
+</style>    <link rel="stylesheet" href="/static/css/amos_phase3.css">
+</head><body>
+<div class="login-box">
+<h1>AMOS</h1>
+<div class="sub">MISSION OPERATING SYSTEM v2.0</div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<form method="POST">
+<input name="username" placeholder="USERNAME" autofocus autocomplete="off">
+<input name="password" type="password" placeholder="PASSWORD">
+<button type="submit">AUTHENTICATE</button>
+</form>
+<div class="accounts"><h3>OPERATOR ACCOUNTS</h3>
+<table>
+{% for u, info in users.items() %}
+<tr><td style="color:#00ff41">{{ u }}</td><td>{{ info.password }}</td><td class="r">{{ info.role }}</td></tr>
+{% endfor %}
+</table></div>
+</div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/amos_phase3.js"></script>
+</body></html>

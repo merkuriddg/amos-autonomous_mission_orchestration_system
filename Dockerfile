@@ -1,4 +1,4 @@
-# MOS — Mission Operating System
+# AMOS — Autonomous Mission Operating System
 # Docker deployment for field operations
 FROM ros:humble-ros-base
 
@@ -14,7 +14,7 @@ RUN wget https://raw.githubusercontent.com/mavlink/mavros/ros2/mavros/scripts/in
     && bash install_geographiclib_datasets.sh || true && rm -f install_geographiclib_datasets.sh
 
 # Copy workspace
-WORKDIR /mos_ws
+WORKDIR /amos_ws
 COPY src/ src/
 
 # Build
@@ -24,8 +24,8 @@ RUN . /opt/ros/humble/setup.sh && colcon build
 EXPOSE 5000 6969/udp 14540/udp
 
 # Entry
-COPY launch_mos.sh /mos_ws/
-RUN chmod +x /mos_ws/launch_mos.sh
+COPY launch_mos.sh /amos_ws/
+RUN chmod +x /amos_ws/launch_mos.sh
 COPY docker_entrypoint.sh /
 RUN chmod +x /docker_entrypoint.sh
 ENTRYPOINT ["/docker_entrypoint.sh"]

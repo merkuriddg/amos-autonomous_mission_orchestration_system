@@ -1,126 +1,87 @@
-#!/usr/bin/env python3
-"""
-MOS Phase 6 — Geofence Manager
-Defines and enforces geographic boundaries for assets.
-"""
-
-import math
-import threading
-from datetime import datetime, timezone
-
+"""Geofence Management System"""
+import math, time, uuid
 
 class GeofenceManager:
-    """Manages inclusion/exclusion zones with altitude limits."""
-
     def __init__(self):
-        self.zones = {}
-        self.violations = []
-        self._lock = threading.Lock()
+        self.geofences = {}
+        self.alerts = []
+        self._cache = {}
 
-    def add_zone(self, zone_id: str, zone_type: str, points: list,
-                 floor_ft: int = 0, ceiling_ft: int = 60000,
-                 applies_to: list = None) -> dict:
-        """
-        zone_type: 'inclusion' | 'exclusion' | 'warning'
-        points: [{"lat": float, "lng": float}, ...]
-        """
-        zone = {
-            "id": zone_id,
-            "type": zone_type,
-            "points": points,
-            "floor_ft": floor_ft,
-            "ceiling_ft": ceiling_ft,
-            "applies_to": applies_to or ["all"],
-            "active": True,
-            "created": datetime.now(timezone.utc).isoformat(),
-        }
-        with self._lock:
-            self.zones[zone_id] = zone
-        return {"success": True, "zone": zone}
+    def add_geofence(self, gf_type, points, name="", gf_id=None):
+        gf_id = gf_id or f"GF-{uuid.uuid4().hex[:6].upper()}"
+        self.geofences[gf_id] = {"id": gf_id, "name": name or gf_id,
+                                  "type": gf_type, "points": points,
+                                  "created": time.time(), "active": True}
+        return gf_id
 
-    def remove_zone(self, zone_id: str) -> dict:
-        if zone_id in self.zones:
-            del self.zones[zone_id]
-            return {"success": True}
-        return {"success": False, "error": "Not found"}
+    def remove_geofence(self, gf_id):
+        self.geofences.pop(gf_id, None)
 
-    def check_asset(self, asset_id: str, lat: float, lng: float,
-                    alt_ft: float = 0) -> list:
-        """Check all zones for violations."""
-        violations = []
-        for zone in self.zones.values():
-            if not zone["active"]:
-                continue
-            if "all" not in zone["applies_to"] and asset_id not in zone["applies_to"]:
-                continue
-            inside = self._point_in_polygon(lat, lng, zone["points"])
-            alt_ok = zone["floor_ft"] <= alt_ft <= zone["ceiling_ft"]
-            if zone["type"] == "exclusion" and inside:
-                v = {"asset_id": asset_id, "zone_id": zone["id"],
-                     "violation": "INSIDE_EXCLUSION", "severity": "HIGH",
-                     "timestamp": datetime.now(timezone.utc).isoformat()}
-                violations.append(v)
-            elif zone["type"] == "inclusion" and not inside:
-                v = {"asset_id": asset_id, "zone_id": zone["id"],
-                     "violation": "OUTSIDE_INCLUSION", "severity": "HIGH",
-                     "timestamp": datetime.now(timezone.utc).isoformat()}
-                violations.append(v)
-            elif zone["type"] == "warning" and inside:
-                v = {"asset_id": asset_id, "zone_id": zone["id"],
-                     "violation": "INSIDE_WARNING", "severity": "MEDIUM",
-                     "timestamp": datetime.now(timezone.utc).isoformat()}
-                violations.append(v)
-            if inside and not alt_ok:
-                v = {"asset_id": asset_id, "zone_id": zone["id"],
-                     "violation": "ALTITUDE_VIOLATION",
-                     "severity": "HIGH", "alt_ft": alt_ft,
-                     "limits": f"{zone['floor_ft']}-{zone['ceiling_ft']}ft",
-                     "timestamp": datetime.now(timezone.utc).isoformat()}
-                violations.append(v)
-        with self._lock:
-            self.violations.extend(violations)
-            if len(self.violations) > 2000:
-                self.violations = self.violations[-2000:]
-        return violations
+    def get_all(self):
+        return dict(self.geofences)
 
-    def _point_in_polygon(self, lat, lng, polygon):
-        """Ray-casting algorithm."""
-        n = len(polygon)
+    def get_alerts(self, limit=100):
+        return self.alerts[-limit:]
+
+    @staticmethod
+    def _pip(lat, lng, poly):
+        n = len(poly)
         inside = False
         j = n - 1
         for i in range(n):
-            yi, xi = polygon[i]["lat"], polygon[i]["lng"]
-            yj, xj = polygon[j]["lat"], polygon[j]["lng"]
-            if ((yi > lat) != (yj > lat) and
-                    lng < (xj - xi) * (lat - yi) / (yj - yi) + xi):
+            yi, xi = poly[i]["lat"], poly[i]["lng"]
+            yj, xj = poly[j]["lat"], poly[j]["lng"]
+            if ((yi > lat) != (yj > lat)) and (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi):
                 inside = not inside
             j = i
         return inside
 
-    def get_all_zones(self) -> dict:
-        return dict(self.zones)
+    @staticmethod
+    def _dist_nm(lat1, lng1, lat2, lng2):
+        R = 3440.065
+        dlat = math.radians(lat2 - lat1)
+        dlng = math.radians(lng2 - lng1)
+        a = (math.sin(dlat / 2) ** 2 +
+             math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+             math.sin(dlng / 2) ** 2)
+        return 2 * R * math.asin(min(1, math.sqrt(a)))
 
-    def get_violations(self, limit=50) -> list:
-        return self.violations[-limit:]
+    def _inside(self, lat, lng, gf):
+        pts = gf["points"]
+        if isinstance(pts, dict) and "center" in pts:
+            return self._dist_nm(lat, lng, pts["center"]["lat"], pts["center"]["lng"]) <= pts.get("radius_nm", 1)
+        if isinstance(pts, list) and len(pts) >= 3:
+            return self._pip(lat, lng, pts)
+        return False
 
+    def tick(self, assets, threats):
+        new = []
+        entities = []
+        for aid, a in assets.items():
+            p = a.get("position", {})
+            if p.get("lat") is not None:
+                entities.append((aid, "asset", p["lat"], p["lng"]))
+        for tid, t in threats.items():
+            if not t.get("neutralized") and "lat" in t:
+                entities.append((tid, "threat", t["lat"], t["lng"]))
 
-if __name__ == "__main__":
-    import json
-    gf = GeofenceManager()
-    # MacDill AFB AO
-    gf.add_zone("AO-MAIN", "inclusion", [
-        {"lat": 28.10, "lng": -82.80},
-        {"lat": 28.10, "lng": -82.20},
-        {"lat": 27.60, "lng": -82.20},
-        {"lat": 27.60, "lng": -82.80},
-    ], floor_ft=0, ceiling_ft=25000)
-    # No-fly zone
-    gf.add_zone("TPA-AIRSPACE", "exclusion", [
-        {"lat": 27.98, "lng": -82.56},
-        {"lat": 27.98, "lng": -82.50},
-        {"lat": 27.94, "lng": -82.50},
-        {"lat": 27.94, "lng": -82.56},
-    ], floor_ft=0, ceiling_ft=18000)
-    # Check asset
-    v = gf.check_asset("GHOST-01", 27.96, -82.53, alt_ft=400)
-    print(f"Violations: {json.dumps(v, indent=2)}")
+        for eid, etype, lat, lng in entities:
+            for gid, gf in self.geofences.items():
+                if not gf.get("active"):
+                    continue
+                inside = self._inside(lat, lng, gf)
+                key = (eid, gid)
+                was = self._cache.get(key)
+                if was is not None and inside != was:
+                    alert = {"id": f"ALERT-{uuid.uuid4().hex[:8]}",
+                             "timestamp": time.time(), "entity_id": eid,
+                             "entity_type": etype, "geofence_id": gid,
+                             "geofence_name": gf["name"], "geofence_type": gf["type"],
+                             "event": "entered" if inside else "exited",
+                             "lat": lat, "lng": lng}
+                    new.append(alert)
+                    self.alerts.append(alert)
+                self._cache[key] = inside
+        if len(self.alerts) > 500:
+            self.alerts = self.alerts[-500:]
+        return new

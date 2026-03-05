@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Field View{% endblock %}
+{% block head %}<style>
+.main{padding:0!important}
+#fmap{height:calc(100vh - 38px);width:100%}
+.fo{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.9);border-top:1px solid #00ff41;padding:8px 15px;display:flex;justify-content:space-around;font-size:1.1em;z-index:999}
+.fo .fs{text-align:center}.fo .fv{font-size:1.4em}
+.fc{position:fixed;top:45px;left:10px;background:rgba(0,0,0,.85);border:1px solid #333;padding:8px;z-index:999;font-size:.8em}
+</style>{% endblock %}
+{% block content %}
+<div id="fmap"></div>
+<div class="fc">
+ <select id="f-asset" style="width:120px"><option value="">-- asset --</option></select>
+ <button class="btn" id="f-wp-btn" onclick="toggleFWP()" style="padding:2px 6px">📍 WP</button>
+ <button class="btn btn-red" onclick="apiPost('/api/waypoints/clear',{})" style="padding:2px 6px">CLR ALL</button>
+</div>
+<div class="fo">
+ <div class="fs"><div class="fv" id="f-a">--</div><div>ASSETS</div></div>
+ <div class="fs"><div class="fv" id="f-t" style="color:#ff4444">--</div><div>THREATS</div></div>
+ <div class="fs"><div class="fv" id="f-h" style="color:#4488ff">--</div><div>HAL</div></div>
+ <div class="fs"><div class="fv" id="f-w" style="color:#ffaa00">--</div><div>WAYPOINTS</div></div>
+ <div class="fs"><div class="fv" id="f-c" style="color:#888">--</div><div>ELAPSED</div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const fm=L.map('fmap',{zoomControl:false}).setView([27.849,-82.521],11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(fm);
+let fmk={},fwpM={},fwpL={},fgfL={},fwpMode=false;
+function fI(c,s){s=s||10;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 8px '+c+'"></div>',iconSize:[s,s],className:''});}
+function toggleFWP(){fwpMode=!fwpMode;const b=document.getElementById('f-wp-btn');b.style.background=fwpMode?'#ffaa00':'transparent';b.style.color=fwpMode?'#000':'#00ff41';fm.getContainer().style.cursor=fwpMode?'crosshair':'';}
+fm.on('click',function(e){if(!fwpMode)return;const a=document.getElementById('f-asset').value;if(!a){alert('Select asset');return;}apiPost('/api/waypoints/add',{asset_id:a,lat:e.latlng.lat,lng:e.latlng.lng});});
+async function rF(){
+ const assets=await apiFetch('/api/assets');
+ const sel=document.getElementById('f-asset');const cv=sel.value;
+ if(sel.options.length<3){sel.innerHTML='<option value="">-- asset --</option>';for(const id of Object.keys(assets).sort())sel.innerHTML+='<option value="'+id+'">'+id+'</option>';if(cv)sel.value=cv;}
+ for(const[id,a]of Object.entries(assets)){const c={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'}[a.domain]||'#888';const p=[a.position.lat,a.position.lng];if(fmk[id])fmk[id].setLatLng(p);else fmk[id]=L.marker(p,{icon:fI(c)}).bindTooltip(id).addTo(fm);}
+ const threats=await apiFetch('/api/threats');
+ for(const[id,t]of Object.entries(threats)){if(t.neutralized){if(fmk[id]){fm.removeLayer(fmk[id]);delete fmk[id];}continue;}if(t.lat&&t.lng){const p=[t.lat,t.lng];if(fmk[id])fmk[id].setLatLng(p);else fmk[id]=L.marker(p,{icon:fI('#ff4444',12)}).bindTooltip(id).addTo(fm);}}
+ // Waypoints
+ const wps=await apiFetch('/api/waypoints');
+ for(const[a,ms]of Object.entries(fwpM)){ms.forEach(function(m){fm.removeLayer(m);});}
+ for(const[a,l]of Object.entries(fwpL)){fm.removeLayer(l);}
+ fwpM={};fwpL={};
+ for(const[aid,wl]of Object.entries(wps)){if(!wl.length)continue;fwpM[aid]=[];const pts=[];if(fmk[aid])pts.push(fmk[aid].getLatLng());
+  wl.forEach(function(w,i){const m=L.circleMarker([w.lat,w.lng],{radius:5,color:'#ffaa00',fillColor:'#ffaa00',fillOpacity:.8}).bindTooltip(aid+' WP-'+(i+1)).addTo(fm);fwpM[aid].push(m);pts.push([w.lat,w.lng]);});
+  if(pts.length>1)fwpL[aid]=L.polyline(pts,{color:'#ffaa00',weight:2,dashArray:'5,5',opacity:.7}).addTo(fm);}
+ // Geofences
+ for(const[id,l]of Object.entries(fgfL)){fm.removeLayer(l);}fgfL={};
+ const gfs=await apiFetch('/api/geofences');const gc={operational:'#00ff41',restricted:'#ff4444',alert:'#ffaa00'};
+ for(const[id,gf]of Object.entries(gfs)){const c=gc[gf.type]||'#888';let ly;
+  if(Array.isArray(gf.points))ly=L.polygon(gf.points.map(function(p){return[p.lat,p.lng];}),{color:c,weight:1,fillOpacity:.03,dashArray:'8,4'});
+  else if(gf.points&&gf.points.center)ly=L.circle([gf.points.center.lat,gf.points.center.lng],{radius:(gf.points.radius_nm||1)*1852,color:c,weight:1,fillOpacity:.03,dashArray:'8,4'});
+  if(ly){ly.bindTooltip(gf.name);ly.addTo(fm);fgfL[id]=ly;}}
+}
+window.onSimUpdate=function(d){document.getElementById('f-a').textContent=d.asset_count;document.getElementById('f-t').textContent=d.threat_count;document.getElementById('f-h').textContent=d.pending_hal;document.getElementById('f-w').textContent=d.active_waypoints||0;document.getElementById('f-c').textContent='T+'+Math.round(d.clock.elapsed_sec)+'s';};
+rF();setInterval(rF,2500);
+</script>
+{% endblock %}

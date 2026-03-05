@@ -1,14 +1,14 @@
-# MOS PROJECT MANIFEST — COMPLETE SOURCE SNAPSHOT
+# AMOS PROJECT MANIFEST — COMPLETE SOURCE SNAPSHOT
 # Generated: 2026-03-03
 # Version: 0.3.0 (Phase 3 Complete)
 # ROS 2: Humble | OS: Ubuntu 22.04 | Python 3.10+
-# Workspace: ~/mos_ws
+# Workspace: ~/amos_ws
 
 ---
 
 ## PROJECT OVERVIEW
 
-**MOS (Mission Operating System)** — pronounced "moz" — is an autonomous systems
+**AMOS (Autonomous Mission Operating System)** — pronounced "moz" — is an autonomous systems
 integration platform for special operations robotic platoons. It orchestrates 25-40
 autonomous assets across air, ground, and maritime domains. Built on ROS 2 Humble.
 
@@ -29,7 +29,7 @@ autonomous assets across air, ground, and maritime domains. Built on ROS 2 Humbl
 ---
 
 ## DIRECTORY STRUCTURE
-~/mos_ws/
+~/amos_ws/
 ├── launch_mos.sh
 ├── shutdown_mos.sh
 ├── README.md
@@ -109,8 +109,8 @@ autonomous assets across air, ground, and maritime domains. Built on ROS 2 Humbl
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_interfaces&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS custom message and service definitions&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS custom message and service definitions&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
 
   &lt;buildtool_depend&gt;ament_cmake&lt;/buildtool_depend&gt;
@@ -189,8 +189,8 @@ FILE: src/mos_core/package.xml
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_core&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS Core — Asset Registry and Autonomy Manager&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS Core — Asset Registry and Autonomy Manager&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -222,9 +222,9 @@ setup(
     packages=[package_name],
     install_requires=[&#x27;setuptools&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS Core services&#x27;,
+    description=&#x27;AMOS Core services&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -259,7 +259,7 @@ class AssetRegistry(Node):
             String, &#x27;/mos/heartbeat&#x27;, self.on_heartbeat, 10)
         self.pub_cop = self.create_publisher(String, &#x27;/mos/cop/assets&#x27;, 10)
         self.timer = self.create_timer(0.5, self.publish_cop)
-        self.get_logger().info(&#x27;[MOS] Asset Registry online — tracking COP&#x27;)
+        self.get_logger().info(&#x27;[AMOS] Asset Registry online — tracking COP&#x27;)
 
     def on_heartbeat(self, msg):
         try:
@@ -309,7 +309,7 @@ class AutonomyManager(Node):
         self.pub_request = self.create_publisher(String, &#x27;/mos/autonomy/request&#x27;, 10)
         self.timer = self.create_timer(2.0, self.publish_state)
         self.get_logger().info(
-            f&#x27;[MOS] Autonomy Manager online — level {self.current_level} ({LEVELS[self.current_level]})&#x27;)
+            f&#x27;[AMOS] Autonomy Manager online — level {self.current_level} ({LEVELS[self.current_level]})&#x27;)
 
     def on_command(self, msg):
         try:
@@ -319,7 +319,7 @@ class AutonomyManager(Node):
                 old = self.current_level
                 self.current_level = requested
                 self.get_logger().info(
-                    f&#x27;[MOS] Autonomy: {LEVELS[old]} → {LEVELS[self.current_level]}&#x27;)
+                    f&#x27;[AMOS] Autonomy: {LEVELS[old]} → {LEVELS[self.current_level]}&#x27;)
                 if requested &gt;= 3:
                     req = String()
                     req.data = json.dumps({
@@ -356,8 +356,8 @@ Plaintext
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_mission_planner&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS Mission Planner — 6 mission type decomposition&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS Mission Planner — 6 mission type decomposition&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -391,9 +391,9 @@ setup(
     packages=[package_name],
     install_requires=[&#x27;setuptools&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS Mission Planner&#x27;,
+    description=&#x27;AMOS Mission Planner&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -478,15 +478,15 @@ class MissionPlanner(Node):
         self.pub_intent = self.create_publisher(String, &#x27;/mos/mission/intent&#x27;, 10)
         self.pub_status = self.create_publisher(String, &#x27;/mos/mission/status&#x27;, 10)
         self.pub_tasks = self.create_publisher(String, &#x27;/mos/tasks/orders&#x27;, 10)
-        self.get_logger().info(&#x27;[MOS] Mission Planner online — 6 mission types loaded&#x27;)
+        self.get_logger().info(&#x27;[AMOS] Mission Planner online — 6 mission types loaded&#x27;)
 
     def on_mission_command(self, msg):
         try:
             data = json.loads(msg.data)
             mission_type = data.get(&#x27;mission_type&#x27;, &#x27;ISR&#x27;)
-            mission_id = data.get(&#x27;mission_id&#x27;, f&#x27;MOS-{uuid.uuid4().hex[:6].upper()}&#x27;)
+            mission_id = data.get(&#x27;mission_id&#x27;, f&#x27;AMOS-{uuid.uuid4().hex[:6].upper()}&#x27;)
 
-            self.get_logger().info(f&#x27;[MOS] Planning mission: {mission_type} ({mission_id})&#x27;)
+            self.get_logger().info(f&#x27;[AMOS] Planning mission: {mission_type} ({mission_id})&#x27;)
 
             intent = String()
             intent.data = json.dumps({
@@ -527,7 +527,7 @@ class MissionPlanner(Node):
             self.pub_status.publish(status)
 
         except json.JSONDecodeError:
-            self.get_logger().error(&#x27;[MOS] Invalid mission command JSON&#x27;)
+            self.get_logger().error(&#x27;[AMOS] Invalid mission command JSON&#x27;)
 
 def main():
     rclpy.init()
@@ -545,8 +545,8 @@ Plaintext
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_swarm&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS Swarm Orchestrator&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS Swarm Orchestrator&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -580,9 +580,9 @@ setup(
     packages=[package_name],
     install_requires=[&#x27;setuptools&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS Swarm Orchestrator&#x27;,
+    description=&#x27;AMOS Swarm Orchestrator&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -613,7 +613,7 @@ class SwarmOrchestrator(Node):
         self.sub_cmd = self.create_subscription(
             String, &#x27;/mos/swarm_command&#x27;, self.on_swarm_command, 10)
         self.pub_swarm = self.create_publisher(String, &#x27;/mos/swarm/command&#x27;, 10)
-        self.get_logger().info(&#x27;[MOS] Swarm Orchestrator online&#x27;)
+        self.get_logger().info(&#x27;[AMOS] Swarm Orchestrator online&#x27;)
 
     def on_swarm_command(self, msg):
         try:
@@ -621,7 +621,7 @@ class SwarmOrchestrator(Node):
             behavior = data.get(&#x27;behavior&#x27;, &#x27;HOLD&#x27;)
             domain = data.get(&#x27;domain&#x27;, &#x27;ALL&#x27;)
 
-            self.get_logger().info(f&#x27;[MOS] Swarm command: {behavior} → {domain}&#x27;)
+            self.get_logger().info(f&#x27;[AMOS] Swarm command: {behavior} → {domain}&#x27;)
 
             cmd = String()
             cmd.data = json.dumps({
@@ -650,8 +650,8 @@ Plaintext
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_sim&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS Simulated Platoon — 25 autonomous assets&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS Simulated Platoon — 25 autonomous assets&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -685,9 +685,9 @@ setup(
     packages=[package_name],
     install_requires=[&#x27;setuptools&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS Simulated Platoon&#x27;,
+    description=&#x27;AMOS Simulated Platoon&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -773,7 +773,7 @@ class SimulatedPlatoon(Node):
             })
 
         self.timer = self.create_timer(0.5, self.tick)
-        self.get_logger().info(f&#x27;[MOS SIM] Platoon online — {len(self.state)} assets deployed&#x27;)
+        self.get_logger().info(f&#x27;[AMOS SIM] Platoon online — {len(self.state)} assets deployed&#x27;)
 
     def on_task(self, msg):
         try:
@@ -902,8 +902,8 @@ Plaintext
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_threat_detection&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS Threat Detection pipeline&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS Threat Detection pipeline&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -937,9 +937,9 @@ setup(
     packages=[package_name],
     install_requires=[&#x27;setuptools&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS Threat Detection&#x27;,
+    description=&#x27;AMOS Threat Detection&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -975,7 +975,7 @@ class ThreatInjector(Node):
         self.pub = self.create_publisher(String, &#x27;/mos/threats/raw_contacts&#x27;, 10)
         interval = random.uniform(8.0, 15.0)
         self.timer = self.create_timer(interval, self.inject_threat)
-        self.get_logger().info(&#x27;[MOS] Threat Injector online — generating contacts&#x27;)
+        self.get_logger().info(&#x27;[AMOS] Threat Injector online — generating contacts&#x27;)
 
     def inject_threat(self):
         threat = {
@@ -1031,7 +1031,7 @@ class ThreatClassifier(Node):
         self.sub = self.create_subscription(
             String, &#x27;/mos/threats/raw_contacts&#x27;, self.on_contact, 10)
         self.pub = self.create_publisher(String, &#x27;/mos/threats/alerts&#x27;, 10)
-        self.get_logger().info(&#x27;[MOS] Threat Classifier online&#x27;)
+        self.get_logger().info(&#x27;[AMOS] Threat Classifier online&#x27;)
 
     def on_contact(self, msg):
         try:
@@ -1091,8 +1091,8 @@ Plaintext
 &lt;package format=&quot;3&quot;&gt;
   &lt;name&gt;mos_c2_console&lt;/name&gt;
   &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;MOS C2 Console — Web-based tactical command interface&lt;/description&gt;
-  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;MOS Dev&lt;/maintainer&gt;
+  &lt;description&gt;AMOS C2 Console — Web-based tactical command interface&lt;/description&gt;
+  &lt;maintainer email=&quot;dev@mos.mil&quot;&gt;AMOS Dev&lt;/maintainer&gt;
   &lt;license&gt;Proprietary&lt;/license&gt;
   &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
   &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
@@ -1133,9 +1133,9 @@ setup(
     ],
     install_requires=[&#x27;setuptools&#x27;, &#x27;flask&#x27;],
     zip_safe=True,
-    maintainer=&#x27;MOS Dev&#x27;,
+    maintainer=&#x27;AMOS Dev&#x27;,
     maintainer_email=&#x27;dev@mos.mil&#x27;,
-    description=&#x27;MOS C2 Console&#x27;,
+    description=&#x27;AMOS C2 Console&#x27;,
     license=&#x27;Proprietary&#x27;,
     entry_points={
         &#x27;console_scripts&#x27;: [
@@ -1189,7 +1189,7 @@ class C2Bridge(Node):
         self.pub_autonomy = self.create_publisher(String, &#x27;/mos/autonomy_command&#x27;, 10)
 
         self.autonomy_state = {&#x27;current_level&#x27;: 1, &#x27;level_name&#x27;: &#x27;ASSISTED&#x27;}
-        self.get_logger().info(&#x27;[MOS C2] Bridge node started&#x27;)
+        self.get_logger().info(&#x27;[AMOS C2] Bridge node started&#x27;)
 
     def on_cop(self, msg):
         try:
@@ -1317,7 +1317,7 @@ def main():
     spin_thread.start()
 
     app = create_flask_app()
-    bridge.get_logger().info(&#x27;[MOS C2] Starting C2 Console on http://0.0.0.0:5000&#x27;)
+    bridge.get_logger().info(&#x27;[AMOS C2] Starting C2 Console on http://0.0.0.0:5000&#x27;)
     app.run(host=&#x27;0.0.0.0&#x27;, port=5000, debug=False)
 FILE: src/mos_c2_console/mos_c2_console/templates/index.html
 
@@ -1330,7 +1330,7 @@ Html
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
 &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-&lt;title&gt;MOS — Mission Operating System&lt;/title&gt;
+&lt;title&gt;AMOS — Autonomous Mission Operating System&lt;/title&gt;
 &lt;link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.css&quot; /&gt;
 &lt;script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;&gt;&lt;/script&gt;
 &lt;style&gt;
@@ -1458,7 +1458,7 @@ Html
 
 &lt;div id=&quot;header&quot;&gt;
   &lt;div&gt;
-    &lt;h1&gt;⬡ &lt;span&gt;MOS&lt;/span&gt;&lt;/h1&gt;
+    &lt;h1&gt;⬡ &lt;span&gt;AMOS&lt;/span&gt;&lt;/h1&gt;
     &lt;div class=&quot;subtitle&quot;&gt;MISSION OPERATING SYSTEM — ROBOTIC PLATOON C2&lt;/div&gt;
   &lt;/div&gt;
   &lt;div style=&quot;text-align:right;&quot;&gt;
@@ -1708,11 +1708,11 @@ Html
 &lt;/html&gt;
 FILE: launch_mos.sh
 
-(See full script in launch section — already installed at ~/mos_ws/launch_mos.sh)
+(See full script in launch section — already installed at ~/amos_ws/launch_mos.sh)
 
 FILE: shutdown_mos.sh
 
-(See full script in launch section — already installed at ~/mos_ws/shutdown_mos.sh)
+(See full script in launch section — already installed at ~/amos_ws/shutdown_mos.sh)
 
 RESOURCE MARKER FILES
 
@@ -1734,7 +1734,7 @@ BUILD & RUN COMMANDS
 
 
 Bash
-cd ~/mos_ws
+cd ~/amos_ws
 colcon build
 source install/setup.bash
 ./launch_mos.sh
@@ -1765,7 +1765,7 @@ Save: `Ctrl+O`, Enter, `Ctrl+X`
 
 ---
 
-Now you have **one file** (`~/mos_ws/MOS_PROJECT_MANIFEST.md`) that contains:
+Now you have **one file** (`~/amos_ws/MOS_PROJECT_MANIFEST.md`) that contains:
 
 - Every source file, line for line
 - All package configs (package.xml, setup.py, setup.cfg, CMakeLists.txt)
@@ -1775,4 +1775,4 @@ Now you have **one file** (`~/mos_ws/MOS_PROJECT_MANIFEST.md`) that contains:
 - Known issues
 - Next steps
 
-When you come back, just paste the manifest contents into the new conversation and say **&quot;Here&#x27;s my MOS project — let&#x27;s continue with Phase 4&quot;** and I&#x27;ll pick up exactly where we left off.
+When you come back, just paste the manifest contents into the new conversation and say **&quot;Here&#x27;s my AMOS project — let&#x27;s continue with Phase 4&quot;** and I&#x27;ll pick up exactly where we left off.

@@ -1,8 +1,8 @@
-# ⬡ MOS — Mission Operating System
+# ⬡ AMOS — Autonomous Mission Operating System
 
-**Mission Operating System (MOS)** — pronounced "moz" — is an autonomous systems
+**Autonomous Mission Operating System (AMOS)** — pronounced "moz" — is an autonomous systems
 integration platform designed for special operations robotic platoons. Built on the
-"Tech as a Teammate" philosophy, MOS orchestrates 25-40 autonomous assets across
+"Tech as a Teammate" philosophy, AMOS orchestrates 25-40 autonomous assets across
 air, ground, and maritime domains under human-on-the-loop supervision.
 
 Developed for the **Mavrix1 Robotic Platoon** specification.
@@ -28,7 +28,7 @@ Developed for the **Mavrix1 Robotic Platoon** specification.
 
 ## Architecture Overview
 ┌─────────────────────────────────────────────────────────────────┐
-│ MOS ARCHITECTURE │
+│ AMOS ARCHITECTURE │
 │ │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────┐ │
 │ │ C2 │ │ Mission │ │ Autonomy │ │ Swarm │ │
@@ -62,8 +62,8 @@ Developed for the **Mavrix1 Robotic Platoon** specification.
 ---
 
 ## Package Structure
-~/mos_ws/src/
-├── mos_core/ # Core MOS services
+~/amos_ws/src/
+├── mos_core/ # Core AMOS services
 │ └── mos_core/
 │ ├── asset_registry.py # Tracks all 25 assets, publishes COP
 │ └── autonomy_manager.py # 5-tier autonomy state machine
@@ -131,7 +131,7 @@ sudo apt update &amp;&amp; sudo apt install -y ros-humble-desktop python3-colcon
 pip install flask
 
 # Build
-cd ~/mos_ws
+cd ~/amos_ws
 colcon build
 source install/setup.bash
 
@@ -139,12 +139,12 @@ source install/setup.bash
 Quick Start
 
 One-command launch (recommended):
-cd ~/mos_ws
+cd ~/amos_ws
 ./launch_mos.sh
 
 This will:
 
-Kill any existing MOS processes
+Kill any existing AMOS processes
 Build the workspace
 Start all 8 nodes (sim, core, threat detection, C2)
 Open C2 Console at http://localhost:5000
@@ -155,23 +155,23 @@ Or press Ctrl+C in the launch script terminal.
 
 Manual launch (for debugging):
 # Terminal 1 — Simulated Platoon
-source ~/mos_ws/install/setup.bash
+source ~/amos_ws/install/setup.bash
 ros2 run mos_sim simulated_platoon
 
 # Terminal 2 — Core Nodes
-source ~/mos_ws/install/setup.bash
+source ~/amos_ws/install/setup.bash
 ros2 run mos_core asset_registry &amp;
 ros2 run mos_core autonomy_manager &amp;
 ros2 run mos_mission_planner mission_planner &amp;
 ros2 run mos_swarm swarm_orchestrator
 
 # Terminal 3 — Threat Detection
-source ~/mos_ws/install/setup.bash
+source ~/amos_ws/install/setup.bash
 ros2 run mos_threat_detection threat_injector &amp;
 ros2 run mos_threat_detection threat_classifier
 
 # Terminal 4 — C2 Console
-source ~/mos_ws/install/setup.bash
+source ~/amos_ws/install/setup.bash
 ros2 run mos_c2_console c2_server
 
 
@@ -447,7 +447,7 @@ PROPRIETARY — Mavrix Defense Systems
 
 Contact
 
-MOS Development Team
+AMOS Development Team
 
 
 
@@ -460,7 +460,7 @@ Save: `Ctrl+O`, Enter, `Ctrl+X`
 From now on, to launch the entire system:
 
 ```bash
-cd ~/mos_ws
+cd ~/amos_ws
 ./launch_mos.sh
 
 
@@ -468,7 +468,7 @@ To Shutdown:
 ./shutdown_mos.sh
 
 Or just Ctrl+C in the launch terminal.
-Open http://localhost:5000 in your browser and the full MOS C2 Console is live. Let me know when you're ready for the next phase!
+Open http://localhost:5000 in your browser and the full AMOS C2 Console is live. Let me know when you're ready for the next phase!
 
 
 

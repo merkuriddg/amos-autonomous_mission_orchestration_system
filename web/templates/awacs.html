@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}AWACS{% endblock %}
+{% block content %}
+<div class="card"><h3>AWACS — Airborne Command Drones</h3></div>
+<div class="grid-2" id="awacs-cards"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshAWACS(){
+    const assets=await apiFetch('/api/assets');
+    const div=document.getElementById('awacs-cards'); div.innerHTML='';
+    for(const[id,a]of Object.entries(assets)){
+        if(!id.startsWith('AWACS'))continue;
+        div.innerHTML+='<div class="card"><h3 style="color:#00aaff">'+id+' — '+a.type+'</h3><table><tr><td>Position</td><td>'+a.position.lat.toFixed(4)+', '+a.position.lng.toFixed(4)+'</td></tr><tr><td>Altitude</td><td>'+(a.position.alt_ft||0).toLocaleString()+' ft</td></tr><tr><td>Speed</td><td>'+a.speed_kts+' kts</td></tr><tr><td>Sensors</td><td>'+(a.sensors||[]).join(', ')+'</td></tr><tr><td>Battery</td><td>'+a.health.battery_pct+'%</td></tr><tr><td>Comms</td><td>'+a.health.comms_strength+'%</td></tr><tr><td>Status</td><td><span class="badge badge-green">'+a.status+'</span></td></tr></table></div>';
+    }
+}
+refreshAWACS(); setInterval(refreshAWACS,3000);
+</script>
+{% endblock %}

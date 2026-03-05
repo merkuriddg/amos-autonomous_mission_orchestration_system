@@ -1,0 +1,416 @@
+assets:
+- id: REAPER-01
+  type: MQ-9B
+  domain: air
+  role: isr_strike
+  autonomy_tier: 3
+  sensors:
+  - EO/IR
+  - SAR
+  - SIGINT
+  - AESA_RADAR
+  weapons:
+  - GBU-38
+  - AGM-114
+  endurance_hr: 27
+  spawn:
+    lat: 27.855
+    lng: -82.521
+    alt_ft: 15000
+- id: REAPER-02
+  type: MQ-9B
+  domain: air
+  role: isr_strike
+  autonomy_tier: 3
+  sensors:
+  - EO/IR
+  - SAR
+  - SIGINT
+  - AESA_RADAR
+  weapons:
+  - GBU-38
+  - AGM-114
+  endurance_hr: 27
+  spawn:
+    lat: 27.86
+    lng: -82.525
+    alt_ft: 18000
+- id: GHOST-01
+  type: small_uas
+  domain: air
+  role: recon
+  autonomy_tier: 4
+  sensors:
+  - EO/IR
+  - SIGINT
+  endurance_hr: 6
+  spawn:
+    lat: 27.849
+    lng: -82.518
+    alt_ft: 400
+- id: GHOST-02
+  type: small_uas
+  domain: air
+  role: ew
+  autonomy_tier: 4
+  sensors:
+  - EO/IR
+  - EW_JAMMER
+  endurance_hr: 5
+  spawn:
+    lat: 27.848
+    lng: -82.515
+    alt_ft: 500
+- id: GHOST-03
+  type: small_uas
+  domain: air
+  role: recon
+  autonomy_tier: 4
+  sensors:
+  - EO/IR
+  - SIGINT
+  endurance_hr: 6
+  spawn:
+    lat: 27.847
+    lng: -82.512
+    alt_ft: 400
+- id: GHOST-04
+  type: small_uas
+  domain: air
+  role: decoy
+  autonomy_tier: 4
+  sensors:
+  - EO/IR
+  endurance_hr: 4
+  spawn:
+    lat: 27.846
+    lng: -82.51
+    alt_ft: 300
+- id: VALKYR-01
+  type: loyal_wingman
+  domain: air
+  role: air_superiority
+  autonomy_tier: 3
+  sensors:
+  - AESA_RADAR
+  - RWR
+  - EO/IR
+  weapons:
+  - AIM-120_SIM
+  endurance_hr: 3
+  spawn:
+    lat: 27.862
+    lng: -82.53
+    alt_ft: 20000
+- id: VALKYR-02
+  type: loyal_wingman
+  domain: air
+  role: air_superiority
+  autonomy_tier: 3
+  sensors:
+  - AESA_RADAR
+  - RWR
+  - EO/IR
+  weapons:
+  - AIM-120_SIM
+  endurance_hr: 3
+  spawn:
+    lat: 27.864
+    lng: -82.535
+    alt_ft: 22000
+- id: AWACS-01
+  type: high_alt_uas
+  domain: air
+  role: airborne_c2
+  autonomy_tier: 3
+  sensors:
+  - AEW_RADAR
+  - SIGINT
+  - COMINT
+  - ELINT
+  endurance_hr: 24
+  spawn:
+    lat: 27.87
+    lng: -82.54
+    alt_ft: 35000
+- id: AWACS-02
+  type: high_alt_uas
+  domain: air
+  role: airborne_c2
+  autonomy_tier: 3
+  sensors:
+  - AEW_RADAR
+  - SIGINT
+  - COMINT
+  - ELINT
+  endurance_hr: 24
+  spawn:
+    lat: 27.875
+    lng: -82.545
+    alt_ft: 38000
+- id: TALON-01
+  type: armed_ugv
+  domain: ground
+  role: direct_action
+  autonomy_tier: 2
+  sensors:
+  - EO/IR
+  - LIDAR
+  - ACOUSTIC
+  weapons:
+  - M240_RWS
+  cargo_lb: 0
+  spawn:
+    lat: 27.842
+    lng: -82.522
+- id: TALON-02
+  type: armed_ugv
+  domain: ground
+  role: direct_action
+  autonomy_tier: 2
+  sensors:
+  - EO/IR
+  - LIDAR
+  - ACOUSTIC
+  weapons:
+  - M240_RWS
+  cargo_lb: 0
+  spawn:
+    lat: 27.84
+    lng: -82.52
+- id: TALON-03
+  type: armed_ugv
+  domain: ground
+  role: direct_action
+  autonomy_tier: 2
+  sensors:
+  - EO/IR
+  - LIDAR
+  - ACOUSTIC
+  weapons:
+  - MK19_RWS
+  cargo_lb: 0
+  spawn:
+    lat: 27.838
+    lng: -82.518
+- id: TALON-04
+  type: armed_ugv
+  domain: ground
+  role: direct_action
+  autonomy_tier: 2
+  sensors:
+  - EO/IR
+  - LIDAR
+  - ACOUSTIC
+  weapons:
+  - M240_RWS
+  cargo_lb: 0
+  spawn:
+    lat: 27.836
+    lng: -82.516
+- id: MULE-01
+  type: logistics_ugv
+  domain: ground
+  role: resupply
+  autonomy_tier: 3
+  sensors:
+  - LIDAR
+  - GPS
+  cargo_lb: 1200
+  spawn:
+    lat: 27.844
+    lng: -82.524
+- id: MULE-02
+  type: logistics_ugv
+  domain: ground
+  role: resupply
+  autonomy_tier: 3
+  sensors:
+  - LIDAR
+  - GPS
+  cargo_lb: 1200
+  spawn:
+    lat: 27.843
+    lng: -82.523
+- id: MULE-03
+  type: logistics_ugv
+  domain: ground
+  role: medevac
+  autonomy_tier: 3
+  sensors:
+  - LIDAR
+  - GPS
+  cargo_lb: 800
+  spawn:
+    lat: 27.841
+    lng: -82.521
+- id: MULE-04
+  type: logistics_ugv
+  domain: ground
+  role: resupply
+  autonomy_tier: 3
+  sensors:
+  - LIDAR
+  - GPS
+  cargo_lb: 1200
+  spawn:
+    lat: 27.839
+    lng: -82.519
+- id: SPECTR-01
+  type: sensor_ugv
+  domain: ground
+  role: sigint
+  autonomy_tier: 4
+  sensors:
+  - SIGINT
+  - ELINT
+  - COMINT
+  - DIRECTION_FINDING
+  spawn:
+    lat: 27.835
+    lng: -82.514
+- id: SPECTR-02
+  type: sensor_ugv
+  domain: ground
+  role: sigint
+  autonomy_tier: 4
+  sensors:
+  - SIGINT
+  - ELINT
+  - COMINT
+  - DIRECTION_FINDING
+  spawn:
+    lat: 27.833
+    lng: -82.512
+- id: SPECTR-03
+  type: sensor_ugv
+  domain: ground
+  role: cbrn
+  autonomy_tier: 4
+  sensors:
+  - CBRN
+  - SIGINT
+  - LIDAR
+  spawn:
+    lat: 27.831
+    lng: -82.51
+- id: SPECTR-04
+  type: sensor_ugv
+  domain: ground
+  role: seismic
+  autonomy_tier: 4
+  sensors:
+  - SEISMIC
+  - ACOUSTIC
+  - MAGNETIC
+  spawn:
+    lat: 27.829
+    lng: -82.508
+- id: TRITON-01
+  type: usv
+  domain: maritime
+  role: coastal_patrol
+  autonomy_tier: 3
+  sensors:
+  - RADAR
+  - EO/IR
+  - SONAR
+  - AIS
+  endurance_hr: 72
+  spawn:
+    lat: 27.82
+    lng: -82.545
+- id: TRITON-02
+  type: usv
+  domain: maritime
+  role: coastal_patrol
+  autonomy_tier: 3
+  sensors:
+  - RADAR
+  - EO/IR
+  - SONAR
+  - AIS
+  endurance_hr: 72
+  spawn:
+    lat: 27.815
+    lng: -82.55
+- id: KRAKEN-01
+  type: uuv
+  domain: maritime
+  role: subsurface_recon
+  autonomy_tier: 4
+  sensors:
+  - SONAR
+  - MAGNETIC
+  - ACOUSTIC
+  endurance_hr: 48
+  spawn:
+    lat: 27.81
+    lng: -82.56
+threats:
+- id: HOSTILE-DRO-001
+  type: drone
+  lat: 27.78
+  lng: -82.55
+  rf_freq_mhz: 915.0
+  speed_kts: 45
+- id: HOSTILE-DRO-002
+  type: drone
+  lat: 27.79
+  lng: -82.48
+  rf_freq_mhz: 2437.0
+  speed_kts: 35
+- id: HOSTILE-DRO-003
+  type: drone
+  lat: 27.76
+  lng: -82.52
+  rf_freq_mhz: 5805.0
+  speed_kts: 50
+- id: HOSTILE-JAM-001
+  type: gps_jammer
+  lat: 27.82
+  lng: -82.51
+  rf_freq_mhz: 1575.42
+  power_dbm: 40
+- id: HOSTILE-JAM-002
+  type: gps_jammer
+  lat: 27.77
+  lng: -82.57
+  rf_freq_mhz: 1575.42
+  power_dbm: 35
+- id: HOSTILE-VES-001
+  type: vessel
+  lat: 27.72
+  lng: -82.6
+  speed_kts: 22
+- id: HOSTILE-VES-002
+  type: vessel
+  lat: 27.7
+  lng: -82.58
+  speed_kts: 18
+- id: HOSTILE-CYB-001
+  type: cyber
+  source_ip: 10.99.1.50
+- id: HOSTILE-CYB-002
+  type: cyber
+  source_ip: 10.99.2.100
+- id: HOSTILE-RF-001
+  type: rf_emitter
+  lat: 27.8
+  lng: -82.53
+  rf_freq_mhz: 433.0
+  power_dbm: 25
+platoon:
+  name: MAVRIX-1 Robotic Platoon
+  callsign: SHADOW FORGE
+  base:
+    lat: 27.849
+    lng: -82.521
+    name: MacDill AFB
+  ao:
+    north: 28.2
+    south: 27.4
+    east: -82.1
+    west: -82.9
+system_name: AMOS
+system_full_name: Autonomous Mission Operating System

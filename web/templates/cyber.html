@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Cyber Ops{% endblock %}
+{% block content %}
+<div class="grid-4" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="cy-total">--</div><div class="label">TOTAL EVENTS</div></div>
+    <div class="card stat"><div class="value" id="cy-active" style="color:#ff4444">--</div><div class="label">ACTIVE THREATS</div></div>
+    <div class="card stat"><div class="value" id="cy-blocked" style="color:#00ff41">--</div><div class="label">BLOCKED</div></div>
+    <div class="card stat"><div class="value" id="cy-ips" style="color:#ffaa00">--</div><div class="label">BLOCKED IPs</div></div>
+</div>
+<div class="card"><h3>BLOCK IP <input id="block-ip" placeholder="10.x.x.x" style="background:#0a0a0a;color:#ff4444;border:1px solid #333;padding:4px;margin:0 8px;font-family:inherit">
+    <button class="btn btn-red" onclick="blockIP()">BLOCK</button></h3></div>
+<div class="card"><h3>EVENT FEED</h3><div class="scroll-box" style="max-height:500px">
+    <table><thead><tr><th>TIME</th><th>TYPE</th><th>SOURCE</th><th>TARGET</th><th>SEV</th><th>STATUS</th><th>ACT</th></tr></thead>
+    <tbody id="cy-tbody"></tbody></table></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshCyber(){
+    const s=await apiFetch('/api/cyber/summary');
+    document.getElementById('cy-total').textContent=s.total_events||0;
+    document.getElementById('cy-active').textContent=s.active_threats||0;
+    document.getElementById('cy-blocked').textContent=s.blocked||0;
+    document.getElementById('cy-ips').textContent=s.blocked_ips||0;
+    const events=await apiFetch('/api/cyber/events');
+    const tbody=document.getElementById('cy-tbody'); tbody.innerHTML='';
+    (Array.isArray(events)?events:[]).reverse().forEach(function(e){
+        const sc={critical:'#ff4444',high:'#ff8800',medium:'#ffaa00',low:'#888'}[e.severity]||'#666';
+        tbody.innerHTML+='<tr style="'+(e.blocked?'opacity:0.4':'')+'"><td>'+(e.timestamp||'').substring(11,19)+'</td><td>'+e.type+'</td><td style="color:#ff4444">'+e.source_ip+'</td><td>'+e.target+'</td><td style="color:'+sc+'">'+e.severity.toUpperCase()+'</td><td>'+(e.blocked?'<span class="badge badge-green">BLOCKED</span>':'<span class="badge badge-red">ACTIVE</span>')+'</td><td>'+(e.blocked?'':'<button class="btn btn-red" style="padding:2px 6px" onclick="blockEvt(\''+e.id+'\')">BLOCK</button>')+'</td></tr>';
+    });
+}
+async function blockIP(){const ip=document.getElementById('block-ip').value;if(ip){await apiPost('/api/cyber/block',{ip:ip});refreshCyber();}}
+async function blockEvt(id){await apiPost('/api/cyber/block',{event_id:id});refreshCyber();}
+refreshCyber(); setInterval(refreshCyber,3000);
+</script>
+{% endblock %}

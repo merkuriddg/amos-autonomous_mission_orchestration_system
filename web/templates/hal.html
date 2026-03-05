@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}HAL Engine{% endblock %}
+{% block content %}
+<div class="card"><h3>HAL AUTONOMY ENGINE — AI Recommendations
+    <button class="btn" onclick="genCOA()" style="margin-left:15px">GENERATE COAs</button></h3>
+    <div id="coa-results" style="margin-top:10px"></div>
+</div>
+<div class="card"><h3>PENDING RECOMMENDATIONS</h3><div class="scroll-box" style="max-height:400px" id="hal-pending"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshHAL(){
+    const recs=await apiFetch('/api/hal/recommendations');
+    const div=document.getElementById('hal-pending'); div.innerHTML='';
+    const pending=(Array.isArray(recs)?recs:[]).filter(function(r){return r.status==='pending';});
+    if(pending.length===0)div.innerHTML='<div style="color:#666;padding:10px">No pending recommendations</div>';
+    pending.forEach(function(r){
+        div.innerHTML+='<div style="border:1px solid #4488ff;padding:10px;margin:6px 0"><div><strong style="color:#4488ff">'+r.type+'</strong> — '+r.asset+' -> '+r.target+' ('+(r.confidence*100).toFixed(0)+'%)</div><div style="color:#888;font-size:0.85em;margin:4px 0">'+r.reasoning+'</div><div style="margin-top:6px"><button class="btn" onclick="halAct(\''+r.id+'\',\'approve\')">APPROVE</button> <button class="btn btn-red" onclick="halAct(\''+r.id+'\',\'deny\')">DENY</button></div></div>';
+    });
+}
+async function halAct(id,action){await apiPost('/api/hal/action',{id:id,action:action});refreshHAL();}
+async function genCOA(){
+    const coas=await apiPost('/api/coa/generate',{});
+    const div=document.getElementById('coa-results');
+    div.innerHTML=(Array.isArray(coas)?coas:[]).map(function(c){
+        return '<div style="border:1px solid #ffaa00;padding:10px;margin:6px 0"><strong style="color:#ffaa00">#'+c.rank+' '+c.name+'</strong> (Score: '+c.score+') Risk: '+c.risk+'<div style="color:#888;font-size:0.85em">'+c.description+'</div></div>';
+    }).join('');
+}
+refreshHAL(); setInterval(refreshHAL,3000);
+</script>
+{% endblock %}

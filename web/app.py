@@ -1,0 +1,724 @@
+#!/usr/bin/env python3
+"""AMOS — Autonomous Mission Operating System v2.0
+Multi-Domain Autonomous C2 · Phase 2"""
+
+import os, sys, json, time, random, math, uuid, threading, yaml
+from datetime import datetime, timezone
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask_socketio import SocketIO
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+sys.path.insert(0, ROOT_DIR)
+
+from mos_core.nodes.waypoint_nav import WaypointNav
+from mos_core.nodes.geofence_manager import GeofenceManager
+from mos_core.nodes.voice_parser import VoiceParser
+from mos_core.nodes.ros2_bridge import ROS2Bridge
+
+# Phase 3
+import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from phase3_routes import phase3_bp, init_phase3
+
+CONFIG_PATH = os.path.join(ROOT_DIR, "config", "platoon_config.yaml")
+
+app = Flask(__name__,
+            template_folder=os.path.join(BASE_DIR, "templates"),
+            static_folder=os.path.join(BASE_DIR, "static"))
+app.secret_key = os.environ.get("MOS_SECRET", "mos-shadow-forge-2026")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+# ═══════════════════════════════════════════════════════════
+#  MULTI-USER SYSTEM
+# ═══════════════════════════════════════════════════════════
+USERS = {
+    "commander": {"password": "mavrix2026", "role": "commander",
+                   "name": "CDR Mitchell", "domain": "all",
+                   "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin"]},
+    "pilot":     {"password": "wings2026", "role": "pilot",
+                   "name": "CPT Torres", "domain": "air",
+                   "access": ["c2","twin","ew","sigint","hal","plan","aar","awacs","field","voice"]},
+    "grunt":     {"password": "hooah2026", "role": "ground_op",
+                   "name": "SGT Reeves", "domain": "ground",
+                   "access": ["c2","twin","cm","hal","plan","aar","field","voice"]},
+    "sailor":    {"password": "anchor2026", "role": "maritime_op",
+                   "name": "PO1 Chen", "domain": "maritime",
+                   "access": ["c2","twin","sigint","hal","aar","field","voice"]},
+    "observer":  {"password": "watch2026", "role": "observer",
+                   "name": "Analyst Kim", "domain": "all",
+                   "access": ["c2","twin","ew","sigint","cyber","aar","awacs","field"]},
+    "field":     {"password": "tactical2026", "role": "field_op",
+                   "name": "SPC Davis", "domain": "all",
+                   "access": ["c2","field","voice","cm"]},
+}
+
+def login_required(f):
+    @wraps(f)
+    def dec(*a, **kw):
+        if "user" not in session:
+            return redirect(url_for("login"))
+        return f(*a, **kw)
+    return dec
+
+def ctx():
+    u = session.get("user", "unknown")
+    d = USERS.get(u, {})
+    return {"user": u, "role": d.get("role",""), "name": d.get("name",u),
+            "domain": d.get("domain","all"), "access": d.get("access",[])}
+
+# ═══════════════════════════════════════════════════════════
+#  LOAD CONFIG
+# ═══════════════════════════════════════════════════════════
+with open(CONFIG_PATH) as f:
+    config = yaml.safe_load(f)
+
+platoon = config["platoon"]
+base_pos = platoon["base"]
+
+sim_assets = {}
+for a in config.get("assets", []):
+    sp = a.get("spawn", {})
+    is_air = a.get("domain") == "air"
+    sim_assets[a["id"]] = {
+        "id": a["id"], "type": a.get("type",""), "domain": a.get("domain",""),
+        "role": a.get("role",""), "autonomy_tier": a.get("autonomy_tier",1),
+        "sensors": a.get("sensors",[]), "weapons": a.get("weapons",[]),
+        "endurance_hr": a.get("endurance_hr",0),
+        "position": {"lat": sp.get("lat", base_pos["lat"]),
+                      "lng": sp.get("lng", base_pos["lng"]),
+                      "alt_ft": sp.get("alt_ft", 0)},
+        "status": "operational",
+        "health": {"battery_pct": random.randint(85,100),
+                    "comms_strength": random.randint(75,100),
+                    "cpu_temp_c": random.randint(35,55), "gps_fix": True},
+        "speed_kts": random.randint(80,200) if is_air else random.randint(5,30),
+        "heading_deg": random.randint(0,359),
+    }
+print(f"[AMOS] Loaded {len(sim_assets)} assets")
+
+sim_threats = {}
+for t in config.get("threats", []):
+    sim_threats[t["id"]] = {**t, "neutralized": False, "detected_by": [], "first_detected": None}
+print(f"[AMOS] Loaded {len(sim_threats)} threats")
+
+# ── Subsystems ──
+waypoint_nav = WaypointNav()
+geofence_mgr = GeofenceManager()
+voice_parser = VoiceParser()
+ros2_bridge = ROS2Bridge()
+
+ew_active_jams, ew_intercepts = [], []
+sigint_intercepts, sigint_emitter_db = [], {}
+cyber_events, cyber_blocked_ips = [], set()
+cm_log, hal_recommendations, aar_events = [], [], []
+swarms = {}
+sim_clock = {"start_time": time.time(), "elapsed_sec": 0, "speed": 1.0, "running": True}
+
+ao = platoon.get("ao", {})
+if ao:
+    geofence_mgr.add_geofence("operational",
+        [{"lat": ao["north"], "lng": ao["west"]}, {"lat": ao["north"], "lng": ao["east"]},
+         {"lat": ao["south"], "lng": ao["east"]}, {"lat": ao["south"], "lng": ao["west"]}],
+        "Tampa Bay AO", "AO-PRIMARY")
+    geofence_mgr.add_geofence("restricted",
+        {"center": {"lat": base_pos["lat"], "lng": base_pos["lng"]}, "radius_nm": 1.5},
+        "MacDill AFB Restricted", "RESTRICT-MACDILL")
+
+ew_capable = [a for a in sim_assets.values()
+              if any(s in (a.get("sensors") or [])
+                     for s in ["EW_JAMMER","SIGINT","ELINT","COMINT","AESA_RADAR","AEW_RADAR"])]
+
+print(f"\n[AMOS] ═══════════════════════════════════════")
+print(f"[AMOS]  Assets:     {len(sim_assets)}")
+print(f"[AMOS]  Threats:    {len(sim_threats)}")
+print(f"[AMOS]  EW-capable: {len(ew_capable)}")
+print(f"[AMOS]  Geofences:  {len(geofence_mgr.get_all())}")
+print(f"[AMOS]  Users:      {len(USERS)}")
+print(f"[AMOS]  ROS 2:      {'Connected' if ros2_bridge.available else 'Standalone'}")
+print(f"[AMOS] ═══════════════════════════════════════\n")
+
+# ═══════════════════════════════════════════════════════════
+#  SIMULATION ENGINE
+# ═══════════════════════════════════════════════════════════
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+def sim_tick():
+    print("[AMOS] Simulation engine started")
+    last = time.time()
+    while sim_clock["running"]:
+        time.sleep(0.5)
+        now = time.time(); real_dt = now - last; dt = real_dt * sim_clock["speed"]
+        sim_clock["elapsed_sec"] += dt; last = now
+
+        # Waypoint navigation
+        for evt in waypoint_nav.tick(sim_assets, dt):
+            aar_events.append({"type":"waypoint_reached","timestamp":now_iso(),
+                "elapsed":sim_clock["elapsed_sec"],
+                "details":f"{evt['asset_id']} reached WP {evt['waypoint']['lat']:.4f},{evt['waypoint']['lng']:.4f}"})
+
+        # Asset drift (only if no waypoint)
+        for aid, a in sim_assets.items():
+            if aid in waypoint_nav.routes:
+                continue
+            p = a["position"]; d = 0.00003 * dt
+            p["lat"] = round(p["lat"] + random.uniform(-d, d), 6)
+            p["lng"] = round(p["lng"] + random.uniform(-d, d), 6)
+            if a["domain"] == "air" and "alt_ft" in p:
+                p["alt_ft"] = max(100, p["alt_ft"] + random.uniform(-50, 50) * dt)
+            h = a["health"]
+            h["battery_pct"] = max(5, min(100, h["battery_pct"] + random.uniform(-0.1, 0.05) * dt))
+            h["comms_strength"] = max(20, min(100, h["comms_strength"] + random.uniform(-0.5, 0.5) * dt))
+            a["heading_deg"] = (a["heading_deg"] + random.uniform(-2, 2) * dt) % 360
+
+        # Threat movement
+        for tid, t in sim_threats.items():
+            if t.get("neutralized") or "lat" not in t or "lng" not in t:
+                continue
+            sf = t.get("speed_kts", 20) * 0.00001 * dt
+            t["lat"] = round(t["lat"] + random.uniform(-sf, sf), 6)
+            t["lng"] = round(t["lng"] + random.uniform(-sf, sf), 6)
+
+        # Geofence checks
+        for alert in geofence_mgr.tick(sim_assets, sim_threats):
+            aar_events.append({"type":"geofence_alert","timestamp":now_iso(),
+                "elapsed":sim_clock["elapsed_sec"],
+                "details":f"GF {alert['event'].upper()}: {alert['entity_id']} — {alert['geofence_name']}"})
+
+        # SIGINT generation
+        if random.random() < 0.3 * dt:
+            cols = [a for a in sim_assets.values()
+                    if any(s in (a.get("sensors") or []) for s in ["SIGINT","ELINT","COMINT","AEW_RADAR"])]
+            if cols:
+                c = random.choice(cols)
+                freq = random.choice([433.0,915.0,1575.42,2437.0,5805.0]) + random.uniform(-5,5)
+                ix = {"id":f"INT-{uuid.uuid4().hex[:8]}","timestamp":now_iso(),
+                      "collector":c["id"],"freq_mhz":round(freq,2),
+                      "power_dbm":random.randint(-80,-20),
+                      "modulation":random.choice(["FM","AM","PSK","FSK","OFDM","FHSS","DSSS"]),
+                      "bearing_deg":random.randint(0,359),
+                      "classification":random.choice(["HOSTILE","HOSTILE","SUSPECT","UNKNOWN","FRIENDLY"]),
+                      "duration_ms":random.randint(50,5000)}
+                sigint_intercepts.append(ix); ew_intercepts.append(ix)
+                fk = f"{round(freq,0)}"
+                if fk not in sigint_emitter_db:
+                    sigint_emitter_db[fk] = {"freq_mhz":round(freq,2),"count":0,
+                                              "first_seen":ix["timestamp"],"last_seen":ix["timestamp"]}
+                sigint_emitter_db[fk]["count"] += 1
+                sigint_emitter_db[fk]["last_seen"] = ix["timestamp"]
+
+        # Cyber events
+        if random.random() < 0.15 * dt:
+            sip = random.choice(["10.99.1.50","10.99.2.100","10.99.3.75","192.168.99.1"])
+            cyber_events.append({"id":f"CYB-{uuid.uuid4().hex[:8]}","timestamp":now_iso(),
+                "type":random.choice(["port_scan","brute_force","dns_exfil","c2_beacon","lateral_move"]),
+                "source_ip":sip,"target":random.choice(list(sim_assets.keys())),
+                "severity":random.choice(["low","medium","high","critical"]),
+                "blocked": sip in cyber_blocked_ips})
+
+        # HAL recommendations
+        active_t = [t for t in sim_threats.values() if not t.get("neutralized") and "lat" in t]
+        if active_t and random.random() < 0.1 * dt:
+            th = random.choice(active_t)
+            cap = [a for a in sim_assets.values() if a.get("weapons") or "EW_JAMMER" in (a.get("sensors") or [])]
+            if cap:
+                a = random.choice(cap)
+                hal_recommendations.append({"id":f"HAL-{uuid.uuid4().hex[:8]}","timestamp":now_iso(),
+                    "type":random.choice(["ENGAGE","JAM","INTERCEPT","RELOCATE","SURVEIL"]),
+                    "asset":a["id"],"target":th["id"],
+                    "confidence":round(random.uniform(0.6,0.98),2),
+                    "reasoning":f"Threat {th['id']} ({th['type']}) detected — recommend {a['id']}",
+                    "status":"pending","tier":a.get("autonomy_tier",2)})
+
+        # ROS2 bridge
+        if ros2_bridge.available:
+            ros2_bridge.publish_assets(sim_assets)
+
+        # Trim
+        for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
+            if len(lst) > 1000: del lst[:500]
+        if len(aar_events) > 5000: del aar_events[:2500]
+
+        # Emit
+        act = sum(1 for t in sim_threats.values() if not t.get("neutralized") and "lat" in t)
+        phal = sum(1 for r in hal_recommendations if r.get("status") == "pending")
+        socketio.emit("sim_update", {
+            "clock": {"elapsed_sec": round(sim_clock["elapsed_sec"],1), "speed": sim_clock["speed"]},
+            "asset_count": len(sim_assets), "threat_count": act,
+            "hostile_tracks": act, "pending_hal": phal,
+            "gf_alerts": len(geofence_mgr.get_alerts()),
+            "active_waypoints": len(waypoint_nav.routes)})
+
+# ═══════════════════════════════════════════════════════════
+#  AUTH ROUTES
+# ═══════════════════════════════════════════════════════════
+
+# --- Phase 3 Registration ---
+try:
+    _p3_state = {}
+    for _vname in ['assets', 'threats', 'events']:
+        if _vname in dir() or _vname in globals():
+            _p3_state[_vname] = globals().get(_vname, {})
+        elif _vname in locals():
+            _p3_state[_vname] = locals()[_vname]
+    if not _p3_state.get('assets'):
+        # Try common patterns
+        for _tryname in ['asset_registry', 'platoon_assets', 'ASSETS']:
+            if _tryname in globals():
+                _p3_state['assets'] = globals()[_tryname]
+                break
+    init_phase3(_p3_state)
+    app.register_blueprint(phase3_bp)
+    print("[AMOS] Phase 3 routes registered")
+except Exception as _e:
+    print(f"[AMOS] Phase 3 warning: {_e}")
+
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if request.method == "POST":
+        u, p = request.form.get("username",""), request.form.get("password","")
+        usr = USERS.get(u)
+        if usr and usr["password"] == p:
+            session["user"] = u
+            return redirect("/field" if usr["role"] == "field_op" else "/")
+        return render_template("login.html", error="Invalid credentials", users=USERS)
+    return render_template("login.html", error=None, users=USERS)
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None); return redirect("/login")
+
+# ═══════════════════════════════════════════════════════════
+#  PAGE ROUTES
+# ═══════════════════════════════════════════════════════════
+@app.route("/")
+@login_required
+def index(): return render_template("index.html", **ctx())
+
+@app.route("/dashboard")
+@login_required
+def dashboard(): return render_template("dashboard.html", **ctx())
+
+@app.route("/ew")
+@login_required
+def ew(): return render_template("ew.html", **ctx())
+
+@app.route("/sigint")
+@login_required
+def sigint(): return render_template("sigint.html", **ctx())
+
+@app.route("/cyber")
+@login_required
+def cyber(): return render_template("cyber.html", **ctx())
+
+@app.route("/countermeasures")
+@login_required
+def countermeasures(): return render_template("countermeasures.html", **ctx())
+
+@app.route("/hal")
+@login_required
+def hal(): return render_template("hal.html", **ctx())
+
+@app.route("/planner")
+@login_required
+def planner(): return render_template("planner.html", **ctx())
+
+@app.route("/aar")
+@login_required
+def aar(): return render_template("aar.html", **ctx())
+
+@app.route("/awacs")
+@login_required
+def awacs(): return render_template("awacs.html", **ctx())
+
+@app.route("/field")
+@login_required
+def field(): return render_template("field.html", **ctx())
+
+# ═══════════════════════════════════════════════════════════
+#  ASSET API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/assets")
+@login_required
+def api_assets():
+    c = ctx()
+    if c["domain"] == "all":
+        return jsonify(sim_assets)
+    return jsonify({k:v for k,v in sim_assets.items() if v["domain"]==c["domain"]})
+
+@app.route("/api/assets/summary")
+@login_required
+def api_assets_summary():
+    bd, bs, br = {}, {}, {}
+    for a in sim_assets.values():
+        bd[a["domain"]] = bd.get(a["domain"],0)+1
+        bs[a["status"]] = bs.get(a["status"],0)+1
+        br[a["role"]] = br.get(a["role"],0)+1
+    return jsonify({"total":len(sim_assets),"by_domain":bd,"by_status":bs,"by_role":br})
+
+@app.route("/api/assets/<asset_id>")
+@login_required
+def api_asset_detail(asset_id):
+    a = sim_assets.get(asset_id)
+    if not a: return jsonify({"error":"Not found"}),404
+    r = dict(a); r["waypoints"] = waypoint_nav.get_waypoints(asset_id)
+    return jsonify(r)
+
+# ═══════════════════════════════════════════════════════════
+#  THREAT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/threats")
+@login_required
+def api_threats(): return jsonify(sim_threats)
+
+# ═══════════════════════════════════════════════════════════
+#  EW API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/ew/status")
+@login_required
+def api_ew_status():
+    return jsonify({"ew_assets":len(ew_capable),"active_jams":len(ew_active_jams),
+                    "ready":len(ew_capable)-len(ew_active_jams),
+                    "operations":ew_active_jams,"intercept_count":len(ew_intercepts)})
+
+@app.route("/api/ew/jam", methods=["POST"])
+@login_required
+def api_ew_jam():
+    d = request.json
+    op = {"id":f"JAM-{uuid.uuid4().hex[:8]}","jammer_id":d.get("jammer_id",""),
+          "target_freq_mhz":d.get("freq_mhz",0),"technique":d.get("technique","barrage"),
+          "power_dbm":random.randint(30,60),"started":now_iso(),"status":"active"}
+    ew_active_jams.append(op)
+    aar_events.append({"type":"ew_action","timestamp":op["started"],
+        "elapsed":sim_clock["elapsed_sec"],
+        "details":f"JAM: {op['jammer_id']} @ {op['target_freq_mhz']} MHz ({op['technique']})"})
+    return jsonify({"status":"ok","operation":op})
+
+@app.route("/api/ew/jam/stop", methods=["POST"])
+@login_required
+def api_ew_stop():
+    oid = request.json.get("op_id","")
+    ew_active_jams[:] = [j for j in ew_active_jams if j["id"] != oid]
+    return jsonify({"status":"ok"})
+
+# ═══════════════════════════════════════════════════════════
+#  SIGINT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/sigint")
+@login_required
+def api_sigint(): return jsonify(sigint_intercepts[-100:])
+
+@app.route("/api/sigint/summary")
+@login_required
+def api_sigint_summary():
+    bc = {}
+    for i in sigint_intercepts:
+        c = i.get("classification","UNKNOWN"); bc[c] = bc.get(c,0)+1
+    return jsonify({"total_intercepts":len(sigint_intercepts),
+                    "unique_emitters":len(sigint_emitter_db),"by_classification":bc})
+
+@app.route("/api/sigint/emitters")
+@login_required
+def api_sigint_emitters(): return jsonify(sigint_emitter_db)
+
+# ═══════════════════════════════════════════════════════════
+#  CYBER API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/cyber/events")
+@login_required
+def api_cyber_events(): return jsonify(cyber_events[-100:])
+
+@app.route("/api/cyber/summary")
+@login_required
+def api_cyber_summary():
+    a = sum(1 for e in cyber_events if not e.get("blocked"))
+    b = sum(1 for e in cyber_events if e.get("blocked"))
+    return jsonify({"total_events":len(cyber_events),"active_threats":a,
+                    "blocked":b,"blocked_ips":len(cyber_blocked_ips)})
+
+@app.route("/api/cyber/block", methods=["POST"])
+@login_required
+def api_cyber_block():
+    d = request.json
+    ip = d.get("ip"); eid = d.get("event_id")
+    if ip:
+        cyber_blocked_ips.add(ip)
+        for e in cyber_events:
+            if e["source_ip"]==ip: e["blocked"]=True
+    if eid:
+        for e in cyber_events:
+            if e["id"]==eid: e["blocked"]=True; cyber_blocked_ips.add(e["source_ip"])
+    return jsonify({"status":"ok","blocked_ips":list(cyber_blocked_ips)})
+
+# ═══════════════════════════════════════════════════════════
+#  COUNTERMEASURES API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/cm/engage", methods=["POST"])
+@login_required
+def api_cm_engage():
+    d = request.json; tid = d.get("threat_id",""); ctype = d.get("type","intercept"); c = ctx()
+    if tid in sim_threats:
+        sim_threats[tid]["neutralized"] = True
+        e = {"id":f"CM-{uuid.uuid4().hex[:8]}","threat_id":tid,"type":ctype,
+             "operator":c["name"],"timestamp":now_iso(),"elapsed":sim_clock["elapsed_sec"]}
+        cm_log.append(e)
+        aar_events.append({"type":"countermeasure","timestamp":e["timestamp"],
+            "elapsed":sim_clock["elapsed_sec"],"details":f"{ctype.upper()} {tid} by {c['name']}"})
+        return jsonify({"status":"ok","result":"neutralized"})
+    return jsonify({"error":"Not found"}),404
+
+@app.route("/api/cm/log")
+@login_required
+def api_cm_log(): return jsonify(cm_log)
+
+# ═══════════════════════════════════════════════════════════
+#  HAL API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/hal/recommendations")
+@login_required
+def api_hal_recs(): return jsonify(hal_recommendations[-50:])
+
+@app.route("/api/hal/action", methods=["POST"])
+@login_required
+def api_hal_action():
+    d = request.json; rid = d.get("id",""); act = d.get("action",""); c = ctx()
+    for r in hal_recommendations:
+        if r["id"]==rid:
+            r["status"]=act; r["actioned_by"]=c["name"]; r["actioned_at"]=now_iso()
+            if act=="approve":
+                aar_events.append({"type":"hal_approved","timestamp":r["actioned_at"],
+                    "elapsed":sim_clock["elapsed_sec"],
+                    "details":f"HAL {r['type']}: {r['asset']}->{r['target']} by {c['name']}"})
+            break
+    return jsonify({"status":"ok"})
+
+@app.route("/api/coa/generate", methods=["POST"])
+@login_required
+def api_coa():
+    at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
+    return jsonify([
+        {"rank":1,"name":"OVERWHELMING FORCE","score":round(random.uniform(.75,.95),2),
+         "risk":"LOW","description":f"All assets engage {at} threats simultaneously. Max ISR + EW."},
+        {"rank":2,"name":"SEQUENTIAL ENGAGE","score":round(random.uniform(.65,.85),2),
+         "risk":"MEDIUM","description":"Priority targeting. GHOST recon, TALON engage, REAPER overwatch."},
+        {"rank":3,"name":"CYBER-EW FIRST","score":round(random.uniform(.55,.80),2),
+         "risk":"MEDIUM","description":"Degrade C2 via cyber/EW before kinetic. Blind then strike."},
+        {"rank":4,"name":"DEFENSIVE HOLD","score":round(random.uniform(.50,.70),2),
+         "risk":"LOW","description":"Consolidate at MacDill. Sensor perimeter. Engage on approach only."}])
+
+# ═══════════════════════════════════════════════════════════
+#  SWARM API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/swarm")
+@login_required
+def api_swarm(): return jsonify(swarms)
+
+@app.route("/api/swarm/create", methods=["POST"])
+@login_required
+def api_swarm_create():
+    d = request.json; sid = d.get("swarm_id","")
+    swarms[sid] = {"id":sid,"assets":d.get("assets",[]),"formation":d.get("formation","line"),
+                   "created":now_iso(),"status":"active"}
+    aar_events.append({"type":"swarm_created","timestamp":swarms[sid]["created"],
+        "elapsed":sim_clock["elapsed_sec"],
+        "details":f"Swarm {sid}: {len(swarms[sid]['assets'])} assets, {swarms[sid]['formation']}"})
+    return jsonify({"status":"ok","swarm":swarms[sid]})
+
+# ═══════════════════════════════════════════════════════════
+#  AAR API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/aar/events")
+@login_required
+def api_aar_events(): return jsonify(aar_events[-200:])
+
+@app.route("/api/aar/export")
+@login_required
+def api_aar_export():
+    return jsonify({"mission":platoon["name"],"callsign":platoon["callsign"],
+        "export_time":now_iso(),"duration_sec":sim_clock["elapsed_sec"],
+        "assets":{k:{"id":v["id"],"type":v["type"],"domain":v["domain"],"status":v["status"]} for k,v in sim_assets.items()},
+        "threats":{k:{"id":v["id"],"type":v["type"],"neutralized":v.get("neutralized",False)} for k,v in sim_threats.items()},
+        "events":aar_events,"countermeasures":cm_log,"swarms":swarms,
+        "sigint_count":len(sigint_intercepts),"cyber_count":len(cyber_events)})
+
+# ═══════════════════════════════════════════════════════════
+#  WAYPOINT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/waypoints")
+@login_required
+def api_wp_all(): return jsonify(waypoint_nav.get_all())
+
+@app.route("/api/waypoints/<asset_id>")
+@login_required
+def api_wp_asset(asset_id): return jsonify(waypoint_nav.get_waypoints(asset_id))
+
+@app.route("/api/waypoints/set", methods=["POST"])
+@login_required
+def api_wp_set():
+    d = request.json; aid = d.get("asset_id"); lat = d.get("lat"); lng = d.get("lng")
+    if not aid or lat is None or lng is None: return jsonify({"error":"Missing fields"}),400
+    if aid not in sim_assets: return jsonify({"error":"Asset not found"}),404
+    waypoint_nav.set_waypoint(aid, lat, lng, d.get("alt_ft"))
+    c = ctx()
+    aar_events.append({"type":"waypoint_set","timestamp":now_iso(),
+        "elapsed":sim_clock["elapsed_sec"],
+        "details":f"WP set: {aid} -> {lat:.4f},{lng:.4f} by {c['name']}"})
+    return jsonify({"status":"ok","waypoints":waypoint_nav.get_waypoints(aid)})
+
+@app.route("/api/waypoints/add", methods=["POST"])
+@login_required
+def api_wp_add():
+    d = request.json; aid = d.get("asset_id"); lat = d.get("lat"); lng = d.get("lng")
+    if not aid or lat is None or lng is None: return jsonify({"error":"Missing fields"}),400
+    if aid not in sim_assets: return jsonify({"error":"Asset not found"}),404
+    waypoint_nav.add_waypoint(aid, lat, lng, d.get("alt_ft"))
+    return jsonify({"status":"ok","waypoints":waypoint_nav.get_waypoints(aid)})
+
+@app.route("/api/waypoints/clear", methods=["POST"])
+@login_required
+def api_wp_clear():
+    d = request.json; aid = d.get("asset_id")
+    if aid: waypoint_nav.clear_waypoints(aid)
+    else: waypoint_nav.clear_all()
+    return jsonify({"status":"ok"})
+
+# ═══════════════════════════════════════════════════════════
+#  GEOFENCE API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/geofences")
+@login_required
+def api_gf(): return jsonify(geofence_mgr.get_all())
+
+@app.route("/api/geofences/create", methods=["POST"])
+@login_required
+def api_gf_create():
+    d = request.json
+    gid = geofence_mgr.add_geofence(d.get("type","alert"), d.get("points",[]),
+                                     d.get("name",""), d.get("id"))
+    return jsonify({"status":"ok","id":gid})
+
+@app.route("/api/geofences/delete", methods=["POST"])
+@login_required
+def api_gf_del():
+    geofence_mgr.remove_geofence(request.json.get("id","")); return jsonify({"status":"ok"})
+
+@app.route("/api/geofences/alerts")
+@login_required
+def api_gf_alerts(): return jsonify(geofence_mgr.get_alerts())
+
+# ═══════════════════════════════════════════════════════════
+#  VOICE COMMAND API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/voice/command", methods=["POST"])
+@login_required
+def api_voice():
+    transcript = request.json.get("transcript",""); c = ctx()
+    parsed = voice_parser.parse(transcript)
+    result = {"parsed":parsed,"executed":False,"response":""}
+    cmd = parsed.get("command")
+
+    if cmd == "move" and "lat" in parsed and "lng" in parsed:
+        aid = parsed["asset_id"]
+        if aid in sim_assets:
+            waypoint_nav.set_waypoint(aid, parsed["lat"], parsed["lng"])
+            result.update(executed=True, response=f"Roger. {aid} navigating to {parsed['lat']:.4f}, {parsed['lng']:.4f}")
+    elif cmd == "engage":
+        tid = parsed.get("threat_id","")
+        if tid in sim_threats and not sim_threats[tid].get("neutralized"):
+            sim_threats[tid]["neutralized"] = True
+            cm_log.append({"id":f"CM-{uuid.uuid4().hex[:8]}","threat_id":tid,"type":"voice_engage",
+                "operator":c["name"],"timestamp":now_iso(),"elapsed":sim_clock["elapsed_sec"]})
+            result.update(executed=True, response=f"Roger. {tid} engaged and neutralized.")
+    elif cmd == "jam":
+        freq = parsed.get("freq_mhz",0)
+        jammers = [a for a in sim_assets.values() if "EW_JAMMER" in (a.get("sensors") or [])]
+        if jammers:
+            j = jammers[0]
+            ew_active_jams.append({"id":f"JAM-{uuid.uuid4().hex[:8]}","jammer_id":j["id"],
+                "target_freq_mhz":freq,"technique":"barrage","power_dbm":45,
+                "started":now_iso(),"status":"active"})
+            result.update(executed=True, response=f"Roger. {j['id']} jamming {freq} MHz.")
+    elif cmd == "status":
+        aid = parsed.get("asset_id","")
+        if aid in sim_assets:
+            a = sim_assets[aid]
+            result.update(executed=True,
+                response=f"{aid}: {a['status']}, batt {a['health']['battery_pct']:.0f}%, comms {a['health']['comms_strength']:.0f}%, pos {a['position']['lat']:.4f} {a['position']['lng']:.4f}")
+    elif cmd == "status_all":
+        at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
+        result.update(executed=True, response=f"Platoon: {len(sim_assets)} assets operational. {at} active threats. {len(ew_active_jams)} active jams.")
+    elif cmd == "set_speed":
+        sim_clock["speed"] = parsed.get("speed",1.0)
+        result.update(executed=True, response=f"Roger. Speed set to {sim_clock['speed']}x.")
+    elif cmd == "generate_coa":
+        result.update(executed=True, response="Roger. COAs generated. Check HAL panel.")
+    elif cmd == "block_ip":
+        ip = parsed.get("ip","")
+        cyber_blocked_ips.add(ip)
+        for e in cyber_events:
+            if e["source_ip"]==ip: e["blocked"]=True
+        result.update(executed=True, response=f"Roger. Blocked {ip}.")
+    elif cmd == "halt":
+        aid = parsed.get("asset_id",""); waypoint_nav.clear_waypoints(aid)
+        result.update(executed=True, response=f"Roger. {aid} halted.")
+    elif cmd == "halt_all":
+        waypoint_nav.clear_all(); result.update(executed=True, response="Roger. All assets halted.")
+    elif cmd == "rtb":
+        aid = parsed.get("asset_id","")
+        if aid in sim_assets:
+            waypoint_nav.set_waypoint(aid, base_pos["lat"], base_pos["lng"])
+            result.update(executed=True, response=f"Roger. {aid} RTB.")
+    elif cmd == "rtb_all":
+        for aid in sim_assets: waypoint_nav.set_waypoint(aid, base_pos["lat"], base_pos["lng"])
+        result.update(executed=True, response="Roger. All assets RTB.")
+    else:
+        result["response"] = f"Command not recognized: '{transcript}'"
+
+    if result["executed"]:
+        aar_events.append({"type":"voice_command","timestamp":now_iso(),
+            "elapsed":sim_clock["elapsed_sec"],
+            "details":f"VOICE [{c['name']}]: {transcript} -> {result['response']}"})
+    return jsonify(result)
+
+# ═══════════════════════════════════════════════════════════
+#  ROS2 / USER / SIM APIs
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/ros2/status")
+@login_required
+def api_ros2(): return jsonify(ros2_bridge.get_status())
+
+@app.route("/api/user/role")
+@login_required
+def api_role(): return jsonify(ctx())
+
+@app.route("/api/users")
+@login_required
+def api_users():
+    c = ctx()
+    if c["role"] != "commander": return jsonify({"error":"Denied"}),403
+    return jsonify({k:{"name":v["name"],"role":v["role"],"domain":v["domain"]} for k,v in USERS.items()})
+
+@app.route("/api/sim/speed", methods=["POST"])
+@login_required
+def api_speed():
+    sim_clock["speed"] = max(0.1, min(20, request.json.get("speed",1.0)))
+    return jsonify({"status":"ok","speed":sim_clock["speed"]})
+
+@app.route("/api/sim/status")
+@login_required
+def api_sim(): return jsonify(sim_clock)
+
+# ═══════════════════════════════════════════════════════════
+#  LAUNCH
+# ═══════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
+    print("\n" + "=" * 58)
+    print("  AMOS — Autonomous Mission Operating System v2.0")
+    print("  http://localhost:5000")
+    print("-" * 58)
+    for u, i in USERS.items():
+        print(f"  {u:12s} / {i['password']:14s} [{i['role']}]")
+    print("=" * 58 + "\n")
+    socketio.run(app, host="0.0.0.0", port=5000, allow_unsafe_werkzeug=True)

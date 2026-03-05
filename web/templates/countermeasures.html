@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Countermeasures{% endblock %}
+{% block content %}
+<div class="card"><h3>COUNTERMEASURES — Engage Hostile Contacts</h3></div>
+<div class="grid-2">
+    <div class="card"><h3>THREAT LIST</h3><div class="scroll-box" style="max-height:500px" id="cm-threats"></div></div>
+    <div class="card"><h3>ENGAGEMENT LOG</h3><div class="scroll-box" style="max-height:500px" id="cm-log"></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshCM(){
+    const threats=await apiFetch('/api/threats');
+    const div=document.getElementById('cm-threats'); div.innerHTML='';
+    for(const[id,t]of Object.entries(threats)){
+        const n=t.neutralized;
+        div.innerHTML+='<div style="border:1px solid '+(n?'#333':'#ff4444')+';padding:10px;margin:4px 0;'+(n?'opacity:0.4':'')+'"><strong style="color:'+(n?'#666':'#ff4444')+'">'+id+'</strong> — '+t.type+(n?' [NEUTRALIZED]':'')+(!n?'<div style="margin-top:6px"><button class="btn btn-yellow" onclick="engage(\''+id+'\',\'jam\')">JAM</button> <button class="btn btn-red" onclick="engage(\''+id+'\',\'intercept\')">INTERCEPT</button> <button class="btn" onclick="engage(\''+id+'\',\'cyber_block\')">CYBER BLOCK</button></div>':'')+'</div>';
+    }
+    const log=await apiFetch('/api/cm/log');
+    const logDiv=document.getElementById('cm-log'); logDiv.innerHTML='';
+    (Array.isArray(log)?log:[]).reverse().forEach(function(l){
+        logDiv.innerHTML+='<div style="border-left:3px solid #00ff41;padding:6px 10px;margin:4px 0"><strong>'+l.type.toUpperCase()+'</strong> -> '+l.threat_id+' by '+l.operator+' @ '+(l.timestamp||'').substring(11,19)+'</div>';
+    });
+}
+async function engage(tid,type){await apiPost('/api/cm/engage',{threat_id:tid,type:type});refreshCM();}
+refreshCM(); setInterval(refreshCM,3000);
+</script>
+{% endblock %}

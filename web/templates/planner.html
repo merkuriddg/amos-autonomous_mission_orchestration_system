@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Mission Planner{% endblock %}
+{% block content %}
+<div class="grid-2">
+    <div class="card"><h3>SWARM PLANNER</h3>
+        <input id="sw-id" placeholder="Swarm ID (e.g. ALPHA)" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:6px;width:100%;margin:4px 0;font-family:inherit">
+        <select id="sw-form" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:6px;width:100%;margin:4px 0;font-family:inherit">
+            <option value="line">Line</option><option value="wedge">Wedge</option>
+            <option value="column">Column</option><option value="diamond">Diamond</option><option value="orbit">Orbit</option>
+        </select>
+        <div id="sw-assets" style="margin:8px 0"></div>
+        <button class="btn" onclick="createSwarm()" style="width:100%">CREATE SWARM</button>
+    </div>
+    <div class="card"><h3>ACTIVE SWARMS</h3><div class="scroll-box" id="swarm-list"></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshPlanner(){
+    const assets=await apiFetch('/api/assets');
+    const div=document.getElementById('sw-assets');
+    div.innerHTML='<div style="color:#888;margin-bottom:4px">Select assets:</div>';
+    for(const id of Object.keys(assets)){div.innerHTML+='<label style="display:inline-block;margin:2px 8px"><input type="checkbox" class="asset-cb" value="'+id+'"> '+id+'</label>';}
+    const swarms=await apiFetch('/api/swarm');
+    const list=document.getElementById('swarm-list'); list.innerHTML='';
+    for(const[id,s]of Object.entries(swarms)){list.innerHTML+='<div style="border:1px solid #00ff41;padding:8px;margin:4px 0"><strong>'+id+'</strong> — '+s.formation+' | '+s.assets.length+' assets<div style="color:#888;font-size:0.8em">'+s.assets.join(', ')+'</div></div>';}
+}
+async function createSwarm(){
+    const id=document.getElementById('sw-id').value;const form=document.getElementById('sw-form').value;
+    const cbs=document.querySelectorAll('.asset-cb:checked');const assets=Array.from(cbs).map(function(c){return c.value;});
+    if(!id||assets.length===0){alert('Need swarm ID and assets');return;}
+    await apiPost('/api/swarm/create',{swarm_id:id,assets:assets,formation:form});refreshPlanner();
+}
+refreshPlanner(); setInterval(refreshPlanner,5000);
+</script>
+{% endblock %}

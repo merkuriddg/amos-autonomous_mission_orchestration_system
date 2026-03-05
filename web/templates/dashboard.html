@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Digital Twin{% endblock %}
+{% block content %}
+<div class="card"><h3>PLATOON DIGITAL TWIN</h3></div>
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="d-air" style="color:#00aaff">--</div><div class="label">AIR</div></div>
+    <div class="card stat"><div class="value" id="d-gnd" style="color:#00ff41">--</div><div class="label">GROUND</div></div>
+    <div class="card stat"><div class="value" id="d-sea" style="color:#ff44ff">--</div><div class="label">MARITIME</div></div>
+</div>
+<div class="card"><div class="scroll-box" style="max-height:600px">
+    <table><thead><tr><th>CALLSIGN</th><th>TYPE</th><th>DOMAIN</th><th>ROLE</th><th>TIER</th><th>LAT</th><th>LNG</th><th>SPD</th><th>BATT</th><th>COMMS</th><th>STATUS</th></tr></thead>
+    <tbody id="twin-tbody"></tbody></table>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshTwin(){
+    const assets=await apiFetch('/api/assets');
+    const summary=await apiFetch('/api/assets/summary');
+    document.getElementById('d-air').textContent=summary.by_domain.air||0;
+    document.getElementById('d-gnd').textContent=summary.by_domain.ground||0;
+    document.getElementById('d-sea').textContent=summary.by_domain.maritime||0;
+    const tbody=document.getElementById('twin-tbody'); tbody.innerHTML='';
+    const c={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+    for(const[id,a]of Object.entries(assets)){
+        tbody.innerHTML+='<tr><td style="color:'+c[a.domain]+'">'+id+'</td><td>'+a.type+'</td><td>'+a.domain+'</td><td>'+a.role+'</td><td>T'+a.autonomy_tier+'</td><td>'+a.position.lat.toFixed(4)+'</td><td>'+a.position.lng.toFixed(4)+'</td><td>'+a.speed_kts+' kts</td><td>'+a.health.battery_pct+'%</td><td>'+a.health.comms_strength+'%</td><td><span class="badge badge-green">'+a.status+'</span></td></tr>';
+    }
+}
+refreshTwin(); setInterval(refreshTwin,3000);
+</script>
+{% endblock %}

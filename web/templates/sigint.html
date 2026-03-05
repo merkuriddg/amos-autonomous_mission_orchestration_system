@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}SIGINT{% endblock %}
+{% block content %}
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="sig-total">--</div><div class="label">INTERCEPTS</div></div>
+    <div class="card stat"><div class="value" id="sig-emitters" style="color:#ffaa00">--</div><div class="label">UNIQUE EMITTERS</div></div>
+    <div class="card stat"><div class="value" id="sig-hostile" style="color:#ff4444">--</div><div class="label">HOSTILE</div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>INTERCEPT LOG</h3><div class="scroll-box" style="max-height:500px">
+        <table><thead><tr><th>TIME</th><th>COLLECTOR</th><th>FREQ</th><th>PWR</th><th>MOD</th><th>BRG</th><th>CLASS</th></tr></thead>
+        <tbody id="sig-tbody"></tbody></table></div></div>
+    <div class="card"><h3>EMITTER DATABASE</h3><div class="scroll-box" style="max-height:500px">
+        <table><thead><tr><th>FREQ</th><th>COUNT</th><th>FIRST SEEN</th><th>LAST SEEN</th></tr></thead>
+        <tbody id="emitter-tbody"></tbody></table></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshSIGINT(){
+    const summary=await apiFetch('/api/sigint/summary');
+    document.getElementById('sig-total').textContent=summary.total_intercepts||0;
+    document.getElementById('sig-emitters').textContent=summary.unique_emitters||0;
+    document.getElementById('sig-hostile').textContent=(summary.by_classification||{}).HOSTILE||0;
+    const intercepts=await apiFetch('/api/sigint');
+    const tbody=document.getElementById('sig-tbody'); tbody.innerHTML='';
+    (Array.isArray(intercepts)?intercepts:[]).slice(-50).reverse().forEach(function(i){
+        const cls=i.classification==='HOSTILE'?'badge-red':i.classification==='SUSPECT'?'badge-yellow':'badge-blue';
+        tbody.innerHTML+='<tr><td>'+(i.timestamp||'').substring(11,19)+'</td><td>'+(i.collector||'')+'</td><td>'+(i.freq_mhz||0).toFixed(1)+'</td><td>'+(i.power_dbm||'')+'</td><td>'+(i.modulation||'')+'</td><td>'+(i.bearing_deg||'')+'</td><td><span class="badge '+cls+'">'+(i.classification||'')+'</span></td></tr>';
+    });
+    const emitters=await apiFetch('/api/sigint/emitters');
+    const etbody=document.getElementById('emitter-tbody'); etbody.innerHTML='';
+    for(const[freq,e]of Object.entries(emitters)){
+        etbody.innerHTML+='<tr><td>'+e.freq_mhz.toFixed(1)+' MHz</td><td>'+e.count+'</td><td>'+(e.first_seen||'').substring(11,19)+'</td><td>'+(e.last_seen||'').substring(11,19)+'</td></tr>';
+    }
+}
+refreshSIGINT(); setInterval(refreshSIGINT,3000);
+</script>
+{% endblock %}

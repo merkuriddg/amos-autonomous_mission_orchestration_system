@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMOS — {% block title %}C2{% endblock %}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff41;overflow-x:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;background:#111;border-bottom:1px solid #00ff41;padding:6px 12px;font-size:.8em;position:fixed;top:0;left:0;right:0;z-index:1000;height:38px}
+.topbar .brand{font-weight:bold;letter-spacing:4px;font-size:1.1em}
+.topbar a{color:#00ff41;text-decoration:none;margin-left:8px;padding:2px 6px}
+.topbar a:hover{color:#fff}
+.topbar a.active{color:#fff;border-bottom:2px solid #00ff41}
+.user-info{color:#888;display:flex;align-items:center;gap:8px}
+.user-info span{color:#00ff41}
+.main{margin-top:38px;padding:8px}
+.card{background:#111;border:1px solid #222;padding:10px;margin-bottom:8px}
+.card h3{color:#00ff41;font-size:.85em;margin-bottom:6px;border-bottom:1px solid #222;padding-bottom:4px}
+.badge{display:inline-block;padding:1px 6px;font-size:.7em;border:1px solid}
+.badge-green{color:#00ff41;border-color:#00ff41}.badge-red{color:#ff4444;border-color:#ff4444}
+.badge-yellow{color:#ffaa00;border-color:#ffaa00}.badge-blue{color:#4488ff;border-color:#4488ff}
+table{width:100%;border-collapse:collapse;font-size:.78em}
+th{color:#888;text-align:left;padding:5px;border-bottom:1px solid #333}
+td{padding:5px;border-bottom:1px solid #1a1a1a}
+tr:hover td{background:#1a1a1a}
+.btn{padding:5px 12px;border:1px solid #00ff41;background:transparent;color:#00ff41;font-family:inherit;cursor:pointer;font-size:.78em}
+.btn:hover{background:#00ff41;color:#000}
+.btn-red{border-color:#ff4444;color:#ff4444}.btn-red:hover{background:#ff4444;color:#000}
+.btn-yellow{border-color:#ffaa00;color:#ffaa00}.btn-yellow:hover{background:#ffaa00;color:#000}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+#map{height:500px;background:#0a0a0a;border:1px solid #222}
+.leaflet-container{background:#0a0a0a!important}
+.stat{text-align:center;padding:12px}
+.stat .value{font-size:1.8em;color:#00ff41}
+.stat .label{font-size:.7em;color:#666;margin-top:3px}
+.scroll-box{max-height:300px;overflow-y:auto}
+.scroll-box::-webkit-scrollbar{width:4px}
+.scroll-box::-webkit-scrollbar-thumb{background:#333}
+.live-dot{display:inline-block;width:7px;height:7px;background:#00ff41;border-radius:50%;animation:pulse 1.5s infinite;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+select,input[type=number],input[type=text]{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:5px;font-family:inherit;font-size:.85em}
+/* Voice UI */
+#voice-btn{background:transparent;border:1px solid #4488ff;color:#4488ff;padding:3px 10px;cursor:pointer;font-size:1.1em;border-radius:3px}
+#voice-btn:hover{background:#4488ff;color:#000}
+#voice-btn.recording{background:#ff4444;border-color:#ff4444;color:#fff;animation:pulse 1s infinite}
+#voice-panel{display:none;position:fixed;top:45px;right:10px;background:#111;border:1px solid #4488ff;padding:12px;width:350px;z-index:999;font-size:.85em}
+#voice-panel .vp-status{color:#4488ff;margin-bottom:6px}
+#voice-panel .vp-transcript{color:#fff;padding:6px;background:#0a0a0a;margin:4px 0;min-height:24px}
+#voice-panel .vp-response{color:#00ff41;padding:6px;background:#0a0a0a;margin:4px 0;min-height:24px}
+</style>
+{% block head %}{% endblock %}
+    <link rel="stylesheet" href="/static/css/amos_phase3.css">
+</head><body>
+<div class="topbar">
+ <div style="display:flex;align-items:center">
+  <span class="brand">AMOS</span>
+  <span style="margin-left:12px">
+   {% if 'c2' in access %}<a href="/" {% if request.path=='/' %}class="active"{% endif %}>C2</a>{% endif %}
+   {% if 'twin' in access %}<a href="/dashboard" {% if request.path=='/dashboard' %}class="active"{% endif %}>TWIN</a>{% endif %}
+   {% if 'ew' in access %}<a href="/ew" {% if request.path=='/ew' %}class="active"{% endif %}>EW</a>{% endif %}
+   {% if 'sigint' in access %}<a href="/sigint" {% if request.path=='/sigint' %}class="active"{% endif %}>SIGINT</a>{% endif %}
+   {% if 'cyber' in access %}<a href="/cyber" {% if request.path=='/cyber' %}class="active"{% endif %}>CYBER</a>{% endif %}
+   {% if 'cm' in access %}<a href="/countermeasures" {% if request.path=='/countermeasures' %}class="active"{% endif %}>CM</a>{% endif %}
+   {% if 'hal' in access %}<a href="/hal" {% if request.path=='/hal' %}class="active"{% endif %}>HAL</a>{% endif %}
+   {% if 'plan' in access %}<a href="/planner" {% if request.path=='/planner' %}class="active"{% endif %}>PLAN</a>{% endif %}
+   {% if 'aar' in access %}<a href="/aar" {% if request.path=='/aar' %}class="active"{% endif %}>AAR</a>{% endif %}
+   {% if 'awacs' in access %}<a href="/awacs" {% if request.path=='/awacs' %}class="active"{% endif %}>AWACS</a>{% endif %}
+   {% if 'field' in access %}<a href="/field" {% if request.path=='/field' %}class="active"{% endif %}>FIELD</a>{% endif %}
+  </span>
+ </div>
+ <div class="user-info">
+  {% if 'voice' in access %}<button id="voice-btn" onclick="toggleVoice()" title="Voice Command (Chrome)">🎤</button>{% endif %}
+  <span class="live-dot"></span>LIVE
+  | <span>{{ name }}</span> ({{ role }})
+  | <a href="/logout">LOGOUT</a>
+ </div>
+</div>
+<!-- Voice Panel -->
+<div id="voice-panel">
+ <div class="vp-status" id="vp-status">Press 🎤 to speak</div>
+ <div class="vp-transcript" id="vp-transcript"></div>
+ <div class="vp-response" id="vp-response"></div>
+ <div style="margin-top:6px;text-align:right"><button class="btn" onclick="document.getElementById('voice-panel').style.display='none'" style="padding:2px 8px">CLOSE</button></div>
+</div>
+<div class="main">{% block content %}{% endblock %}</div>
+<script>
+const socket=io();
+socket.on('sim_update',function(d){if(window.onSimUpdate)window.onSimUpdate(d);});
+function apiFetch(u){return fetch(u).then(r=>r.json());}
+function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
+// Voice
+let _sr=null,_recording=false;
+function toggleVoice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){alert('Voice requires Chrome');return;}
+ const panel=document.getElementById('voice-panel');
+ const btn=document.getElementById('voice-btn');
+ if(_recording){_sr.stop();_recording=false;btn.classList.remove('recording');return;}
+ panel.style.display='block';
+ if(!_sr){
+  _sr=new SR();_sr.continuous=false;_sr.interimResults=false;_sr.lang='en-US';
+  _sr.onresult=function(e){
+   const t=e.results[0][0].transcript;
+   document.getElementById('vp-transcript').textContent='"'+t+'"';
+   document.getElementById('vp-status').textContent='Processing...';
+   apiPost('/api/voice/command',{transcript:t}).then(function(r){
+    document.getElementById('vp-response').textContent=r.response||'No response';
+    document.getElementById('vp-status').textContent=r.executed?'✅ Executed':'⚠️ Not executed';
+   });
+  };
+  _sr.onend=function(){_recording=false;btn.classList.remove('recording');};
+  _sr.onerror=function(e){document.getElementById('vp-status').textContent='Error: '+e.error;_recording=false;btn.classList.remove('recording');};
+ }
+ document.getElementById('vp-status').textContent='🔴 Listening...';
+ document.getElementById('vp-transcript').textContent='';
+ document.getElementById('vp-response').textContent='';
+ _sr.start();_recording=true;btn.classList.add('recording');
+}
+</script>
+{% block scripts %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/amos_phase3.js"></script>
+</body></html>

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}After Action Review{% endblock %}
+{% block content %}
+<div class="grid-2" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="aar-events">--</div><div class="label">AAR EVENTS</div></div>
+    <div class="card stat"><button class="btn" onclick="exportAAR()" style="font-size:1.2em;padding:12px 30px">EXPORT AAR</button><div class="label" style="margin-top:8px">Download Full Report</div></div>
+</div>
+<div class="card"><h3>EVENT TIMELINE</h3><div class="scroll-box" style="max-height:600px" id="aar-timeline"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshAAR(){
+    const events=await apiFetch('/api/aar/events');
+    document.getElementById('aar-events').textContent=events.length||0;
+    const div=document.getElementById('aar-timeline'); div.innerHTML='';
+    (Array.isArray(events)?events:[]).reverse().forEach(function(e){
+        const color={countermeasure:'#ff4444',detection:'#ffaa00',ew_action:'#4488ff',maneuver:'#00ff41'}[e.type]||'#888';
+        div.innerHTML+='<div style="border-left:3px solid '+color+';padding:6px 12px;margin:3px 0"><span style="color:#666">T+'+Math.round(e.elapsed||0)+'s</span> <span class="badge" style="color:'+color+';border-color:'+color+';margin:0 8px">'+e.type+'</span> '+e.details+'</div>';
+    });
+}
+function exportAAR(){apiFetch('/api/aar/export').then(function(data){const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
+refreshAAR(); setInterval(refreshAAR,3000);
+</script>
+{% endblock %}

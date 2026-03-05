@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}C2 Console{% endblock %}
+{% block content %}
+<div class="grid-4" style="margin-bottom:8px">
+ <div class="card stat"><div class="value" id="s-assets">--</div><div class="label">ASSETS</div></div>
+ <div class="card stat"><div class="value" id="s-threats" style="color:#ff4444">--</div><div class="label">THREATS</div></div>
+ <div class="card stat"><div class="value" id="s-hal" style="color:#4488ff">--</div><div class="label">PENDING HAL</div></div>
+ <div class="card stat"><div class="value" id="s-gf" style="color:#ffaa00">--</div><div class="label">GF ALERTS</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:8px">
+ <div>
+  <div class="card"><h3>TACTICAL MAP — Tampa Bay AO
+   <span style="float:right">
+    <select id="wp-asset" style="width:130px;font-size:.8em"><option value="">-- select asset --</option></select>
+    <button class="btn" id="wp-btn" onclick="toggleWP()" style="padding:3px 8px" title="Toggle waypoint mode">📍 WP MODE</button>
+    <button class="btn btn-red" onclick="clearWP()" style="padding:3px 8px">CLR WP</button>
+   </span></h3>
+   <div id="map" style="height:520px"></div>
+   <div id="wp-status" style="color:#666;font-size:.75em;padding:4px"></div>
+  </div>
+ </div>
+ <div>
+  <div class="card"><h3>ASSET STATUS</h3><div class="scroll-box" style="max-height:200px">
+   <table><thead><tr><th>ID</th><th>DOM</th><th>STS</th><th>BAT</th><th>COM</th></tr></thead>
+   <tbody id="a-tb"></tbody></table></div></div>
+  <div class="card"><h3>THREAT TRACKS</h3><div class="scroll-box" style="max-height:160px">
+   <table><thead><tr><th>TRACK</th><th>TYPE</th><th>STS</th></tr></thead>
+   <tbody id="t-tb"></tbody></table></div></div>
+  <div class="card"><h3>GEOFENCE ALERTS</h3><div class="scroll-box" style="max-height:120px" id="gf-alerts">
+   <div style="color:#666;padding:6px">No alerts</div></div></div>
+  <div class="card"><h3>SIM CONTROL</h3>
+   <button class="btn" onclick="setSpd(0.5)">0.5x</button>
+   <button class="btn" onclick="setSpd(1)">1x</button>
+   <button class="btn" onclick="setSpd(2)">2x</button>
+   <button class="btn" onclick="setSpd(5)">5x</button>
+   <button class="btn" onclick="setSpd(10)">10x</button>
+   <span id="sim-clk" style="margin-left:10px;color:#888">T+0s</span>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const map=L.map('map',{zoomControl:false}).setView([27.849,-82.521],11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(map);
+let aM={},tM={},wpM={},wpL={},gfL={},wpMode=false;
+const DC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+function mkI(c,s){s=s||8;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 6px '+c+'"></div>',iconSize:[s,s],className:''});}
+
+// Waypoint mode
+function toggleWP(){
+ wpMode=!wpMode;
+ const b=document.getElementById('wp-btn');
+ b.style.background=wpMode?'#ffaa00':'transparent';
+ b.style.color=wpMode?'#000':'#00ff41';
+ b.style.borderColor=wpMode?'#ffaa00':'#00ff41';
+ map.getContainer().style.cursor=wpMode?'crosshair':'';
+ document.getElementById('wp-status').textContent=wpMode?'WAYPOINT MODE: Click map to set waypoint for selected asset':'';
+}
+function clearWP(){
+ const a=document.getElementById('wp-asset').value;
+ apiPost('/api/waypoints/clear',a?{asset_id:a}:{});
+}
+map.on('click',function(e){
+ if(!wpMode)return;
+ const a=document.getElementById('wp-asset').value;
+ if(!a){alert('Select an asset first');return;}
+ apiPost('/api/waypoints/add',{asset_id:a,lat:e.latlng.lat,lng:e.latlng.lng});
+});
+
+// Populate asset dropdown
+async function loadAssetSelect(){
+ const assets=await apiFetch('/api/assets');
+ const sel=document.getElementById('wp-asset');
+ const cur=sel.value;sel.innerHTML='<option value="">-- select --</option>';
+ for(const id of Object.keys(assets).sort())sel.innerHTML+='<option value="'+id+'">'+id+'</option>';
+ if(cur)sel.value=cur;
+}
+loadAssetSelect();
+
+// Refresh
+async function refresh(){
+ const assets=await apiFetch('/api/assets');
+ const tb=document.getElementById('a-tb');tb.innerHTML='';
+ for(const[id,a]of Object.entries(assets)){
+  const c=DC[a.domain]||'#888';
+  tb.innerHTML+='<tr><td style="color:'+c+'">'+id+'</td><td>'+a.domain+'</td><td><span class="badge badge-green">'+a.status+'</span></td><td>'+Math.round(a.health.battery_pct)+'%</td><td>'+Math.round(a.health.comms_strength)+'%</td></tr>';
+  const p=[a.position.lat,a.position.lng];
+  if(aM[id])aM[id].setLatLng(p);else aM[id]=L.marker(p,{icon:mkI(c)}).bindTooltip(id).addTo(map);
+ }
+ const threats=await apiFetch('/api/threats');
+ const ttb=document.getElementById('t-tb');ttb.innerHTML='';
+ for(const[id,t]of Object.entries(threats)){
+  const n=t.neutralized;
+  ttb.innerHTML+='<tr style="'+(n?'opacity:.4':'')+'"><td>'+id+'</td><td>'+t.type+'</td><td><span class="badge '+(n?'badge-green':'badge-red')+'">'+(n?'NEUT':'ACTIVE')+'</span></td></tr>';
+  if(t.lat&&t.lng&&!n){const p=[t.lat,t.lng];if(tM[id])tM[id].setLatLng(p);else tM[id]=L.marker(p,{icon:mkI('#ff4444',10)}).bindTooltip(id).addTo(map);}
+  else if(n&&tM[id]){map.removeLayer(tM[id]);delete tM[id];}
+ }
+ // Waypoints
+ const wps=await apiFetch('/api/waypoints');
+ for(const[aid,ms]of Object.entries(wpM)){ms.forEach(function(m){map.removeLayer(m);});}
+ for(const[aid,l]of Object.entries(wpL)){map.removeLayer(l);}
+ wpM={};wpL={};
+ for(const[aid,waypoints]of Object.entries(wps)){
+  if(!waypoints.length)continue;
+  wpM[aid]=[];const pts=[];
+  if(aM[aid])pts.push(aM[aid].getLatLng());
+  waypoints.forEach(function(w,i){
+   const m=L.circleMarker([w.lat,w.lng],{radius:5,color:'#ffaa00',fillColor:'#ffaa00',fillOpacity:.8}).bindTooltip(aid+' WP-'+(i+1)).addTo(map);
+   wpM[aid].push(m);pts.push([w.lat,w.lng]);
+  });
+  if(pts.length>1)wpL[aid]=L.polyline(pts,{color:'#ffaa00',weight:2,dashArray:'5,5',opacity:.7}).addTo(map);
+ }
+ // Geofences
+ for(const[id,l]of Object.entries(gfL)){map.removeLayer(l);}
+ gfL={};
+ const gfs=await apiFetch('/api/geofences');
+ const gc={operational:'#00ff41',restricted:'#ff4444',alert:'#ffaa00'};
+ for(const[id,gf]of Object.entries(gfs)){
+  const clr=gc[gf.type]||'#888';let layer;
+  if(Array.isArray(gf.points)){layer=L.polygon(gf.points.map(function(p){return[p.lat,p.lng];}),{color:clr,weight:1,fillOpacity:.03,dashArray:'8,4'});}
+  else if(gf.points&&gf.points.center){layer=L.circle([gf.points.center.lat,gf.points.center.lng],{radius:(gf.points.radius_nm||1)*1852,color:clr,weight:1,fillOpacity:.03,dashArray:'8,4'});}
+  if(layer){layer.bindTooltip(gf.name+' ['+gf.type.toUpperCase()+']');layer.addTo(map);gfL[id]=layer;}
+ }
+ // GF Alerts
+ const alerts=await apiFetch('/api/geofences/alerts');
+ const ad=document.getElementById('gf-alerts');
+ if(alerts.length===0)ad.innerHTML='<div style="color:#666;padding:6px">No alerts</div>';
+ else ad.innerHTML=alerts.slice(-20).reverse().map(function(a){
+  const c=a.geofence_type==='restricted'?'#ff4444':'#ffaa00';
+  return '<div style="border-left:3px solid '+c+';padding:3px 8px;margin:2px 0;font-size:.8em"><strong style="color:'+c+'">'+a.event.toUpperCase()+'</strong> '+a.entity_id+' — '+a.geofence_name+'</div>';
+ }).join('');
+}
+
+window.onSimUpdate=function(d){
+ document.getElementById('s-assets').textContent=d.asset_count;
+ document.getElementById('s-threats').textContent=d.threat_count;
+ document.getElementById('s-hal').textContent=d.pending_hal;
+ document.getElementById('s-gf').textContent=d.gf_alerts;
+ document.getElementById('sim-clk').textContent='T+'+Math.round(d.clock.elapsed_sec)+'s ('+d.clock.speed+'x)';
+};
+function setSpd(s){apiPost('/api/sim/speed',{speed:s});}
+refresh();setInterval(refresh,2500);
+</script>
+{% endblock %}
