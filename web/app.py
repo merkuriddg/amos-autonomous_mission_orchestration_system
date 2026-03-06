@@ -19,15 +19,27 @@ from mos_core.nodes.ros2_bridge import ROS2Bridge
 
 # Phase 3
 import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-from phase3_routes import phase3_bp, init_phase3
+
 
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "platoon_config.yaml")
 
 app = Flask(__name__,
+
             template_folder=os.path.join(BASE_DIR, "templates"),
+
+
             static_folder=os.path.join(BASE_DIR, "static"))
 app.secret_key = os.environ.get("MOS_SECRET", "mos-shadow-forge-2026")
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+@app.after_request
+def add_no_cache(response):
+    """Prevent browser from caching during development"""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 
 # ═══════════════════════════════════════════════════════════
 #  MULTI-USER SYSTEM
@@ -52,7 +64,6 @@ USERS = {
                    "name": "SPC Davis", "domain": "all",
                    "access": ["c2","field","voice","cm"]},
 }
-
 def login_required(f):
     @wraps(f)
     def dec(*a, **kw):
@@ -113,6 +124,49 @@ sigint_intercepts, sigint_emitter_db = [], {}
 cyber_events, cyber_blocked_ips = [], set()
 cm_log, hal_recommendations, aar_events = [], [], []
 swarms = {}
+
+class WaypointNav:
+    """Navigate assets along waypoints"""
+    def __init__(self):
+        self.routes = {}  # {asset_id: [{lat, lng}, ...]}
+
+    def set_waypoints(self, asset_id, waypoints):
+        self.routes[asset_id] = [{"lat": w["lat"], "lng": w["lng"]} for w in waypoints]
+
+    def get_waypoints(self, asset_id):
+        return self.routes.get(asset_id, [])
+
+    def tick(self, assets, dt):
+        """Move assets toward their next waypoint"""
+        import math
+        speed = 0.00008 * dt  # ~5 knots ground speed
+        for aid, wps in list(self.routes.items()):
+            if not wps or aid not in assets:
+                continue
+            a = assets[aid]
+            p = a.get("position", a)
+            if "lat" not in p:
+                continue
+            target = wps[0]
+            dlat = target["lat"] - p["lat"]
+            dlng = target["lng"] - p["lng"]
+            dist = math.sqrt(dlat**2 + dlng**2)
+            if dist < 0.0001:
+                # Arrived at waypoint
+                p["lat"] = target["lat"]
+                p["lng"] = target["lng"]
+                wps.pop(0)
+                if not wps:
+                    del self.routes[aid]
+            else:
+                # Move toward waypoint
+                ratio = min(1.0, speed / dist)
+                p["lat"] = round(p["lat"] + dlat * ratio, 6)
+                p["lng"] = round(p["lng"] + dlng * ratio, 6)
+                # Update heading
+                a["heading_deg"] = round(math.degrees(math.atan2(dlng, dlat)) % 360, 1)
+
+
 sim_clock = {"start_time": time.time(), "elapsed_sec": 0, "speed": 1.0, "running": True}
 
 ao = platoon.get("ao", {})
@@ -254,25 +308,40 @@ def sim_tick():
 #  AUTH ROUTES
 # ═══════════════════════════════════════════════════════════
 
-# --- Phase 3 Registration ---
-try:
-    _p3_state = {}
-    for _vname in ['assets', 'threats', 'events']:
-        if _vname in dir() or _vname in globals():
-            _p3_state[_vname] = globals().get(_vname, {})
-        elif _vname in locals():
-            _p3_state[_vname] = locals()[_vname]
-    if not _p3_state.get('assets'):
-        # Try common patterns
-        for _tryname in ['asset_registry', 'platoon_assets', 'ASSETS']:
-            if _tryname in globals():
-                _p3_state['assets'] = globals()[_tryname]
-                break
-    init_phase3(_p3_state)
-    app.register_blueprint(phase3_bp)
     print("[AMOS] Phase 3 routes registered")
-except Exception as _e:
-    print(f"[AMOS] Phase 3 warning: {_e}")
+
+
+try:
+    from phase3_routes import phase3_bp, init_phase3
+
+    def _amos_state_getter():
+        """Return live sim state for Phase 3 APIs"""
+        g = globals()
+        state = {}
+        for aname in ['assets', 'ASSETS', 'asset_registry', 'platoon_assets', 'sim_assets']:
+            if aname in g and g[aname]:
+                state['assets'] = g[aname]
+                break
+        for tname in ['threats', 'THREATS', 'sim_threats', 'threat_list']:
+            if tname in g and g[tname]:
+                state['threats'] = g[tname]
+                break
+        for ename in ['events', 'EVENTS', 'sim_events', 'event_log']:
+            if ename in g and g[ename]:
+                state['events'] = g[ename]
+                break
+        if 'sim' in g and hasattr(g['sim'], 'assets'):
+            state.setdefault('assets', g['sim'].assets)
+        if 'sim' in g and hasattr(g['sim'], 'threats'):
+            state.setdefault('threats', g['sim'].threats)
+        if 'sim' in g and hasattr(g['sim'], 'events'):
+            state.setdefault('events', g['sim'].events)
+        return state
+
+    print("[AMOS] Phase 3 routes registered")
+except Exception as e:
+    print(f"[AMOS] Phase 3 load warning: {e}")
+
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -712,6 +781,207 @@ def api_sim(): return jsonify(sim_clock)
 # ═══════════════════════════════════════════════════════════
 #  LAUNCH
 # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# AMOS Phase 3 — Live State Binding (clean insert)
+# ═══════════════════════════════════════════════════════════
+try:
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    from phase3_routes import phase3_bp, init_phase3
+
+    def _amos_state_getter():
+        g = globals()
+        state = {}
+        for aname in ['assets', 'ASSETS', 'asset_registry', 'platoon_assets', 'sim_assets']:
+            if aname in g and g[aname]:
+                state['assets'] = g[aname]; break
+        for tname in ['threats', 'THREATS', 'sim_threats', 'threat_list']:
+            if tname in g and g[tname]:
+                state['threats'] = g[tname]; break
+        for ename in ['events', 'EVENTS', 'sim_events', 'event_log']:
+            if ename in g and g[ename]:
+                state['events'] = g[ename]; break
+        if 'sim' in g and hasattr(g.get('sim'), 'assets'):
+            state.setdefault('assets', getattr(g['sim'], 'assets', {}))
+        if 'sim' in g and hasattr(g.get('sim'), 'threats'):
+            state.setdefault('threats', getattr(g['sim'], 'threats', []))
+        if 'sim' in g and hasattr(g.get('sim'), 'events'):
+            state.setdefault('events', getattr(g['sim'], 'events', []))
+        return state
+
+    init_phase3(_amos_state_getter)
+    app.register_blueprint(phase3_bp)
+    print("[AMOS] Phase 3 routes registered")
+except Exception as _e:
+    print(f"[AMOS] Phase 3 warning: {_e}")
+
+
+# ═══ SWARM FORMATION CONTROL ═══
+@app.errorhandler(500)
+def internal_error(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"success": False, "error": str(e)}), 500
+    return str(e), 500
+
+@app.errorhandler(404)
+def not_found_error(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"success": False, "error": "endpoint not found"}), 404
+    return str(e), 404
+
+
+# ══════════════════════════════════════════════════════════
+# SWARM FORMATION CONTROL
+# ══════════════════════════════════════════════════════════
+
+@app.route("/api/swarm/formation", methods=["POST"])
+def set_swarm_formation():
+    """Set swarm formation — assets MOVE to positions via waypoints"""
+    import math as _m
+    d = request.get_json() or {}
+    domain = (d.get("domain") or "ground").lower().strip()
+    formation = (d.get("formation") or d.get("pattern") or "LINE").upper().strip()
+
+    # Collect assets for this domain
+    domain_assets = []
+    for aid, a in sim_assets.items():
+        a_domain = str(a.get("domain", "")).lower().strip()
+        if a_domain == domain or domain == "all":
+            domain_assets.append((aid, a))
+
+    if not domain_assets:
+        existing = {}
+        for aid, a in sim_assets.items():
+            dd = str(a.get("domain", "?")).lower()
+            existing[dd] = existing.get(dd, 0) + 1
+        return jsonify({"error": f"No {domain} assets found. Have: {existing}"}), 400
+
+    n = len(domain_assets)
+
+    # Get current positions
+    def get_pos(a):
+        p = a.get("position", a)
+        return float(p.get("lat", 0)), float(p.get("lng", 0))
+
+    lats, lngs = [], []
+    for aid, a in domain_assets:
+        lat, lng = get_pos(a)
+        lats.append(lat)
+        lngs.append(lng)
+
+    clat = sum(lats) / n
+    clng = sum(lngs) / n
+    spacing = 0.002 if domain == "ground" else 0.005
+
+    # Calculate formation target positions
+    targets = []
+    for i, (aid, a) in enumerate(domain_assets):
+        if formation == "LINE":
+            nlat = clat
+            nlng = clng + (i - n / 2) * spacing
+        elif formation == "COLUMN":
+            nlat = clat + (i - n / 2) * spacing
+            nlng = clng
+        elif formation == "WEDGE":
+            row = i // 2
+            side = 1 if i % 2 == 0 else -1
+            nlat = clat - row * spacing
+            nlng = clng + side * row * spacing * 0.6
+        elif formation == "DIAMOND":
+            angle = i * (2 * _m.pi / n)
+            r = spacing * 2
+            nlat = clat + r * _m.cos(angle)
+            nlng = clng + r * _m.sin(angle)
+        elif formation == "SPREAD":
+            row = i // 3
+            col = i % 3
+            nlat = clat + (row - n / 6) * spacing * 1.5
+            nlng = clng + (col - 1) * spacing * 2
+        elif formation == "ORBIT":
+            angle = i * (2 * _m.pi / n)
+            r = spacing * 3
+            nlat = clat + r * _m.cos(angle)
+            nlng = clng + r * _m.sin(angle)
+        else:
+            nlat = clat
+            nlng = clng + (i - n / 2) * spacing
+
+        nlat = round(nlat, 6)
+        nlng = round(nlng, 6)
+
+        # Set waypoint for animated movement
+        waypoint_nav.set_waypoint(aid, nlat, nlng, label=f"FORM-{formation}")
+        targets.append({"id": aid, "lat": nlat, "lng": nlng})
+
+    # Build drawable formation object for frontend map
+    members = []
+    for i, (aid, a) in enumerate(domain_assets):
+        p = a.get("position", a)
+        cur_lat = float(p.get("lat", 0))
+        cur_lng = float(p.get("lng", 0))
+        tgt = targets[i]
+        members.append({
+            "id": aid,
+            "callsign": a.get("callsign", aid),
+            "lat": cur_lat,
+            "lng": cur_lng,
+            "formation_lat": tgt["lat"],
+            "formation_lng": tgt["lng"]
+        })
+
+    formation_obj = {
+        "pattern": formation.lower(),
+        "members": members,
+        "center": {"lat": clat, "lng": clng}
+    }
+
+    msg = f"{n} {domain} assets moving to {formation} (watch the map!)"
+    return jsonify({
+        "success": True,
+        "formation": formation_obj,
+        "pattern": formation,
+        "domain": domain,
+        "count": n,
+        "positions": targets,
+        "message": msg
+    })
+
+@app.route("/api/swarm/formation/clear", methods=["POST"])
+@app.route("/api/swarm/clear", methods=["POST"])
+def clear_swarm_formation():
+    """Clear formation, return to patrol"""
+    d = request.get_json() or {}
+    domain = d.get("domain", "ground").lower().strip()
+    count = 0
+    for aid, a in sim_assets.items():
+        a_domain = str(a.get("domain", "")).lower().strip()
+        if a_domain == domain or domain == "all":
+            count += 1
+    return jsonify({
+        "success": True,
+        "count": count,
+        "message": f"{count} {domain} assets returned to patrol"
+    })
+
+
+@app.route("/api/swarm/debug")
+def swarm_debug():
+    """Debug: show asset structure"""
+    info = {"asset_count": len(sim_assets), "domains": {}, "sample_keys": None, "position_sample": None}
+    for aid, a in sim_assets.items():
+        dom = str(a.get("domain", "?")).lower()
+        info["domains"][dom] = info["domains"].get(dom, 0) + 1
+        if info["sample_keys"] is None:
+            info["sample_keys"] = list(a.keys())[:15]
+            # Show position structure
+            if "position" in a:
+                info["position_sample"] = a["position"]
+            elif "lat" in a:
+                info["position_sample"] = {"lat": a["lat"], "lng": a["lng"]}
+            info["sample_id"] = aid
+    return jsonify(info)
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     print("\n" + "=" * 58)

@@ -1,3 +1,11 @@
+
+    <style>
+    .swarm-btn{background:#0a1a0a;color:#00ff41;border:1px solid #00ff4144;padding:8px 4px;
+        border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:11px;
+        transition:all .2s;text-align:center}
+    .swarm-btn:hover{background:#00ff4115;border-color:#00ff41;box-shadow:0 0 10px #00ff4133}
+    .swarm-btn.active{background:#00ff4122;border-color:#00ff41;color:#fff;box-shadow:0 0 15px #00ff4144}
+    </style>
 {% extends "base.html" %}
 {% block title %}C2 Console{% endblock %}
 {% block content %}
@@ -36,6 +44,83 @@
    <button class="btn" onclick="setSpd(10)">10x</button>
    <span id="sim-clk" style="margin-left:10px;color:#888">T+0s</span>
   </div>
+
+    <!-- ═══ SWARM CONTROL PANEL ═══ -->
+    <div id="swarm-control" style="margin-top:12px;padding:12px;background:#0a0a1a;border:1px solid #1a1a3e;border-radius:6px">
+        <div style="color:#00ff41;font-size:12px;font-weight:bold;margin-bottom:10px;font-family:'Courier New',monospace;letter-spacing:1px">
+            ⬡ SWARM CONTROL
+        </div>
+        
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- AMOS C2 PLANNER PANEL                                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="c2-planner-panel" style="background:rgba(0,0,0,0.85);border:1px solid #00ff41;border-radius:8px;padding:10px;margin:6px 0;font-family:'Courier New',monospace">
+  <div style="color:#00ff41;font-weight:bold;font-size:.85em;margin-bottom:6px;border-bottom:1px solid #00ff4144;padding-bottom:4px">
+    ⬡ C2 COMMAND PANEL
+  </div>
+
+  <!-- ROW 1: Asset selector + Domain -->
+  <div style="display:flex;gap:6px;margin-bottom:6px;align-items:stretch">
+    <!-- Asset Multi-Select Dropdown -->
+    <div style="flex:2;position:relative">
+      <button id="c2-asset-toggle" onclick="c2ToggleDropdown()" 
+              style="width:100%;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:.75em;text-align:left;font-family:inherit">
+        ▼ SELECT ASSETS <span id="c2-asset-count" style="float:right;color:#888">(0)</span>
+      </button>
+      <div id="c2-asset-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;background:#111;border:1px solid #00ff41;border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;padding:4px">
+        <div style="padding:2px 6px;border-bottom:1px solid #333">
+          <label style="color:#888;font-size:.7em;cursor:pointer">
+            <input type="checkbox" id="c2-select-all" onchange="c2ToggleAll(this.checked)"> SELECT ALL
+          </label>
+        </div>
+        <div id="c2-asset-list">
+          <div style="color:#555;font-size:.7em;padding:4px">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Domain Filter -->
+    <select id="c2-domain-filter" onchange="c2FilterAssets()" 
+            style="flex:1;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px;border-radius:4px;font-size:.75em;font-family:inherit">
+      <option value="all">ALL</option>
+      <option value="ground" selected>GROUND</option>
+      <option value="air">AIR</option>
+      <option value="maritime">MARITIME</option>
+    </select>
+  </div>
+
+  <!-- ROW 2: Action Dropdown + Execute -->
+  <div style="display:flex;gap:6px;margin-bottom:6px">
+    <select id="c2-action" style="flex:2;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px;border-radius:4px;font-size:.75em;font-family:inherit">
+      <optgroup label="FORMATIONS">
+        <option value="form:LINE">⊞ LINE</option>
+        <option value="form:COLUMN">⊞ COLUMN</option>
+        <option value="form:WEDGE">⊞ WEDGE</option>
+        <option value="form:DIAMOND">⊞ DIAMOND</option>
+        <option value="form:SPREAD">⊞ SPREAD</option>
+        <option value="form:ORBIT">⊞ ORBIT</option>
+      </optgroup>
+      <optgroup label="COMMANDS">
+        <option value="cmd:hold">⏸ HOLD POSITION</option>
+        <option value="cmd:rtb">⏎ RETURN TO BASE</option>
+        <option value="cmd:patrol">↻ RESUME PATROL</option>
+      </optgroup>
+      <optgroup label="SWARM">
+        <option value="swarm:create">⬡ CREATE SWARM</option>
+        <option value="swarm:clear">✕ CLEAR FORMATION</option>
+      </optgroup>
+    </select>
+    <button onclick="c2Execute()" 
+            style="flex:1;background:#00ff41;color:#000;border:none;padding:5px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:.8em;font-family:inherit">
+      ▶ EXECUTE
+    </button>
+  </div>
+
+  <!-- ROW 3: Status -->
+  <div id="c2-status" style="color:#888;font-size:.7em;padding:2px 4px">Ready — select assets and action</div>
+</div>
+
+
  </div>
 </div>
 {% endblock %}
@@ -141,5 +226,200 @@ window.onSimUpdate=function(d){
 };
 function setSpd(s){apiPost('/api/sim/speed',{speed:s});}
 refresh();setInterval(refresh,2500);
+
+  // Expose map for AMOS Phase 3
+  (function(){
+    var els=document.querySelectorAll('.leaflet-container');
+    if(els.length){setTimeout(function(){
+      for(var k in window){try{if(window[k]&&window[k]._leaflet_id&&window[k].getCenter){window.amosMap=window[k];break;}}catch(e){}}
+    },500);}
+  })();
+
+
+
+
+// Alias for any other name used in onclick handlers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async function clearFormation() {
+    var domainEl = document.getElementById('swarm-domain');
+    var domain = (domainEl && domainEl.value) ? domainEl.value.toLowerCase() : 'ground';
+    var statusEl = document.getElementById('swarm-status');
+    try {
+        var resp = await fetch('/api/swarm/clear', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({domain: domain})
+        });
+        var data = await resp.json();
+        if (statusEl) { statusEl.textContent = data.message || 'Cleared'; statusEl.style.color = '#00ff88'; }
+    } catch(e) {
+        console.error('[SWARM] Clear error:', e);
+    }
+}
+
 </script>
+
+<script>
+// ── C2 Command Panel ──
+var c2Selected = {};
+var c2Assets = {};
+
+function c2LoadAssets(){
+    fetch('/api/assets').then(function(r){return r.json()}).then(function(data){
+        c2Assets = data;
+        c2RenderList();
+    }).catch(function(e){ console.warn('[C2] load error', e); });
+}
+
+function c2RenderList(){
+    var list = document.getElementById('c2-asset-list');
+    if(!list) return;
+    var filt = document.getElementById('c2-domain-filter');
+    var dom = filt ? filt.value : 'all';
+    var h = '';
+    var ids = Object.keys(c2Assets).sort();
+    for(var i=0; i<ids.length; i++){
+        var id = ids[i];
+        var a = c2Assets[id];
+        var ad = (a.domain||'').toLowerCase();
+        if(dom !== 'all' && ad !== dom) continue;
+        var chk = c2Selected[id] ? ' checked' : '';
+        var col = ad==='air'?'#4fc3f7':ad==='maritime'?'#29b6f6':'#66bb6a';
+        h += '<label style="display:block;padding:2px 6px;font-size:.7em;cursor:pointer;color:#ccc">' +
+            '<input type="checkbox" class="c2-asset-cb" value="'+id+'"'+chk+
+            ' onchange="c2AssetCheck(this)"> <span style="color:'+col+'">'+id+'</span>'+
+            ' <span style="color:#555">('+ad+')</span></label>';
+    }
+    list.innerHTML = h || '<div style="color:#555;font-size:.7em;padding:4px">No assets</div>';
+    c2UpdateCount();
+}
+
+function c2AssetCheck(cb){
+    if(cb.checked) c2Selected[cb.value] = true;
+    else delete c2Selected[cb.value];
+    c2UpdateCount();
+}
+
+function c2UpdateCount(){
+    var el = document.getElementById('c2-asset-count');
+    if(el) el.textContent = '(' + Object.keys(c2Selected).length + ')';
+}
+
+function c2ToggleAll(checked){
+    document.querySelectorAll('.c2-asset-cb').forEach(function(cb){
+        cb.checked = checked;
+        if(checked) c2Selected[cb.value] = true;
+        else delete c2Selected[cb.value];
+    });
+    c2UpdateCount();
+}
+
+function c2ToggleDropdown(){
+    var dd = document.getElementById('c2-asset-dropdown');
+    if(dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function c2FilterAssets(){ c2RenderList(); }
+
+function c2Execute(){
+    var actionEl = document.getElementById('c2-action');
+    var statusEl = document.getElementById('c2-status');
+    if(!actionEl){ console.error('[C2] No action select'); return; }
+
+    var val = actionEl.value;
+    var parts = val.split(':');
+    var type = parts[0];
+    var action = parts[1];
+    var domEl = document.getElementById('c2-domain-filter');
+    var domain = domEl ? domEl.value : 'all';
+    var selected = Object.keys(c2Selected);
+
+    console.log('[C2] Execute:', type, action, 'domain:', domain, 'selected:', selected.length);
+
+    if(type === 'form'){
+        // Sync hidden swarm-domain
+        var sd = document.getElementById('swarm-domain');
+        if(sd) sd.value = domain;
+        if(!sd){
+            sd = document.createElement('select');
+            sd.id = 'swarm-domain'; sd.style.display = 'none';
+            sd.innerHTML = '<option value="ground">ground</option><option value="air">air</option><option value="maritime">maritime</option><option value="all">all</option>';
+            document.body.appendChild(sd);
+            sd.value = domain;
+        }
+
+        statusEl.textContent = '⏳ ' + action.toUpperCase() + '...';
+        statusEl.style.color = '#ffaa00';
+
+        // Use AMOS.setFormation if available
+        if(window.AMOS && typeof AMOS.setFormation === 'function'){
+            console.log('[C2] Calling AMOS.setFormation("'+action+'")');
+            AMOS.setFormation(action);
+            return;
+        }
+
+        // Fallback direct API
+        fetch('/api/swarm/formation', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({formation: action, domain: domain})
+        }).then(function(r){return r.json()}).then(function(data){
+            if(data.error){
+                statusEl.textContent = '✕ ' + data.error;
+                statusEl.style.color = '#ff4444';
+                return;
+            }
+            statusEl.textContent = '✓ ' + action.toUpperCase() + ' (' + (data.count||0) + ' assets)';
+            statusEl.style.color = '#00ff41';
+        }).catch(function(e){
+            statusEl.textContent = '✕ ' + e.message;
+            statusEl.style.color = '#ff4444';
+        });
+    }
+    else if(type === 'cmd'){
+        if(selected.length === 0){
+            statusEl.textContent = '⚠ Select assets first';
+            statusEl.style.color = '#ffaa00';
+            return;
+        }
+        statusEl.textContent = '⏳ ' + action + '...';
+        Promise.all(selected.map(function(id){
+            return fetch('/api/phase3/asset/'+encodeURIComponent(id)+'/task',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({task:action})
+            });
+        })).then(function(){
+            statusEl.textContent = '✓ ' + action.toUpperCase() + ' → ' + selected.length;
+            statusEl.style.color = '#00ff41';
+        });
+    }
+    else if(type === 'swarm'){
+        if(action === 'clear'){
+            fetch('/api/swarm/clear',{method:'POST'}).then(function(){
+                statusEl.textContent = '✓ Cleared';
+                statusEl.style.color = '#00ff41';
+            });
+        }
+    }
+}
+
+c2LoadAssets();
+setInterval(c2LoadAssets, 10000);
+console.log('[AMOS] C2 panel functions loaded');
+</script>
+
 {% endblock %}
+

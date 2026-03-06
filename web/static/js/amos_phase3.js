@@ -1,505 +1,650 @@
-/* ================================================================
-   MOS Phase 3 — UI Enhancement System
-   Drops A (Polish) + B (Rich Panels) + C (New Capabilities)
-   ================================================================ */
-window.AMOS = window.AMOS || {};
+/* ═══════════════════════════════════════════════════════════
+   AMOS Phase 3 — Autonomous Mission Operating System
+   Complete UI: Modals, Sorting, Mesh, Toasts, Swarm Patterns
+   ═══════════════════════════════════════════════════════════ */
+console.log('[AMOS] Phase 3 JS loading...');
 
-/* ======================== TOAST ======================== */
-AMOS.Toast={
-  container:null,
-  init(){
-    this.container=document.getElementById('amos-toast-container');
-    if(!this.container){
-      this.container=document.createElement('div');
-      this.container.id='amos-toast-container';
-      this.container.className='amos-toast-container';
-      document.body.appendChild(this.container);
-    }
-  },
-  show(msg,type='info',dur=5000){
-    if(!this.container)this.init();
-    const t=document.createElement('div');
-    t.className='amos-toast '+type;
-    const ic={info:'ℹ️',warning:'⚠️',critical:'🔴',success:'✅'};
-    t.innerHTML=(ic[type]||'')+'  '+msg;
-    t.onclick=()=>t.remove();
-    this.container.appendChild(t);
-    if(dur>0)setTimeout(()=>{if(t.parentNode){t.style.opacity='0';t.style.transform='translateX(120%)';t.style.transition='all .3s';setTimeout(()=>t.remove(),300);}},dur);
-  }
+(function(){
+"use strict";
+
+/* ── NAMESPACE ── */
+var A = window.AMOS = window.AMOS || {};
+
+/* ═══════════════════════════
+   TOAST NOTIFICATIONS
+   ═══════════════════════════ */
+A.toast = function(msg, sev){
+    sev = sev || 'info';
+    var c = document.getElementById('amos-toast-container');
+    if(!c) return;
+    var colors = {info:'#00ff41',success:'#00ff41',warning:'#ffd700',critical:'#ff0040',error:'#ff0040'};
+    var col = colors[sev] || colors.info;
+    var t = document.createElement('div');
+    t.className = 'amos-toast';
+    t.style.border = '1px solid ' + col;
+    t.style.color = col;
+    t.style.boxShadow = '0 0 15px ' + col + '33';
+    t.textContent = '\u2B21 ' + msg;
+    c.appendChild(t);
+    setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .5s'},4000);
+    setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},4500);
 };
 
-/* ======================== MODAL ======================== */
-AMOS.Modal={
-  overlay:null,
-  init(){
-    this.overlay=document.getElementById('amos-modal-overlay');
-    if(!this.overlay){
-      this.overlay=document.createElement('div');
-      this.overlay.id='amos-modal-overlay';
-      this.overlay.className='amos-modal-overlay';
-      document.body.appendChild(this.overlay);
-    }
-    this.overlay.addEventListener('click',e=>{if(e.target===this.overlay)this.hide();});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')this.hide();});
-  },
-  show(title,bodyHtml,actions){
-    if(!this.overlay)this.init();
-    actions=actions||[];
-    let ah=actions.map(a=>`<button class="btn btn-sm ${a.cls||'btn-outline-light'}" onclick="${a.onclick}">${a.icon||''} ${a.label}</button>`).join('');
-    this.overlay.innerHTML=`<div class="amos-modal">
-      <div class="amos-modal-header"><h2>${title}</h2><button class="amos-modal-close" onclick="AMOS.Modal.hide()">&times;</button></div>
-      <div class="amos-modal-body">${bodyHtml}</div>
-      ${ah?'<div class="amos-modal-actions">'+ah+'</div>':''}
-    </div>`;
-    this.overlay.classList.add('active');
-  },
-  hide(){if(this.overlay)this.overlay.classList.remove('active');},
+/* ═══════════════════════════
+   MODAL SYSTEM
+   ═══════════════════════════ */
+A.modal = {};
 
-  showAsset(id){
-    fetch('/api/phase3/asset/'+encodeURIComponent(id)).then(r=>r.json()).then(a=>{
-      if(a.error){AMOS.Toast.show('Asset not found: '+id,'warning');return;}
-      const hc=a.health>70?'green':a.health>30?'yellow':'red';
-      const bc=(a.battery||100)>50?'#00ff41':(a.battery||100)>20?'#ffd700':'#ff0040';
-      const tiers=['Manual','Assisted','Partial Auto','Conditional Auto','High Auto','Full Auto'];
-      let body=`<div class="detail-grid">
-        <div class="detail-item"><span class="detail-label">Callsign</span><span class="detail-value green">${a.callsign||a.name||a.id}</span></div>
-        <div class="detail-item"><span class="detail-label">Type</span><span class="detail-value">${(a.type||'').toUpperCase()}</span></div>
-        <div class="detail-item"><span class="detail-label">Position</span><span class="detail-value">${(a.lat||0).toFixed(4)}, ${(a.lng||0).toFixed(4)}</span></div>
-        <div class="detail-item"><span class="detail-label">Altitude</span><span class="detail-value">${a.alt||0} ft</span></div>
-        <div class="detail-item"><span class="detail-label">Speed</span><span class="detail-value">${a.speed||0} kts</span></div>
-        <div class="detail-item"><span class="detail-label">Heading</span><span class="detail-value">${a.heading||0}&deg;</span></div>
-        <div class="detail-item"><span class="detail-label">Status</span><span class="detail-value ${a.status==='active'?'green':'yellow'}">${(a.status||'unknown').toUpperCase()}</span></div>
-        <div class="detail-item"><span class="detail-label">Autonomy</span><span class="detail-value">${tiers[a.autonomy||0]} (T${a.autonomy||0})</span></div>
-      </div>
-      <hr style="border-color:#1a1a3e;margin:14px 0">
-      <div class="bar-label"><span>Health</span><span class="${hc}">${a.health||100}%</span></div>
-      <div class="bar-gauge"><div class="bar-gauge-fill" style="width:${a.health||100}%;background:${a.health>70?'#00ff41':a.health>30?'#ffd700':'#ff0040'}"></div></div>
-      <div class="bar-label"><span>Battery / Fuel</span><span>${a.battery||100}%</span></div>
-      <div class="bar-gauge"><div class="bar-gauge-fill" style="width:${a.battery||100}%;background:${bc}"></div></div>`;
-      if(a.sensors&&a.sensors.length)body+=`<hr style="border-color:#1a1a3e;margin:14px 0"><div class="detail-label">SENSORS</div><div style="color:#c0c0c0;font-family:monospace;font-size:12px;margin-top:4px">${a.sensors.map(s=>'<span style="margin-right:12px">▸ '+s+'</span>').join('')}</div>`;
-      if(a.weapons&&a.weapons.length)body+=`<div class="detail-label" style="margin-top:10px">WEAPONS</div><div style="color:#c0c0c0;font-family:monospace;font-size:12px;margin-top:4px">${a.weapons.map(w=>'<span style="margin-right:12px">▸ '+w+'</span>').join('')}</div>`;
-      AMOS.Modal.show('📡 '+( a.name||a.callsign||a.id),body,[
-        {label:'📍 Send To',cls:'btn-outline-success',onclick:"AMOS.Planner.sendTo('"+a.id+"')"},
-        {label:'🔄 Orbit',cls:'btn-outline-info',onclick:"AMOS.taskAsset('"+a.id+"','orbit')"},
-        {label:'🏠 RTB',cls:'btn-outline-warning',onclick:"AMOS.taskAsset('"+a.id+"','rtb')"},
-        {label:'🤖 Autonomy',cls:'btn-outline-light',onclick:"AMOS.showAutonomyPicker('"+a.id+"',"+(a.autonomy||0)+")"}
-      ]);
-    }).catch(e=>AMOS.Toast.show('Load failed: '+e,'critical'));
-  },
-
-  showThreat(id){
-    fetch('/api/phase3/threat/'+encodeURIComponent(id)).then(r=>r.json()).then(t=>{
-      if(t.error){AMOS.Toast.show('Threat not found: '+id,'warning');return;}
-      const sc=t.threat_score>0.7?'red':t.threat_score>0.4?'yellow':'green';
-      let body=`<div class="detail-grid">
-        <div class="detail-item"><span class="detail-label">Classification</span><span class="detail-value red">${(t.type||'UNKNOWN').replace(/_/g,' ').toUpperCase()}</span></div>
-        <div class="detail-item"><span class="detail-label">Threat Score</span><span class="detail-value ${sc}">${((t.threat_score||0)*100).toFixed(0)}%</span></div>
-        <div class="detail-item"><span class="detail-label">Position</span><span class="detail-value">${(t.lat||0).toFixed(4)}, ${(t.lng||0).toFixed(4)}</span></div>
-        <div class="detail-item"><span class="detail-label">Heading / Speed</span><span class="detail-value">${t.heading||0}&deg; / ${t.speed||0} kts</span></div>
-        <div class="detail-item"><span class="detail-label">Nearest Friendly</span><span class="detail-value">${t.nearest_dist?t.nearest_dist.toFixed(1)+' km':'N/A'}</span></div>
-        <div class="detail-item"><span class="detail-label">Status</span><span class="detail-value ${t.status==='neutralized'?'green':'red'}">${(t.status||'active').toUpperCase()}</span></div>
-      </div>`;
-      if(t.recommended_coa)body+=`<hr style="border-color:#1a1a3e;margin:14px 0"><div class="detail-label">RECOMMENDED COA</div><div style="color:#ffd700;font-family:monospace;font-size:13px;margin-top:5px">${t.recommended_coa}</div>`;
-      AMOS.Modal.show('⚠️ THREAT: '+(t.type||t.id),body,[
-        {label:'🎯 Track',cls:'btn-outline-info',onclick:"AMOS.engage('"+t.id+"','track')"},
-        {label:'📡 Jam',cls:'btn-outline-warning',onclick:"AMOS.engage('"+t.id+"','jam')"},
-        {label:'💥 Engage',cls:'btn-outline-danger',onclick:"AMOS.engage('"+t.id+"','engage')"},
-        {label:'🛡️ Cyber Block',cls:'btn-outline-success',onclick:"AMOS.engage('"+t.id+"','cyber_block')"}
-      ]);
-    }).catch(e=>AMOS.Toast.show('Load failed: '+e,'critical'));
-  }
+A.modal.open = function(title, bodyHtml, actionsHtml){
+    var ov = document.getElementById('amos-modal-overlay');
+    if(!ov) return;
+    document.getElementById('amos-modal-title').textContent = title;
+    document.getElementById('amos-modal-body').innerHTML = bodyHtml;
+    document.getElementById('amos-modal-actions').innerHTML = actionsHtml || '';
+    ov.style.display = 'block';
 };
 
-/* ======================== SORTABLE TABLES ======================== */
-AMOS.Tables={
-  init(){
-    document.querySelectorAll('table').forEach(tbl=>{
-      if(!tbl.classList.contains('sortable'))tbl.classList.add('sortable');
-      tbl.querySelectorAll('th').forEach((th,idx)=>{
-        th.addEventListener('click',()=>{
-          const asc=!th.classList.contains('sort-asc');
-          tbl.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
-          th.classList.add(asc?'sort-asc':'sort-desc');
-          this.sort(tbl,idx,asc);
-        });
-      });
-    });
-  },
-  sort(tbl,col,asc){
-    const tb=tbl.querySelector('tbody')||tbl;
-    const rows=Array.from(tb.querySelectorAll('tr')).filter(r=>!r.querySelector('th'));
-    rows.sort((a,b)=>{
-      let av=(a.cells[col]?.textContent||'').trim(),bv=(b.cells[col]?.textContent||'').trim();
-      let an=parseFloat(av.replace(/[^0-9.\-]/g,'')),bn=parseFloat(bv.replace(/[^0-9.\-]/g,''));
-      if(!isNaN(an)&&!isNaN(bn))return asc?an-bn:bn-an;
-      return asc?av.localeCompare(bv):bv.localeCompare(av);
-    });
-    rows.forEach(r=>tb.appendChild(r));
-  }
+A.modal.close = function(){
+    var ov = document.getElementById('amos-modal-overlay');
+    if(ov) ov.style.display = 'none';
 };
 
-/* ======================== MESH / COMM LINES ======================== */
-AMOS.Mesh={
-  lines:[],map:null,
-  init(map){this.map=map;},
-  update(assets){
-    if(!this.map)return;
-    this.lines.forEach(l=>this.map.removeLayer(l));this.lines=[];
-    const list=Array.isArray(assets)?assets:Object.values(assets||{});
-    const range={air:80,ground:30,maritime:50,awacs:150};
-    for(let i=0;i<list.length;i++){
-      for(let j=i+1;j<list.length;j++){
-        const a=list[i],b=list[j];
-        if(!a.lat||!b.lat)continue;
-        const d=this._hav(a.lat,a.lng,b.lat,b.lng);
-        const mr=Math.max(range[a.type]||30,range[b.type]||30);
-        if(d<=mr){
-          const q=1-(d/mr);
-          const c=q>.6?'rgba(0,255,65,0.5)':q>.3?'rgba(255,215,0,0.35)':'rgba(255,0,64,0.3)';
-          const ln=L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:c,weight:q>.6?1.5:1,dashArray:q<.3?'5 5':null}).addTo(this.map);
-          ln.bindTooltip(`${a.callsign||a.id} ↔ ${b.callsign||b.id}<br>${d.toFixed(1)}km — ${(q*100).toFixed(0)}%`,{className:'amos-mesh-tooltip'});
-          this.lines.push(ln);
+A.modal.showAsset = function(id){
+    A.modal.open('\uD83D\uDCE1 ASSET: ' + id, '<div style="color:#666">Loading...</div>', '');
+    fetch('/api/phase3/asset/' + encodeURIComponent(id))
+    .then(function(r){return r.json()})
+    .then(function(d){
+        if(d.error){
+            A.modal.open('\u26A0 ASSET: ' + id,
+                '<div style="color:#ff4444">Not found: '+id+'</div>' +
+                (d.available ? '<div style="color:#555;margin-top:8px;font-size:11px">Available keys: '+d.available.join(', ')+'</div>' : ''), '');
+            return;
         }
-      }
-    }
-  },
-  _hav(a,b,c,d){const R=6371,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+        var h = '<table>';
+        var skip = ['description','recommended_coa','sensors','weapons','waypoints'];
+        for(var k in d){
+            if(skip.indexOf(k) >= 0) continue;
+            var v = d[k]; if(typeof v === 'object') v = JSON.stringify(v);
+            var c = '#ccc';
+            if(k==='health'||k==='battery'){var n=parseFloat(v);c=n>70?'#00ff41':n>40?'#ffd700':'#ff0040'}
+            if(k==='status') c = v==='active'||v==='operational'?'#00ff41':v==='rtb'?'#ffd700':'#ff8800';
+            h += '<tr><td>'+k+'</td><td style="color:'+c+'">'+v+'</td></tr>';
+        }
+        h += '</table>';
+        if(d.sensors && d.sensors.length) h += '<div style="margin-top:8px;color:#666;font-size:11px">Sensors: '+d.sensors.join(', ')+'</div>';
+        var btns = '<button class="amos-btn amos-btn-green" onclick="AMOS.taskAsset(\''+id+'\',\'orbit\')">\u27F3 Orbit</button>' +
+                   '<button class="amos-btn amos-btn-yellow" onclick="AMOS.taskAsset(\''+id+'\',\'rtb\')">\u23CE RTB</button>' +
+                   '<button class="amos-btn amos-btn-blue" onclick="AMOS.taskAsset(\''+id+'\',\'hold\')">\u23F8 Hold</button>';
+        A.modal.open('\uD83D\uDCE1 ' + (d.callsign||d.name||id), h, btns);
+    }).catch(function(e){ A.modal.open('Error', '<div style="color:red">'+e.message+'</div>','')});
 };
 
-/* ======================== CONTEXT MENU ======================== */
-AMOS.ContextMenu={
-  menu:null,latlng:null,
-  init(map){
-    this.menu=document.createElement('div');this.menu.className='amos-ctx-menu';document.body.appendChild(this.menu);
-    map.on('contextmenu',e=>{e.originalEvent.preventDefault();this.latlng=e.latlng;this._show(e.originalEvent.clientX,e.originalEvent.clientY);});
-    document.addEventListener('click',()=>this.hide());
-  },
-  _show(x,y){
-    this.menu.innerHTML=`
-      <div class="amos-ctx-item" onclick="AMOS.ContextMenu.act('wp')"><span class="ctx-icon">📍</span>Add Waypoint</div>
-      <div class="amos-ctx-item" onclick="AMOS.ContextMenu.act('send')"><span class="ctx-icon">➡️</span>Send Nearest Asset</div>
-      <div class="amos-ctx-item" onclick="AMOS.ContextMenu.act('orbit')"><span class="ctx-icon">🔄</span>Orbit Pattern</div>
-      <div class="amos-ctx-item" onclick="AMOS.ContextMenu.act('threat')"><span class="ctx-icon">⚠️</span>Mark Threat</div>
-      <div class="amos-ctx-item" onclick="AMOS.ContextMenu.act('measure')"><span class="ctx-icon">📏</span>Measure Distance</div>`;
-    this.menu.style.left=x+'px';this.menu.style.top=y+'px';this.menu.classList.add('active');
-  },
-  hide(){if(this.menu)this.menu.classList.remove('active');},
-  act(type){
-    const ll=this.latlng;if(!ll)return;this.hide();
-    if(type==='wp'){AMOS.Planner.addWaypoint(ll.lat,ll.lng);}
-    else if(type==='send'){
-      fetch('/api/phase3/send_nearest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:ll.lat,lng:ll.lng})}).then(r=>r.json()).then(d=>AMOS.Toast.show('Sending '+d.asset+' to '+ll.lat.toFixed(4)+', '+ll.lng.toFixed(4),'success'));
-    }else if(type==='orbit'){
-      fetch('/api/phase3/task_nearest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:ll.lat,lng:ll.lng,task:'orbit'})}).then(r=>r.json()).then(d=>AMOS.Toast.show(d.asset+' entering orbit','success'));
-    }else if(type==='threat'){
-      if(window.aamosMap)L.marker([ll.lat,ll.lng],{icon:L.divIcon({className:'',html:'<div style="color:red;font-size:22px">⚠️</div>'})}).addTo(window.aamosMap);
-      AMOS.Toast.show('Threat marked at '+ll.lat.toFixed(4)+', '+ll.lng.toFixed(4),'warning');
-    }else AMOS.Toast.show(type+' at '+ll.lat.toFixed(4)+', '+ll.lng.toFixed(4),'info');
-  }
+A.modal.showThreat = function(id){
+    A.modal.open('\u26A0 THREAT: ' + id, '<div style="color:#666">Loading...</div>', '');
+    fetch('/api/phase3/threat/' + encodeURIComponent(id))
+    .then(function(r){return r.json()})
+    .then(function(d){
+        if(d.error){
+            A.modal.open('\u26A0 THREAT: ' + id, '<div style="color:#ff4444">Not found</div>','');
+            return;
+        }
+        var h = '<table>';
+        for(var k in d){
+            if(k==='recommended_coa') continue;
+            var v = d[k]; if(typeof v==='object') v=JSON.stringify(v);
+            var c = '#ccc';
+            if(k==='threat_score'){var n=parseFloat(v);c=n>0.7?'#ff0040':n>0.4?'#ffd700':'#00ff41'}
+            if(k==='status') c=v==='active'?'#ff0040':'#ffd700';
+            h += '<tr><td>'+k+'</td><td style="color:'+c+'">'+v+'</td></tr>';
+        }
+        h += '</table>';
+        if(d.recommended_coa){
+            h += '<div style="margin-top:12px;padding:10px;background:#1a1a0a;border:1px solid #ffd700;border-radius:6px">' +
+                 '<div style="color:#ffd700;font-size:10px;margin-bottom:4px">RECOMMENDED COA</div>' +
+                 '<div style="color:#eee;font-size:12px">'+d.recommended_coa+'</div></div>';
+        }
+        var btns = '<button class="amos-btn amos-btn-green" onclick="AMOS.engageThreat(\''+id+'\',\'track\')">\uD83D\uDC41 Track</button>' +
+                   '<button class="amos-btn amos-btn-yellow" onclick="AMOS.engageThreat(\''+id+'\',\'jam\')">\uD83D\uDCE1 Jam</button>' +
+                   '<button class="amos-btn amos-btn-red" onclick="AMOS.engageThreat(\''+id+'\',\'engage\')">\uD83C\uDFAF Engage</button>';
+        A.modal.open('\u26A0 THREAT: ' + (d.type||d.id||id), h, btns);
+    }).catch(function(e){A.modal.open('Error','<div style="color:red">'+e.message+'</div>','')});
 };
 
-/* ======================== KILL CHAIN ======================== */
-AMOS.KillChain={
-  el:null,steps:['FIND','FIX','TRACK','TARGET','ENGAGE','ASSESS'],
-  init(id){this.el=document.getElementById(id);},
-  render(stage){
-    if(!this.el)return;
-    const si=this.steps.indexOf((stage||'').toUpperCase());
-    this.el.innerHTML=this.steps.map((s,i)=>{
-      let c=i<si?'complete':i===si?'active':'';
-      let ac=i<=si?'active':'';
-      return`<div class="kc-step ${c}">${s}</div>${i<this.steps.length-1?'<div class="kc-arrow '+ac+'">▶</div>':''}`;
-    }).join('');
-  },
-  update(){fetch('/api/phase3/killchain').then(r=>r.json()).then(d=>{if(d.active_engagement)this.render(d.active_engagement.stage);}).catch(()=>{});}
-};
-
-/* ======================== ALERT POLLER ======================== */
-AMOS.Alerts={
-  lastId:0,interval:null,
-  init(ms){this.poll();this.interval=setInterval(()=>this.poll(),ms||5000);},
-  poll(){
-    fetch('/api/phase3/alerts?since='+this.lastId).then(r=>r.json()).then(arr=>{
-      if(!arr||!arr.length)return;
-      arr.forEach(a=>{AMOS.Toast.show(a.message,a.severity||'info');if(a.id>this.lastId)this.lastId=a.id;});
-    }).catch(()=>{});
-  }
-};
-
-/* ======================== METRICS / CHARTS ======================== */
-AMOS.Metrics={
-  charts:{},
-  init(){if(typeof Chart==='undefined')return;this.fetch();setInterval(()=>this.fetch(),10000);},
-  fetch(){fetch('/api/phase3/metrics').then(r=>r.json()).then(d=>this.render(d)).catch(()=>{});},
-  render(d){
-    this._chart('chart-threats','doughnut',{labels:['Neutralized','Active','Tracking'],datasets:[{data:[d.threats_neutralized||0,d.threats_active||0,d.threats_tracking||0],backgroundColor:['#00ff41','#ff0040','#ffd700']}]});
-    this._chart('chart-health','bar',{labels:d.asset_labels||[],datasets:[{label:'Health %',data:d.asset_health||[],backgroundColor:(d.asset_health||[]).map(h=>h>70?'#00ff41':h>30?'#ffd700':'#ff0040')}]});
-    this._chart('chart-battery','bar',{labels:d.asset_labels||[],datasets:[{label:'Battery %',data:d.asset_battery||[],backgroundColor:'#00bfff'}]});
-    this._chart('chart-events','line',{labels:d.event_times||[],datasets:[{label:'Events',data:d.event_counts||[],borderColor:'#00ff41',backgroundColor:'rgba(0,255,65,.1)',fill:true,tension:.3}]});
-  },
-  _chart(id,type,data){
-    const cv=document.getElementById(id);if(!cv)return;
-    if(this.charts[id]){this.charts[id].data=data;this.charts[id].update();return;}
-    const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#888',font:{family:'monospace',size:10}}}}};
-    if(type!=='doughnut')opts.scales={x:{ticks:{color:'#555',font:{family:'monospace',size:9}},grid:{color:'#1a1a3e'}},y:{ticks:{color:'#555',font:{family:'monospace',size:9}},grid:{color:'#1a1a3e'},beginAtZero:true}};
-    this.charts[id]=new Chart(cv.getContext('2d'),{type,data,options:opts});
-  }
-};
-
-/* ======================== EW SPECTRUM ======================== */
-AMOS.EW={
-  canvas:null,ctx:null,emitters:[],jams:[],af:null,
-  init(id){
-    this.canvas=document.getElementById(id);if(!this.canvas)return;
-    this.ctx=this.canvas.getContext('2d');this._resize();
-    window.addEventListener('resize',()=>this._resize());
-    this._fetchLoop();this._draw();
-  },
-  _resize(){if(!this.canvas)return;this.canvas.width=this.canvas.offsetWidth||600;this.canvas.height=this.canvas.offsetHeight||250;},
-  _fetchLoop(){this._fetchData();setInterval(()=>this._fetchData(),3000);},
-  _fetchData(){fetch('/api/phase3/ew/spectrum').then(r=>r.json()).then(d=>{this.emitters=d.emitters||[];this.jams=d.jamming||[];}).catch(()=>{});},
-  _draw(){
-    const loop=()=>{this._render();this.af=requestAnimationFrame(loop);};loop();
-  },
-  _render(){
-    if(!this.ctx)return;const c=this.ctx,w=this.canvas.width,h=this.canvas.height;
-    c.fillStyle='#050510';c.fillRect(0,0,w,h);
-    c.strokeStyle='#0a1a0a';c.lineWidth=.5;
-    for(let i=1;i<10;i++){c.beginPath();c.moveTo(0,h*i/10);c.lineTo(w,h*i/10);c.stroke();c.beginPath();c.moveTo(w*i/10,0);c.lineTo(w*i/10,h);c.stroke();}
-    this.jams.forEach(j=>{const x1=(j.start_mhz/6000)*w,x2=(j.end_mhz/6000)*w;c.fillStyle='rgba(255,0,64,.15)';c.fillRect(x1,0,x2-x1,h);c.fillStyle='#ff0040';c.font='9px monospace';c.fillText('JAM',x1+3,14);});
-    c.beginPath();c.strokeStyle='#00ff41';c.lineWidth=1.2;
-    for(let x=0;x<w;x++){
-      let y=h*.82+(Math.random()-.5)*h*.04;
-      this.emitters.forEach(em=>{const ex=(em.freq_mhz/6000)*w,d=Math.abs(x-ex),bw=(em.bandwidth||20)/6000*w;if(d<bw*3){const s=((em.power_dbm||(-30))+120)/120*h*.6;y-=s*Math.exp(-d*d/(2*bw*bw));}});
-      x===0?c.moveTo(x,y):c.lineTo(x,y);
-    }
-    c.stroke();
-    c.fillStyle='#00ffff';c.font='9px monospace';
-    this.emitters.forEach(em=>{const ex=(em.freq_mhz/6000)*w;c.fillText(em.freq_mhz+'MHz',ex-18,28);if(em.type)c.fillText(em.type,ex-18,38);});
-    c.fillStyle='#00ff4180';c.font='10px monospace';c.fillText('0 MHz',5,h-6);c.fillText('6 GHz',w-48,h-6);
-  }
-};
-
-/* ======================== SIGINT WATERFALL ======================== */
-AMOS.SIGINT={
-  canvas:null,ctx:null,af:null,
-  init(id){
-    this.canvas=document.getElementById(id);if(!this.canvas)return;
-    this.ctx=this.canvas.getContext('2d');this._resize();
-    window.addEventListener('resize',()=>this._resize());
-    let last=0;const loop=t=>{if(t-last>80){this._addLine();last=t;}this.af=requestAnimationFrame(loop);};loop(0);
-  },
-  _resize(){if(!this.canvas)return;this.canvas.width=this.canvas.offsetWidth||600;this.canvas.height=this.canvas.offsetHeight||300;},
-  _addLine(){
-    if(!this.ctx)return;const c=this.ctx,w=this.canvas.width,h=this.canvas.height;
-    const img=c.getImageData(0,0,w,h-1);c.putImageData(img,0,1);
-    const row=c.createImageData(w,1);
-    const sigs=[80,160,300,420,520];
-    for(let x=0;x<w;x++){
-      let v=Math.random()*.08;
-      sigs.forEach(s=>{const d=Math.abs(x-s*(w/600));if(d<6)v+=(.4+Math.random()*.6)*Math.exp(-d*d/12);});
-      v=Math.min(v,1);const[r,g,b]=this._heat(v);
-      row.data[x*4]=r;row.data[x*4+1]=g;row.data[x*4+2]=b;row.data[x*4+3]=255;
-    }
-    c.putImageData(row,0,0);
-  },
-  _heat(v){
-    if(v<.25)return[0,0,Math.floor(v*4*160)];
-    if(v<.5)return[0,Math.floor((v-.25)*4*255),150];
-    if(v<.75)return[Math.floor((v-.5)*4*255),255,Math.floor(150-(v-.5)*4*150)];
-    return[255,Math.floor(255-(v-.75)*4*200),0];
-  }
-};
-
-/* ======================== CYBER TOPOLOGY ======================== */
-AMOS.Cyber={
-  el:null,
-  init(id){this.el=document.getElementById(id);if(!this.el)return;this._fetch();setInterval(()=>this._fetch(),6000);},
-  _fetch(){fetch('/api/phase3/cyber/topology').then(r=>r.json()).then(d=>this._render(d.nodes||[],d.links||[])).catch(()=>{});},
-  _render(nodes,links){
-    if(!this.el)return;
-    const w=this.el.offsetWidth||600,h=350,cx=w/2,cy=h/2;
-    const pos=nodes.map((n,i)=>{const a=(i/nodes.length)*Math.PI*2,r=Math.min(w,h)*.35;return{...n,x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r};});
-    const pm={};pos.forEach(n=>pm[n.id]=n);
-    let svg=`<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
-    links.forEach(l=>{const f=pm[l.from],t=pm[l.to];if(!f||!t)return;const c=l.attack?'attack':l.active?'active':'';svg+=`<line class="topo-link ${c}" x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}"/>`;});
-    pos.forEach(n=>{const cl=n.compromised?'#ff0040':n.status==='secure'?'#00ff41':'#ffd700';svg+=`<g class="topo-node" onclick="AMOS.Toast.show('${n.name}: ${n.status}','info')"><circle cx="${n.x}" cy="${n.y}" r="14" fill="${cl}" opacity=".75"/><circle cx="${n.x}" cy="${n.y}" r="14" fill="none" stroke="${cl}" stroke-width="2"/><text x="${n.x}" y="${n.y+26}" text-anchor="middle">${n.name}</text></g>`;});
-    svg+='</svg>';this.el.innerHTML=svg;
-  }
-};
-
-/* ======================== MISSION PLANNER ======================== */
-AMOS.Planner={
-  map:null,drawing:false,wps:[],markers:[],line:null,asset:null,
-  init(map){this.map=map;},
-  startDrawing(assetId){
-    this.drawing=true;this.asset=assetId;this.wps=[];this.clearDrawing();
-    AMOS.Toast.show('Click map to add waypoints. Double-click to finish.','info',8000);
-    this._onClick=e=>{if(this.drawing)this.addWaypoint(e.latlng.lat,e.latlng.lng);};
-    this._onDbl=e=>{if(this.drawing)this.stopDrawing();};
-    this.map.on('click',this._onClick);this.map.on('dblclick',this._onDbl);
-    this.map.getContainer().style.cursor='crosshair';
-  },
-  addWaypoint(lat,lng){
-    this.wps.push({lat,lng});const n=this.wps.length;
-    const m=L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div style="background:#00ff41;color:#000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;font-family:monospace;border:2px solid #fff">${n}</div>`})}).addTo(this.map);
-    this.markers.push(m);
-    if(this.line)this.map.removeLayer(this.line);
-    if(this.wps.length>1)this.line=L.polyline(this.wps.map(w=>[w.lat,w.lng]),{color:'#00ff41',weight:2,dashArray:'8 4'}).addTo(this.map);
-    AMOS.Toast.show('WP '+n+': '+lat.toFixed(4)+', '+lng.toFixed(4),'success',2000);
-  },
-  stopDrawing(){
-    this.drawing=false;
-    if(this.map){this.map.off('click',this._onClick);this.map.off('dblclick',this._onDbl);this.map.getContainer().style.cursor='';}
-    if(this.wps.length)this.saveRoute();
-  },
-  saveRoute(){
-    fetch('/api/phase3/mission/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:this.asset,waypoints:this.wps})}).then(r=>r.json()).then(d=>AMOS.Toast.show('Mission saved: '+(d.mission_id||'OK'),'success')).catch(e=>AMOS.Toast.show('Save failed','critical'));
-  },
-  clearDrawing(){this.markers.forEach(m=>this.map.removeLayer(m));this.markers=[];if(this.line){this.map.removeLayer(this.line);this.line=null;}this.wps=[];},
-  sendTo(id){AMOS.Modal.hide();this.startDrawing(id);}
-};
-
-/* ======================== TWIN GAUGES ======================== */
-AMOS.Twin={
-  el:null,
-  init(id){this.el=document.getElementById(id);if(!this.el)this.el=document.querySelector('.twin-gauges');this._fetch();setInterval(()=>this._fetch(),5000);},
-  _fetch(){
-    fetch('/api/phase3/metrics').then(r=>r.json()).then(d=>{
-      if(!this.el)return;const assets=d.assets_detail||[];
-      this.el.innerHTML=assets.map(a=>{
-        const hc=(a.health||100)>70?'#00ff41':(a.health||100)>30?'#ffd700':'#ff0040';
-        const bc=(a.battery||100)>50?'#00bfff':(a.battery||100)>20?'#ffd700':'#ff0040';
-        return`<div class="gauge-card" onclick="AMOS.Modal.showAsset('${a.id}')">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div><div style="color:${a.status==='active'?'#00ff41':'#ffd700'};font-family:monospace;font-weight:bold;font-size:13px">${a.callsign||a.id}</div><div style="color:#555;font-family:monospace;font-size:10px">${(a.type||'').toUpperCase()}</div></div>
-            <div class="gauge-circle" style="--pct:${a.health||100};--gauge-color:${hc};width:55px;height:55px"><div class="gauge-inner" style="width:40px;height:40px;font-size:11px">${a.health||100}%</div></div>
-          </div>
-          <div class="bar-label"><span>Battery</span><span>${a.battery||100}%</span></div>
-          <div class="bar-gauge"><div class="bar-gauge-fill" style="width:${a.battery||100}%;background:${bc}"></div></div>
-          <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:monospace;font-size:10px;color:#555"><span>${(a.lat||0).toFixed(3)}, ${(a.lng||0).toFixed(3)}</span><span>T${a.autonomy||0}</span></div>
-        </div>`;
-      }).join('');
-    }).catch(()=>{});
-  }
-};
-
-/* ======================== AAR TIMELINE ======================== */
-AMOS.AAR={
-  el:null,
-  init(id){this.el=document.getElementById(id);this._fetch();},
-  _fetch(){fetch('/api/phase3/aar/timeline').then(r=>r.json()).then(ev=>this._render(ev)).catch(()=>{});},
-  _render(events){
-    if(!this.el||!events)return;
-    this.el.innerHTML=`<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-outline-light" onclick="AMOS.AAR.filter('all')">All</button>
-      <button class="btn btn-sm btn-outline-danger" onclick="AMOS.AAR.filter('threat')">Threats</button>
-      <button class="btn btn-sm btn-outline-warning" onclick="AMOS.AAR.filter('ew')">EW</button>
-      <button class="btn btn-sm btn-outline-info" onclick="AMOS.AAR.filter('cyber')">Cyber</button>
-      <button class="btn btn-sm btn-outline-success" onclick="AMOS.AAR.filter('movement')">Movement</button>
-    </div><div class="amos-timeline" id="aar-tl-inner">${events.map(e=>`<div class="tl-event ${e.type||''}" data-type="${e.type||''}"><div class="tl-time">${e.time||''}</div><div class="tl-title">${e.title||''}</div><div class="tl-desc">${e.description||''}</div></div>`).join('')}</div>`;
-  },
-  filter(t){document.querySelectorAll('#aar-tl-inner .tl-event').forEach(el=>{el.style.display=(t==='all'||el.dataset.type===t)?'':'none';});}
-};
-
-/* ======================== HELPERS ======================== */
-AMOS.taskAsset=function(id,task){
-  AMOS.Modal.hide();
-  fetch('/api/phase3/asset/'+id+'/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task})}).then(r=>r.json()).then(()=>AMOS.Toast.show(id+': '+task.toUpperCase()+' confirmed','success')).catch(e=>AMOS.Toast.show('Failed: '+e,'critical'));
-};
-AMOS.engage=function(tid,action){
-  AMOS.Modal.hide();
-  fetch('/api/phase3/engage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threat_id:tid,action})}).then(r=>r.json()).then(d=>AMOS.Toast.show(action.toUpperCase()+' on '+tid+': '+(d.status||'initiated'),d.status==='approved'?'success':'warning')).catch(e=>AMOS.Toast.show('Failed: '+e,'critical'));
-};
-AMOS.showAutonomyPicker=function(id,cur){
-  const tiers=['T0: Manual','T1: Assisted','T2: Partial Auto','T3: Conditional','T4: High Auto','T5: Full Auto'];
-  const b=tiers.map((t,i)=>`<div style="padding:8px 12px;cursor:pointer;border:1px solid ${i===cur?'#00ff41':'#1a1a3e'};border-radius:4px;margin:4px 0;font-family:monospace;color:${i===cur?'#00ff41':'#c0c0c0'}" onclick="AMOS.setAutonomy('${id}',${i})">${t}${i===cur?' ✓':''}</div>`).join('');
-  AMOS.Modal.show('🤖 Set Autonomy: '+id,b);
-};
-AMOS.setAutonomy=function(id,tier){
-  fetch('/api/phase3/asset/'+id+'/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:'set_autonomy',autonomy:tier})}).then(()=>{AMOS.Modal.hide();AMOS.Toast.show(id+' autonomy → T'+tier,'success');});
-};
-
-/* ======================== FIND LEAFLET MAP ======================== */
-AMOS._findMap=function(){
-  if(window.aamosMap)return window.aamosMap;
-  if(window.map&&window.map._leaflet_id)return window.map;
-  for(const k of Object.getOwnPropertyNames(window)){try{const v=window[k];if(v&&v._leaflet_id&&v.getCenter)return v;}catch(e){}}
-  return null;
-};
-
-/* ======================== AUTO-INIT ======================== */
-document.addEventListener('DOMContentLoaded',()=>{
-  AMOS.Toast.init();
-  AMOS.Modal.init();
-  AMOS.Tables.init();
-
-  const path=window.location.pathname;
-  const main=document.querySelector('.container-fluid')||document.querySelector('.container')||document.querySelector('main')||document.body;
-  function ensure(id,html){if(!document.getElementById(id))main.insertAdjacentHTML('beforeend',html);}
-
-  /* Dashboard / main */
-  if(path==='/'||path.includes('dashboard')){
-    ensure('kill-chain','<div class="kill-chain" id="kill-chain" style="margin:15px 0"></div>');
-    ensure('chart-threats',`<div class="metrics-grid">
-      <div class="metric-card"><h4>Threat Status</h4><canvas id="chart-threats"></canvas></div>
-      <div class="metric-card"><h4>Asset Health</h4><canvas id="chart-health"></canvas></div>
-      <div class="metric-card"><h4>Battery / Fuel</h4><canvas id="chart-battery"></canvas></div>
-      <div class="metric-card"><h4>Event Timeline</h4><canvas id="chart-events"></canvas></div>
-    </div>`);
-    const poll=setInterval(()=>{
-      const m=AMOS._findMap();
-      if(m){clearInterval(poll);window.aamosMap=m;AMOS.Mesh.init(m);AMOS.ContextMenu.init(m);AMOS.Planner.init(m);
-        function meshRefresh(){fetch('/api/phase3/metrics').then(r=>r.json()).then(d=>AMOS.Mesh.update(d.assets_detail||[])).catch(()=>{});}
-        meshRefresh();setInterval(meshRefresh,5000);
-      }
-    },500);
-    setTimeout(()=>{AMOS.KillChain.init('kill-chain');AMOS.KillChain.update();setInterval(()=>AMOS.KillChain.update(),10000);},600);
-    AMOS.Metrics.init();
-  }
-
-  /* EW */
-  if(path.includes('ew')){
-    ensure('ew-spectrum','<h4 style="color:#00ff41;font-family:monospace;margin:15px 0 5px">📡 RF SPECTRUM ANALYZER</h4><div class="spectrum-container"><canvas id="ew-spectrum"></canvas></div>');
-    setTimeout(()=>AMOS.EW.init('ew-spectrum'),200);
-  }
-  /* SIGINT */
-  if(path.includes('sigint')){
-    ensure('sigint-waterfall','<h4 style="color:#00ffff;font-family:monospace;margin:15px 0 5px">📻 SIGNAL WATERFALL</h4><div class="waterfall-container"><canvas id="sigint-waterfall"></canvas></div>');
-    setTimeout(()=>AMOS.SIGINT.init('sigint-waterfall'),200);
-  }
-  /* Cyber */
-  if(path.includes('cyber')){
-    ensure('cyber-topology','<h4 style="color:#00bfff;font-family:monospace;margin:15px 0 5px">🔒 NETWORK TOPOLOGY</h4><div class="topo-container" id="cyber-topology"></div>');
-    setTimeout(()=>AMOS.Cyber.init('cyber-topology'),200);
-  }
-  /* TWIN */
-  if(path.includes('twin')||path.includes('digital')){
-    ensure('twin-gauges','<h4 style="color:#00ff41;font-family:monospace;margin:15px 0 5px">🤖 ASSET HEALTH MATRIX</h4><div class="gauge-row" id="twin-gauges"></div>');
-    setTimeout(()=>AMOS.Twin.init('twin-gauges'),200);
-  }
-  /* AAR */
-  if(path.includes('aar')){
-    ensure('aar-timeline','<div id="aar-timeline" style="margin:15px 0"></div>');
-    setTimeout(()=>AMOS.AAR.init('aar-timeline'),200);
-  }
-
-  /* Alerts on every page */
-  AMOS.Alerts.init(5000);
-
-  /* Auto-bind clickable table rows */
-  setTimeout(()=>{
-    document.querySelectorAll('table tbody tr').forEach(row=>{
-      const fc=(row.cells[0]?.textContent||'').trim();
-      if(/^(air|ground|gnd|maritime|mar|awacs|uav|ugv|usv|reaper|predator|ghost|shadow)/i.test(fc)){
-        row.style.cursor='pointer';row.title='Click for asset details';
-        row.addEventListener('click',()=>AMOS.Modal.showAsset(fc));
-      }else if(/^(threat|hostile|bogey|tgt)/i.test(fc)||row.classList.contains('threat-row')){
-        row.style.cursor='pointer';row.title='Click for threat details';
-        row.addEventListener('click',()=>AMOS.Modal.showThreat(fc));
-      }
+/* Commands */
+A.taskAsset = function(id, task){
+    fetch('/api/phase3/asset/'+encodeURIComponent(id)+'/task',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task})
+    }).then(function(r){return r.json()}).then(function(d){
+        A.toast(id+' \u2192 '+task.toUpperCase(), task==='rtb'?'warning':'success');
     });
-  },1000);
+};
 
-  console.log('%c[AMOS] Phase 3 UI loaded ✓','color:#00ff41;font-weight:bold;font-size:14px');
+A.engageThreat = function(id, action){
+    fetch('/api/phase3/engage',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threat_id:id,action:action})
+    }).then(function(r){return r.json()}).then(function(d){
+        A.toast(action.toUpperCase()+' on '+id, action==='engage'?'critical':'warning');
+    });
+};
+
+
+/* ═══════════════════════════
+   TABLE SORTING
+   ═══════════════════════════ */
+A.initSorting = function(){
+    document.querySelectorAll('table thead th').forEach(function(th, colIdx){
+        if(th.dataset.sortBound) return;
+        th.dataset.sortBound = '1';
+        th.addEventListener('click', function(){
+            var table = th.closest('table');
+            var tbody = table.querySelector('tbody');
+            if(!tbody) return;
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            var asc = th.dataset.sortDir !== 'asc';
+            th.dataset.sortDir = asc ? 'asc' : 'desc';
+            // Clear sort indicators
+            table.querySelectorAll('th').forEach(function(h){h.textContent = h.textContent.replace(/ [\u25B2\u25BC]/g,'')});
+            th.textContent += asc ? ' \u25B2' : ' \u25BC';
+            rows.sort(function(a,b){
+                var av = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
+                var bv = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                // Strip % signs for numeric comparison
+                var an = parseFloat(av.replace('%','')), bn = parseFloat(bv.replace('%',''));
+                if(!isNaN(an)&&!isNaN(bn)) return asc ? an-bn : bn-an;
+                return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+            });
+            rows.forEach(function(r){tbody.appendChild(r)});
+            A.toast('Sorted by ' + th.textContent.replace(/ [\u25B2\u25BC]/g,''), 'info');
+        });
+    });
+    console.log('[AMOS] Table sorting bound');
+};
+
+
+/* ═══════════════════════════
+   ROW CLICK → MODAL
+   ═══════════════════════════ */
+A.bindRows = function(){
+    document.querySelectorAll('table tbody tr').forEach(function(row){
+        if(row.dataset.amosBound) return;
+        row.dataset.amosBound = '1';
+        var cells = Array.from(row.cells).map(function(c){return c.textContent.trim()});
+        var txt = cells.join(' ').toLowerCase();
+
+        var assetRe = /\b(air|ground|gnd|maritime|mar|awacs|uav|ugv|usv|reaper|ghost|shadow|wolf|shark|mule|viper|hawk|eagle|spectre|relay|predator)\b/i;
+        var threatRe = /\b(threat|hostile|bogey|enemy|jammer|hostile-)/i;
+
+        var isAsset = assetRe.test(txt) && !threatRe.test(txt);
+        var isThreat = threatRe.test(txt);
+
+        if(isAsset || isThreat){
+            row.setAttribute('data-clickable','1');
+            row.title = 'Click for details';
+            row.addEventListener('click', function(){
+                var id = (cells[0]||cells[1]||'').trim();
+                if(isThreat) A.modal.showThreat(id);
+                else A.modal.showAsset(id);
+            });
+        }
+    });
+};
+
+
+/* ═══════════════════════════
+   MAP FINDER
+   ═══════════════════════════ */
+A.findMap = function(){
+    // Check common global names
+    var names = ['amosMap','mosMap','map','tacticalMap','leafletMap'];
+    for(var i=0;i<names.length;i++){
+        var m = window[names[i]];
+        if(m && m._leaflet_id && m.addLayer) return m;
+    }
+    // Search all Leaflet containers
+    var els = document.querySelectorAll('.leaflet-container');
+    for(var j=0;j<els.length;j++){
+        var el = els[j];
+        // Leaflet stores _leaflet_id on the element
+        if(el._leaflet_id){
+            // Find the map object that owns this container
+            for(var wk in window){
+                try{
+                    var v = window[wk];
+                    if(v && v._container === el && v.addLayer) return v;
+                }catch(e){}
+            }
+        }
+    }
+    return null;
+};
+
+
+/* ═══════════════════════════
+   MESH / COMM LINES
+   ═══════════════════════════ */
+var meshLines = [];
+A.drawMesh = function(){
+    var map = A.findMap();
+    if(!map){console.warn('[AMOS] Mesh: no map found');return}
+
+    // Clear old
+    meshLines.forEach(function(l){try{map.removeLayer(l)}catch(e){}});
+    meshLines = [];
+
+    fetch('/api/phase3/metrics').then(function(r){return r.json()}).then(function(data){
+        var assets = data.assets_detail || [];
+        if(assets.length < 2) return;
+
+        var ranges = {air:80, ground:30, maritime:50, awacs:150};
+
+        for(var i=0;i<assets.length;i++){
+            for(var j=i+1;j<assets.length;j++){
+                var a=assets[i], b=assets[j];
+                if(!a.lat||!b.lat) continue;
+                var d = A.haversine(a.lat,a.lng,b.lat,b.lng);
+                var maxR = Math.max(ranges[a.type]||30, ranges[b.type]||30);
+                if(d <= maxR){
+                    var q = 1-(d/maxR);
+                    var color = q>0.6?'rgba(0,255,65,0.4)':q>0.3?'rgba(255,215,0,0.3)':'rgba(255,0,64,0.2)';
+                    var w = q>0.6?2:1;
+                    var line = L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{
+                        color:color,weight:w,dashArray:'4 6',className:'amos-mesh-line'
+                    }).addTo(map);
+                    line.bindTooltip(
+                        '<b>'+(a.callsign||a.id)+' \u2194 '+(b.callsign||b.id)+'</b><br>'+
+                        d.toFixed(1)+' km | Signal: '+(q*100).toFixed(0)+'%',
+                        {className:'amos-mesh-tooltip',sticky:true}
+                    );
+                    meshLines.push(line);
+                }
+            }
+        }
+        console.log('[AMOS] Mesh: '+meshLines.length+' links');
+    }).catch(function(e){console.warn('[AMOS] Mesh error:',e)});
+};
+
+
+/* ═══════════════════════════
+   SWARM FORMATION PATTERNS
+   ═══════════════════════════ */
+var swarmPatternLines = [];
+A.drawSwarmPattern = function(){
+    var map = A.findMap();
+    if(!map) return;
+
+    // Clear old pattern lines
+    swarmPatternLines.forEach(function(l){try{map.removeLayer(l)}catch(e){}});
+    swarmPatternLines = [];
+
+    fetch('/api/swarm').then(function(r){return r.json()}).then(function(data){
+        if(!data || !data.formations) return;
+
+        var fmts = data.formations || [];
+        if(!Array.isArray(fmts)){
+            // Maybe it's a dict keyed by formation name
+            var arr = [];
+            for(var k in fmts){ arr.push(Object.assign({name:k}, fmts[k])) }
+            fmts = arr;
+        }
+
+        fmts.forEach(function(fm){
+            var members = fm.members || fm.assets || [];
+            if(members.length < 2) return;
+
+            var pattern = (fm.pattern || fm.formation || fm.type || 'line').toLowerCase();
+            var coords = members.map(function(m){return [m.lat||0, m.lng||0]}).filter(function(c){return c[0]!==0});
+            if(coords.length < 2) return;
+
+            var patternColor = {
+                line: '#00ffff', diamond: '#ff00ff', wedge: '#ffaa00',
+                column: '#00ffff', vee: '#ff00ff', spread: '#ffaa00',
+                circle: '#00ff88', orbit: '#00ff88', stagger: '#ff8800'
+            }[pattern] || '#00ffff';
+
+            if(pattern === 'diamond' || pattern === 'circle'){
+                // Close the shape
+                coords.push(coords[0]);
+            }
+
+            var line = L.polyline(coords, {
+                color: patternColor,
+                weight: 2,
+                dashArray: '8 6',
+                opacity: 0.7,
+                className: 'swarm-pattern-line'
+            }).addTo(map);
+
+            line.bindTooltip(
+                '\u2B21 Swarm: <b>'+(fm.name||fm.id||'Formation')+'</b><br>'+
+                'Pattern: '+pattern.toUpperCase()+'<br>'+
+                'Members: '+members.length,
+                {className:'amos-mesh-tooltip',sticky:true}
+            );
+            swarmPatternLines.push(line);
+        });
+
+        console.log('[AMOS] Swarm patterns: '+swarmPatternLines.length+' formations drawn');
+    }).catch(function(e){});
+
+    // Fallback: if /api/swarm doesn't have formations, draw from /api/assets
+    fetch('/api/assets').then(function(r){return r.json()}).then(function(data){
+        if(swarmPatternLines.length > 0) return; // Already drawn from /api/swarm
+        var assets = Array.isArray(data) ? data : (data.assets ? (Array.isArray(data.assets) ? data.assets : Object.values(data.assets)) : Object.values(data));
+        if(!assets || assets.length < 2) return;
+
+        // Group by domain
+        var groups = {};
+        assets.forEach(function(a){
+            var dom = (a.domain || a.type || 'unknown').toLowerCase();
+            if(!groups[dom]) groups[dom] = [];
+            if(a.lat && a.lng) groups[dom].push(a);
+        });
+
+        var domColors = {air:'#00ffff',ground:'#00ff41',maritime:'#4488ff',awacs:'#ffd700'};
+
+        for(var dom in groups){
+            var g = groups[dom];
+            if(g.length < 2) continue;
+            // Sort by longitude to make a clean line
+            g.sort(function(a,b){return a.lng - b.lng});
+            var coords = g.map(function(a){return [a.lat, a.lng]});
+            var line = L.polyline(coords, {
+                color: domColors[dom] || '#888',
+                weight: 1.5,
+                dashArray: '6 8',
+                opacity: 0.5
+            }).addTo(map);
+            line.bindTooltip(dom.toUpperCase()+' formation ('+g.length+' assets)',{className:'amos-mesh-tooltip'});
+            swarmPatternLines.push(line);
+        }
+        if(swarmPatternLines.length) console.log('[AMOS] Domain formation lines: '+swarmPatternLines.length);
+    }).catch(function(e){});
+};
+
+
+/* ═══════════════════════════
+   ALERTS POLLER
+   ═══════════════════════════ */
+var lastAlertId = 0;
+A.pollAlerts = function(){
+    fetch('/api/phase3/alerts?since='+lastAlertId)
+    .then(function(r){return r.json()})
+    .then(function(alerts){
+        if(!Array.isArray(alerts)) return;
+        alerts.forEach(function(al){
+            if(al.id > lastAlertId) lastAlertId = al.id;
+            A.toast(al.message || al.msg || 'Alert', al.severity || 'info');
+        });
+    }).catch(function(e){});
+};
+
+
+/* ═══════════════════════════
+   HAVERSINE
+   ═══════════════════════════ */
+A.haversine = function(a,b,c,d){
+    var R=6371, dL=(c-a)*Math.PI/180, dG=(d-b)*Math.PI/180;
+    var x=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)*Math.sin(dG/2);
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+};
+
+
+/* ═══════════════════════════
+   CONTEXT MENU (right-click map)
+   ═══════════════════════════ */
+A.initContextMenu = function(){
+    var map = A.findMap();
+    if(!map) return;
+    var menu = document.getElementById('amos-ctx-menu');
+    if(!menu) return;
+
+    map.on('contextmenu', function(e){
+        e.originalEvent.preventDefault();
+        var lat = e.latlng.lat.toFixed(5), lng = e.latlng.lng.toFixed(5);
+        menu.innerHTML =
+            '<div class="amos-ctx-item" onclick="AMOS.sendNearest('+lat+','+lng+')">Send Nearest Asset</div>'+
+            '<div class="amos-ctx-item" onclick="AMOS.dropWaypoint('+lat+','+lng+')">Drop Waypoint</div>'+
+            '<div class="amos-ctx-item" onclick="AMOS.toast(\''+lat+', '+lng+'\',\'info\')">Copy Coords</div>';
+        menu.style.left = e.originalEvent.pageX+'px';
+        menu.style.top = e.originalEvent.pageY+'px';
+        menu.style.display = 'block';
+    });
+
+    document.addEventListener('click', function(){menu.style.display='none'});
+};
+
+A.sendNearest = function(lat,lng){
+    fetch('/api/phase3/send_nearest',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({lat:lat,lng:lng})
+    }).then(function(r){return r.json()}).then(function(d){
+        A.toast('Dispatched: '+(d.asset||'?')+' ('+((d.dist||0)).toFixed(1)+'km)','success');
+    });
+};
+
+A.dropWaypoint = function(lat,lng){
+    var map = A.findMap();
+    if(map && typeof L !== 'undefined'){
+        L.circleMarker([lat,lng],{radius:6,color:'#ffd700',fillColor:'#ffd700',fillOpacity:0.8}).addTo(map)
+         .bindTooltip('WP: '+lat.toFixed(4)+', '+lng.toFixed(4),{className:'amos-mesh-tooltip'});
+        A.toast('Waypoint placed','info');
+    }
+};
+
+
+/* ═══════════════════════════
+   DOM CONTENT LOADED — INIT
+   ═══════════════════════════ */
+document.addEventListener('DOMContentLoaded', function(){
+    console.log('[AMOS] DOMContentLoaded — initializing Phase 3');
+
+    // Sorting
+    A.initSorting();
+
+    // Row click bindings
+    A.bindRows();
+
+    // Re-bind when tables update
+    var obs = new MutationObserver(function(){
+        setTimeout(function(){A.bindRows();A.initSorting()}, 300);
+    });
+    document.querySelectorAll('table tbody').forEach(function(tb){
+        obs.observe(tb, {childList:true});
+    });
+    // Also watch for whole table replacements
+    document.querySelectorAll('.table-responsive, [class*="table"]').forEach(function(el){
+        obs.observe(el, {childList:true, subtree:true});
+    });
+
+    // Map-dependent features: retry until map is found
+    var mapAttempts = 0;
+    var mapTimer = setInterval(function(){
+        mapAttempts++;
+        var map = A.findMap();
+        if(map){
+            console.log('[AMOS] Map found on attempt '+mapAttempts);
+            window.amosMap = map; // Expose globally
+            A.drawMesh();
+            A.drawSwarmPattern();
+            A.initContextMenu();
+            // Refresh mesh + patterns periodically
+            setInterval(function(){A.drawMesh();A.drawSwarmPattern()}, 12000);
+            clearInterval(mapTimer);
+        } else if(mapAttempts >= 30){
+            console.warn('[AMOS] No Leaflet map found after 30 attempts');
+            clearInterval(mapTimer);
+        }
+    }, 1000);
+
+    // Alert poller
+    setInterval(A.pollAlerts, 5000);
+
+    console.log('[AMOS] Phase 3 init complete');
 });
+
+})();
+
+
+/* ═══════════════════════════
+   SWARM FORMATION CONTROLS
+   ═══════════════════════════ */
+(function(){
+var A = window.AMOS = window.AMOS || {};
+var formationLines = [];
+var formationMarkers = [];
+
+A.setFormation = function(pattern){
+    var domain = document.getElementById('swarm-domain') || document.getElementById('c2-domain-filter');
+    var domVal = domain ? domain.value : 'all';
+    var statusEl = document.getElementById('swarm-status') || document.getElementById('c2-status');
+    if(statusEl) statusEl.textContent = 'Setting ' + pattern.toUpperCase() + '...';
+
+    // Highlight active button
+    document.querySelectorAll('.swarm-btn').forEach(function(b){ b.classList.remove('active') });
+    var activeBtn = document.getElementById('swarm-btn-' + pattern);
+    if(activeBtn) activeBtn.classList.add('active');
+
+    fetch('/api/swarm/formation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pattern: pattern, domain: domVal})
+    })
+    .then(function(r){ return r.json() })
+    .then(function(data){
+        if(data.error){
+            A.toast('Swarm error: ' + data.error, 'error');
+            if(statusEl) statusEl.textContent = 'Error: ' + data.error;
+            return;
+        }
+        var cnt = data.count || (data.formation && data.formation.members ? data.formation.members.length : 0);
+        A.toast('Formation: ' + pattern.toUpperCase() + ' (' + cnt + ' assets)', 'success');
+        if(statusEl) statusEl.innerHTML = '<span style="color:#00ff41">' + pattern.toUpperCase() + '</span> — ' + cnt + ' assets moving';
+
+        // ★ Draw formation paths on map ★
+        if(data.formation && typeof A.drawFormationOnMap === 'function'){
+            console.log('[SWARM] Drawing formation on map:', data.formation.pattern, data.formation.members ? data.formation.members.length : 0, 'members');
+            A.drawFormationOnMap(data.formation);
+        }
+        // Also refresh domain pattern lines
+        if(typeof A.drawSwarmPattern === 'function') A.drawSwarmPattern();
+    })
+    .catch(function(e){
+        A.toast('Swarm error: ' + e.message, 'error');
+        if(statusEl) statusEl.textContent = 'Error';
+    });
+};
+
+A.clearFormation = function(){
+    fetch('/api/swarm/formation/clear', {method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(d){
+        A.toast('Formation cleared', 'info');
+        var statusEl = document.getElementById('swarm-status') || document.getElementById('c2-status');
+        if(statusEl) statusEl.textContent = 'No active formation';
+        document.querySelectorAll('.swarm-btn').forEach(function(b){ b.classList.remove('active') });
+        // Remove lines from map
+        A._clearFormationLines();
+    });
+};
+
+A._clearFormationLines = function(){
+    var map = A.findMap();
+    if(!map) return;
+    formationLines.forEach(function(l){ try{map.removeLayer(l)}catch(e){} });
+    formationMarkers.forEach(function(m){ try{map.removeLayer(m)}catch(e){} });
+    formationLines = [];
+    formationMarkers = [];
+};
+
+A.drawFormationOnMap = function(formation){
+    var map = A.findMap();
+    if(!map || !formation || !formation.members || formation.members.length < 2) return;
+
+    A._clearFormationLines();
+
+    var pattern = formation.pattern || 'line';
+    var members = formation.members;
+
+    var patternColors = {
+        line:    '#00ffff',
+        diamond: '#ff00ff',
+        wedge:   '#ffaa00',
+        vee:     '#ffaa00',
+        column:  '#00ffff',
+        spread:  '#88ff00',
+        orbit:   '#ff8800'
+    };
+    var color = patternColors[pattern] || '#00ffff';
+
+    // Draw current→formation waypoint lines (movement arrows)
+    members.forEach(function(m){
+        if(!m.lat || !m.formation_lat) return;
+
+        // Dashed line from current position to formation position
+        var moveLine = L.polyline(
+            [[m.lat, m.lng], [m.formation_lat, m.formation_lng]],
+            { color: color, weight: 2, dashArray: '6 4', opacity: 0.7, className: 'swarm-pattern-line' }
+        ).addTo(map);
+        formationLines.push(moveLine);
+
+        // Formation position marker (hollow circle)
+        var fmMarker = L.circleMarker(
+            [m.formation_lat, m.formation_lng],
+            { radius: 6, color: color, fillColor: color, fillOpacity: 0.2, weight: 2 }
+        ).addTo(map);
+        fmMarker.bindTooltip(
+            '<b>' + (m.callsign || m.id) + '</b><br>Formation: ' + pattern.toUpperCase(),
+            { className: 'amos-mesh-tooltip' }
+        );
+        formationMarkers.push(fmMarker);
+    });
+
+    // Draw the formation shape outline
+    var fmCoords = members.map(function(m){
+        return [m.formation_lat || m.lat, m.formation_lng || m.lng];
+    }).filter(function(c){ return c[0] !== 0; });
+
+    if(pattern === 'diamond' || pattern === 'orbit'){
+        // Close the shape
+        fmCoords.push(fmCoords[0]);
+    }
+
+    if(fmCoords.length >= 2){
+        var outline = L.polyline(fmCoords, {
+            color: color, weight: 3, opacity: 0.9,
+            dashArray: pattern === 'orbit' ? '12 6' : null
+        }).addTo(map);
+        outline.bindTooltip(
+            '<b>\u2B21 ' + pattern.toUpperCase() + ' FORMATION</b><br>' + members.length + ' assets',
+            { className: 'amos-mesh-tooltip', sticky: true }
+        );
+        formationLines.push(outline);
+    }
+
+    // Draw center marker
+    if(formation.center){
+        var center = L.circleMarker(
+            [formation.center.lat, formation.center.lng],
+            { radius: 4, color: '#fff', fillColor: '#fff', fillOpacity: 0.8, weight: 1 }
+        ).addTo(map);
+        center.bindTooltip('Formation Center', {className:'amos-mesh-tooltip'});
+        formationMarkers.push(center);
+    }
+
+    console.log('[AMOS] Formation drawn: ' + pattern + ' with ' + members.length + ' assets, ' + formationLines.length + ' lines');
+};
+
+// Auto-load any existing formation on page load
+setTimeout(function(){
+    fetch('/api/swarm/formation').then(function(r){return r.json()}).then(function(f){
+        if(f && f.pattern){
+            A.drawFormationOnMap(f);
+            var statusEl = document.getElementById('swarm-status') || document.getElementById('c2-status');
+            if(statusEl) statusEl.innerHTML = '<span style="color:#00ff41">' + f.pattern.toUpperCase() + '</span> — ' + (f.members||[]).length + ' assets';
+            var btn = document.getElementById('swarm-btn-' + f.pattern);
+            if(btn) btn.classList.add('active');
+        }
+    }).catch(function(e){});
+}, 3000);
+
+})();

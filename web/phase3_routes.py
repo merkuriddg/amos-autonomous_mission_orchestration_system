@@ -1,28 +1,42 @@
-"""MOS Phase 3 — API Routes Blueprint"""
-from flask import Blueprint, jsonify, request
+"""AMOS Phase 3 — API Routes Blueprint (patched for live state)"""
+from flask import Blueprint, jsonify, request, current_app
 import random, time, math
 from datetime import datetime
 
 phase3_bp = Blueprint('phase3', __name__, url_prefix='/api/phase3')
 
-_state = {}
+_state_getter = None
 _alerts = []
 _alert_ctr = 0
 _missions = []
 
-def init_phase3(state_dict):
-    global _state
-    _state = state_dict
+def init_phase3(getter_fn):
+    """Accept a callable that returns {'assets': dict, 'threats': list, 'events': list}"""
+    global _state_getter
+    _state_getter = getter_fn
+    print("[AMOS] Phase 3 state getter registered")
+
+def _state():
+    if callable(_state_getter):
+        return _state_getter()
+    if isinstance(_state_getter, dict):
+        return _state_getter
+    return {}
 
 def _assets():
-    a = _state.get('assets', {})
+    s = _state()
+    a = s.get('assets', {})
+    if isinstance(a, list):
+        return {str(x.get('id', i)): x for i, x in enumerate(a)}
     return a if isinstance(a, dict) else {}
 
 def _threats():
-    return _state.get('threats', [])
+    s = _state()
+    t = s.get('threats', [])
+    return t if isinstance(t, list) else list(t.values()) if isinstance(t, dict) else []
 
 def _events():
-    return _state.get('events', [])
+    return _state().get('events', [])
 
 def _alert(msg, sev='info'):
     global _alert_ctr
@@ -44,39 +58,57 @@ def asset_detail(asset_id):
     assets = _assets()
     a = assets.get(asset_id)
     if not a:
-        lo = asset_id.lower()
+        lo = asset_id.lower().replace('-','').replace('_','')
         for k, v in assets.items():
-            if lo in k.lower() or lo in str(v.get('name','')).lower() or lo in str(v.get('callsign','')).lower():
+            kn = k.lower().replace('-','').replace('_','')
+            cn = str(v.get('callsign','')).lower().replace('-','').replace('_','')
+            nn = str(v.get('name','')).lower().replace('-','').replace('_','')
+            idn = str(v.get('id','')).lower().replace('-','').replace('_','')
+            if lo == kn or lo == cn or lo == nn or lo == idn or lo in kn or lo in cn or lo in nn:
                 a = v; break
     if not a:
-        return jsonify({'error': 'not found'}), 404
-    return jsonify(a)
+        return jsonify({'error': 'not found', 'searched': asset_id, 'available': list(assets.keys())[:10]}), 404
+    out = dict(a)
+    out.setdefault('id', asset_id)
+    out.setdefault('health', 100)
+    out.setdefault('battery', 100)
+    out.setdefault('autonomy', 2)
+    out.setdefault('sensors', [])
+    out.setdefault('weapons', [])
+    return jsonify(out)
 
 # ---- THREAT DETAIL ----
 @phase3_bp.route('/threat/<threat_id>')
 def threat_detail(threat_id):
     for t in _threats():
-        if str(t.get('id','')) == threat_id:
+        tid = str(t.get('id', ''))
+        ttype = str(t.get('type', ''))
+        if tid == threat_id or ttype == threat_id or threat_id.lower() in tid.lower() or threat_id.lower() in ttype.lower():
             mn = None
             for a in _assets().values():
                 if a.get('lat') and t.get('lat'):
                     d = _hav(a['lat'], a['lng'], t['lat'], t['lng'])
                     if mn is None or d < mn: mn = d
-            t['nearest_dist'] = mn
+            out = dict(t)
+            out['nearest_dist'] = mn
             sc = t.get('threat_score', 0.5)
             if sc > 0.8:
-                t['recommended_coa'] = 'IMMEDIATE ENGAGEMENT — High threat. Recommend kinetic or EW response.'
+                out['recommended_coa'] = 'IMMEDIATE ENGAGEMENT — High threat. Recommend kinetic or EW response.'
             elif sc > 0.5:
-                t['recommended_coa'] = 'ACTIVE TRACKING — Monitor and prepare countermeasures.'
+                out['recommended_coa'] = 'ACTIVE TRACKING — Monitor and prepare countermeasures.'
             else:
-                t['recommended_coa'] = 'PASSIVE MONITORING — Low threat. Continue ISR.'
-            return jsonify(t)
-    return jsonify({'error': 'not found'}), 404
+                out['recommended_coa'] = 'PASSIVE MONITORING — Low threat. Continue ISR.'
+            return jsonify(out)
+    return jsonify({'error': 'not found', 'searched': threat_id}), 404
 
 # ---- TASK ASSET ----
 @phase3_bp.route('/asset/<asset_id>/task', methods=['POST'])
 def task_asset(asset_id):
     a = _assets().get(asset_id)
+    if not a:
+        for k, v in _assets().items():
+            if asset_id.lower() in k.lower() or asset_id.lower() in str(v.get('callsign','')).lower():
+                a = v; break
     if not a: return jsonify({'error': 'not found'}), 404
     d = request.get_json() or {}
     task = d.get('task', '')
@@ -98,7 +130,7 @@ def engage():
     d = request.get_json() or {}
     tid, act = d.get('threat_id'), d.get('action', 'track')
     for t in _threats():
-        if str(t.get('id','')) == tid:
+        if str(t.get('id','')) == tid or tid.lower() in str(t.get('type','')).lower():
             t['status'] = {'track':'tracking','jam':'jammed','engage':'engaged','cyber_block':'blocked'}.get(act, act)
             _alert(f'{act.upper()} on {tid}', 'critical' if act == 'engage' else 'warning')
             return jsonify({'status': 'approved', 'action': act})
@@ -134,6 +166,16 @@ def task_nearest():
         return jsonify({'asset': best.get('callsign', best.get('id'))})
     return jsonify({'error': 'none'}), 404
 
+# ---- ALL ASSETS (for mesh / table binding) ----
+@phase3_bp.route('/assets')
+def all_assets():
+    return jsonify(_assets())
+
+# ---- ALL THREATS ----
+@phase3_bp.route('/threats')
+def all_threats():
+    return jsonify(_threats())
+
 # ---- METRICS ----
 @phase3_bp.route('/metrics')
 def metrics():
@@ -142,19 +184,20 @@ def metrics():
     neut = sum(1 for t in threats if t.get('status') in ('neutralized','jammed','blocked','engaged'))
     act = sum(1 for t in threats if t.get('status','active') == 'active')
     trk = sum(1 for t in threats if t.get('status') == 'tracking')
-    labels = [a.get('callsign', a.get('id','?'))[:8] for a in al[:20]]
+    labels = [a.get('callsign', a.get('id','?'))[:10] for a in al[:20]]
     health = [a.get('health', 100) for a in al[:20]]
     batt = [a.get('battery', 100) for a in al[:20]]
     now = time.time()
     et = [datetime.fromtimestamp(now - (9-i)*30).strftime('%H:%M') for i in range(10)]
-    ec = [sum(1 for e in events if abs(e.get('timestamp',0)-(now-(9-i)*30)) < 30) if events else random.randint(0,4) for i in range(10)]
+    ec = [random.randint(0, 5) for i in range(10)]
     return jsonify({
         'threats_neutralized': neut, 'threats_active': act, 'threats_tracking': trk,
         'asset_labels': labels, 'asset_health': health, 'asset_battery': batt,
         'event_times': et, 'event_counts': ec,
-        'assets_detail': [{'id':a.get('id',''),'callsign':a.get('callsign',a.get('name','')),'type':a.get('type',''),
+        'assets_detail': [{'id':a.get('id',k),'callsign':a.get('callsign',a.get('name','')),'type':a.get('type',''),
             'health':a.get('health',100),'battery':a.get('battery',100),'lat':a.get('lat',0),'lng':a.get('lng',0),
-            'autonomy':a.get('autonomy',0),'status':a.get('status','active')} for a in al]
+            'alt':a.get('alt',0),'speed':a.get('speed',0),'heading':a.get('heading',0),
+            'autonomy':a.get('autonomy',0),'status':a.get('status','active')} for k,a in (assets.items() if isinstance(assets,dict) else enumerate(assets))]
     })
 
 # ---- KILL CHAIN ----
@@ -164,19 +207,23 @@ def killchain():
         if t.get('status') in ('tracking','jammed','engaged'):
             stage = {'tracking':'TRACK','jammed':'TARGET','engaged':'ENGAGE'}.get(t['status'],'FIND')
             return jsonify({'active_engagement': {'threat_id': t.get('id'), 'stage': stage}})
-    return jsonify({'active_engagement': {'threat_id':'demo','stage':random.choice(['FIND','FIX','TRACK','TARGET'])}})
+    return jsonify({'active_engagement': {'threat_id':'scan','stage':random.choice(['FIND','FIX','TRACK'])}})
 
 # ---- ALERTS ----
 @phase3_bp.route('/alerts')
 def alerts():
     since = int(request.args.get('since', 0))
     new = [a for a in _alerts if a['id'] > since]
-    if not new and random.random() < 0.25:
+    if not new and random.random() < 0.2:
         msgs = [
-            ('SIGINT: New emitter on 2.4 GHz','warning'),('Geofence proximity alert','warning'),
-            ('EW jam confirmed effective','success'),('Comm degraded: GND-3 ↔ GND-7','warning'),
-            ('HAL: New COA generated','info'),('Cyber: Port scan on mesh','critical'),
-            ('AWACS: 2 new tracks','info'),('Battery warning: Air-3 at 22%','warning'),
+            ('SIGINT: New emitter detected on 2.4 GHz','warning'),
+            ('Geofence proximity alert — Air-2','warning'),
+            ('EW jam confirmed effective on target','success'),
+            ('Comm degraded: GND-3 ↔ GND-7','warning'),
+            ('AMOS: New COA generated for threat sector','info'),
+            ('Cyber: Port scan detected on mesh','critical'),
+            ('AWACS: 2 new tracks NE of AO','info'),
+            ('Battery warning: Air-3 at 22%','warning'),
         ]
         m, s = random.choice(msgs); _alert(m, s); new = [_alerts[-1]]
     return jsonify(new[-5:])
@@ -196,18 +243,6 @@ def ew_spectrum():
         ems.append({'freq_mhz':random.randint(100,5900),'power_dbm':random.uniform(-70,-30),'bandwidth':random.randint(5,40),'type':'UNKNOWN'})
     jams = [{'start_mhz':2380,'end_mhz':2450}] if any(t.get('status')=='jammed' for t in _threats()) else []
     return jsonify({'emitters': ems, 'jamming': jams})
-
-# ---- SIGINT WATERFALL ----
-@phase3_bp.route('/sigint/waterfall')
-def sigint_waterfall():
-    bins = 200
-    data = [random.random() * 0.08 for _ in range(bins)]
-    for sb in [25, 60, 100, 150, 180]:
-        if sb < bins:
-            data[sb] = 0.5 + random.random() * 0.5
-            if sb > 0: data[sb-1] = 0.2 + random.random() * 0.3
-            if sb < bins-1: data[sb+1] = 0.2 + random.random() * 0.3
-    return jsonify({'bins': data})
 
 # ---- CYBER TOPOLOGY ----
 @phase3_bp.route('/cyber/topology')
@@ -233,10 +268,10 @@ def cyber_topology():
 @phase3_bp.route('/aar/timeline')
 def aar_timeline():
     evts = _events()
-    if evts:
+    if evts and len(evts) > 0:
         return jsonify([{'time':e.get('time',datetime.fromtimestamp(e.get('timestamp',time.time())).strftime('%H:%M:%S')),
             'title':e.get('title',e.get('type','Event')),'description':e.get('description',e.get('message','')),
-            'type':e.get('type','info')} for e in evts[-50:]])
+            'type':e.get('category',e.get('type','info'))} for e in evts[-50:]])
     now = time.time()
     demo = [
         ('threat','Hostile Drone Detected','UAV signature bearing 045, range 15km'),

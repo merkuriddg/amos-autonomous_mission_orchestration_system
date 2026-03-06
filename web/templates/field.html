@@ -1,59 +1,218 @@
 {% extends "base.html" %}
-{% block title %}Field View{% endblock %}
-{% block head %}<style>
-.main{padding:0!important}
-#fmap{height:calc(100vh - 38px);width:100%}
-.fo{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.9);border-top:1px solid #00ff41;padding:8px 15px;display:flex;justify-content:space-around;font-size:1.1em;z-index:999}
-.fo .fs{text-align:center}.fo .fv{font-size:1.4em}
-.fc{position:fixed;top:45px;left:10px;background:rgba(0,0,0,.85);border:1px solid #333;padding:8px;z-index:999;font-size:.8em}
-</style>{% endblock %}
-{% block content %}
-<div id="fmap"></div>
-<div class="fc">
- <select id="f-asset" style="width:120px"><option value="">-- asset --</option></select>
- <button class="btn" id="f-wp-btn" onclick="toggleFWP()" style="padding:2px 6px">📍 WP</button>
- <button class="btn btn-red" onclick="apiPost('/api/waypoints/clear',{})" style="padding:2px 6px">CLR ALL</button>
-</div>
-<div class="fo">
- <div class="fs"><div class="fv" id="f-a">--</div><div>ASSETS</div></div>
- <div class="fs"><div class="fv" id="f-t" style="color:#ff4444">--</div><div>THREATS</div></div>
- <div class="fs"><div class="fv" id="f-h" style="color:#4488ff">--</div><div>HAL</div></div>
- <div class="fs"><div class="fv" id="f-w" style="color:#ffaa00">--</div><div>WAYPOINTS</div></div>
- <div class="fs"><div class="fv" id="f-c" style="color:#888">--</div><div>ELAPSED</div></div>
-</div>
+{% block title %}AMOS // FIELD — 3D TACTICAL VIEW{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css"/>
+<style>
+body,html{overflow:hidden!important;margin:0;padding:0}
+#field-wrap{position:fixed;top:32px;left:0;right:0;bottom:0}
+#cesiumContainer{width:100%;height:100%}
+.cesium-viewer-bottom,.cesium-viewer-toolbar{display:none!important}
+.fo{position:absolute;z-index:100;font-family:'Courier New',monospace}
+.fo-stats{top:8px;right:8px;display:flex;flex-direction:column;gap:5px}
+.stat-card{background:rgba(0,0,0,.88);border:1px solid #00ff41;border-radius:5px;padding:6px 12px;min-width:90px}
+.stat-card .sl{color:#777;font-size:.6em;letter-spacing:1px;text-transform:uppercase}
+.stat-card .sv{font-size:1.3em;font-weight:bold}
+.sv.g{color:#00ff41}.sv.r{color:#ff4444}.sv.c{color:#4fc3f7}.sv.y{color:#ffd740}
+.fo-threats{top:8px;left:8px;background:rgba(0,0,0,.88);border:1px solid #ff444488;border-radius:5px;padding:8px;max-width:220px;max-height:220px;overflow-y:auto}
+.fo-threats .pt{color:#ff4444;font-size:.7em;font-weight:bold;letter-spacing:1px;margin-bottom:4px;border-bottom:1px solid #ff444433;padding-bottom:3px}
+.fo-assets{bottom:8px;left:8px;background:rgba(0,0,0,.88);border:1px solid #00ff41;border-radius:5px;padding:8px;max-height:45vh;overflow-y:auto;min-width:260px;max-width:320px}
+.fo-assets .pt{color:#00ff41;font-size:.7em;font-weight:bold;letter-spacing:1px;margin-bottom:6px;border-bottom:1px solid #00ff4133;padding-bottom:3px}
+.ar,.tr{display:flex;justify-content:space-between;padding:3px 4px;font-size:.65em;border-bottom:1px solid #fff1;cursor:pointer;border-radius:3px;transition:background .15s}
+.ar:hover{background:#00ff4118}.tr:hover{background:#ff444418}
+.ar.selected{background:#00ff4130;border-left:2px solid #00ff41}
+.tr.selected{background:#ff444430;border-left:2px solid #ff4444}
+.ar .ac{color:#ffd740;min-width:80px}.ar .at{color:#777;min-width:80px}.ar .as{font-weight:bold}
+.as.op{color:#00ff41}.as.dg{color:#ffd740}.as.of{color:#ff4444}
+.tr .ti{color:#ff6666}.tr .tt{color:#777}.tr .tl{padding:1px 5px;border-radius:3px;font-size:.85em;font-weight:bold}
+.tl.h{background:#ff000033;color:#ff4444}.tl.m{background:#ff880033;color:#ffa726}.tl.l{background:#ffff0022;color:#ffd740}
+.fo-dom{bottom:8px;right:8px;display:flex;flex-direction:column;gap:3px}
+.dbtn{background:rgba(0,0,0,.85);border:1px solid #00ff4155;color:#00ff41;padding:5px 12px;font-family:inherit;font-size:.65em;letter-spacing:1px;cursor:pointer;border-radius:3px}
+.dbtn:hover,.dbtn.on{background:#00ff4122;border-color:#00ff41}
+.fo-threats::-webkit-scrollbar,.fo-assets::-webkit-scrollbar{width:4px}
+.fo-threats::-webkit-scrollbar-thumb,.fo-assets::-webkit-scrollbar-thumb{background:#00ff4144;border-radius:2px}
+</style>
 {% endblock %}
-{% block scripts %}
+
+{% block content %}
+<div id="field-wrap">
+    <div id="cesiumContainer"></div>
+    <div class="fo fo-stats">
+        <div class="stat-card"><div class="sl">ASSETS</div><div class="sv g" id="f-ac">—</div></div>
+        <div class="stat-card"><div class="sl">THREATS</div><div class="sv r" id="f-tc">—</div></div>
+        <div class="stat-card"><div class="sl">MESH LINKS</div><div class="sv c" id="f-mc">—</div></div>
+        <div class="stat-card"><div class="sl">AO STATUS</div><div class="sv y" id="f-ao">ACTIVE</div></div>
+    </div>
+    <div class="fo fo-threats">
+        <div class="pt">⚠ ACTIVE THREATS</div>
+        <div id="f-tl"></div>
+    </div>
+    <div class="fo fo-assets">
+        <div class="pt">🛰 DEPLOYED ASSETS</div>
+        <div id="f-al"></div>
+    </div>
+    <div class="fo fo-dom">
+        <button class="dbtn on" onclick="fDom('all',this)">ALL</button>
+        <button class="dbtn" onclick="fDom('air',this)">AIR</button>
+        <button class="dbtn" onclick="fDom('ground',this)">GROUND</button>
+        <button class="dbtn" onclick="fDom('maritime',this)">MARITIME</button>
+    </div>
+</div>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
 <script>
-const fm=L.map('fmap',{zoomControl:false}).setView([27.849,-82.521],11);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(fm);
-let fmk={},fwpM={},fwpL={},fgfL={},fwpMode=false;
-function fI(c,s){s=s||10;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 8px '+c+'"></div>',iconSize:[s,s],className:''});}
-function toggleFWP(){fwpMode=!fwpMode;const b=document.getElementById('f-wp-btn');b.style.background=fwpMode?'#ffaa00':'transparent';b.style.color=fwpMode?'#000':'#00ff41';fm.getContainer().style.cursor=fwpMode?'crosshair':'';}
-fm.on('click',function(e){if(!fwpMode)return;const a=document.getElementById('f-asset').value;if(!a){alert('Select asset');return;}apiPost('/api/waypoints/add',{asset_id:a,lat:e.latlng.lat,lng:e.latlng.lng});});
-async function rF(){
- const assets=await apiFetch('/api/assets');
- const sel=document.getElementById('f-asset');const cv=sel.value;
- if(sel.options.length<3){sel.innerHTML='<option value="">-- asset --</option>';for(const id of Object.keys(assets).sort())sel.innerHTML+='<option value="'+id+'">'+id+'</option>';if(cv)sel.value=cv;}
- for(const[id,a]of Object.entries(assets)){const c={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'}[a.domain]||'#888';const p=[a.position.lat,a.position.lng];if(fmk[id])fmk[id].setLatLng(p);else fmk[id]=L.marker(p,{icon:fI(c)}).bindTooltip(id).addTo(fm);}
- const threats=await apiFetch('/api/threats');
- for(const[id,t]of Object.entries(threats)){if(t.neutralized){if(fmk[id]){fm.removeLayer(fmk[id]);delete fmk[id];}continue;}if(t.lat&&t.lng){const p=[t.lat,t.lng];if(fmk[id])fmk[id].setLatLng(p);else fmk[id]=L.marker(p,{icon:fI('#ff4444',12)}).bindTooltip(id).addTo(fm);}}
- // Waypoints
- const wps=await apiFetch('/api/waypoints');
- for(const[a,ms]of Object.entries(fwpM)){ms.forEach(function(m){fm.removeLayer(m);});}
- for(const[a,l]of Object.entries(fwpL)){fm.removeLayer(l);}
- fwpM={};fwpL={};
- for(const[aid,wl]of Object.entries(wps)){if(!wl.length)continue;fwpM[aid]=[];const pts=[];if(fmk[aid])pts.push(fmk[aid].getLatLng());
-  wl.forEach(function(w,i){const m=L.circleMarker([w.lat,w.lng],{radius:5,color:'#ffaa00',fillColor:'#ffaa00',fillOpacity:.8}).bindTooltip(aid+' WP-'+(i+1)).addTo(fm);fwpM[aid].push(m);pts.push([w.lat,w.lng]);});
-  if(pts.length>1)fwpL[aid]=L.polyline(pts,{color:'#ffaa00',weight:2,dashArray:'5,5',opacity:.7}).addTo(fm);}
- // Geofences
- for(const[id,l]of Object.entries(fgfL)){fm.removeLayer(l);}fgfL={};
- const gfs=await apiFetch('/api/geofences');const gc={operational:'#00ff41',restricted:'#ff4444',alert:'#ffaa00'};
- for(const[id,gf]of Object.entries(gfs)){const c=gc[gf.type]||'#888';let ly;
-  if(Array.isArray(gf.points))ly=L.polygon(gf.points.map(function(p){return[p.lat,p.lng];}),{color:c,weight:1,fillOpacity:.03,dashArray:'8,4'});
-  else if(gf.points&&gf.points.center)ly=L.circle([gf.points.center.lat,gf.points.center.lng],{radius:(gf.points.radius_nm||1)*1852,color:c,weight:1,fillOpacity:.03,dashArray:'8,4'});
-  if(ly){ly.bindTooltip(gf.name);ly.addTo(fm);fgfL[id]=ly;}}
+var AO_LAT=27.849, AO_LNG=-82.521;
+var selectedId=null, ents={}, domFilter="all", pulseRing=null, viewer=null;
+
+Cesium.Ion.defaultAccessToken="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder";
+
+try {
+    viewer = new Cesium.Viewer("cesiumContainer",{
+        baseLayerPicker:false,geocoder:false,homeButton:false,
+        sceneModePicker:false,navigationHelpButton:false,
+        animation:false,timeline:false,fullscreenButton:false,
+        selectionIndicator:false,infoBox:false
+    });
+    viewer.imageryLayers.removeAll();
+    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+        url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",maximumLevel:19,credit:"OSM"
+    }));
+    viewer.camera.setView({
+        destination:Cesium.Cartesian3.fromDegrees(AO_LNG,AO_LAT,35000),
+        orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0}
+    });
+    console.log("[FIELD] Viewer ready");
+} catch(e){
+    console.error("[FIELD]",e);
+    document.getElementById("cesiumContainer").innerHTML='<div style="color:red;padding:40px">'+e.message+'</div>';
 }
-window.onSimUpdate=function(d){document.getElementById('f-a').textContent=d.asset_count;document.getElementById('f-t').textContent=d.threat_count;document.getElementById('f-h').textContent=d.pending_hal;document.getElementById('f-w').textContent=d.active_waypoints||0;document.getElementById('f-c').textContent='T+'+Math.round(d.clock.elapsed_sec)+'s';};
-rF();setInterval(rF,2500);
+
+function dColor(d){d=(d||"").toLowerCase();return d==="air"?Cesium.Color.DEEPSKYBLUE:d==="maritime"?Cesium.Color.DODGERBLUE:Cesium.Color.LIMEGREEN}
+function dCSS(d){d=(d||"").toLowerCase();return d==="air"?"#4fc3f7":d==="maritime"?"#29b6f6":"#66bb6a"}
+
+function fieldSelect(id,type){
+    document.querySelectorAll('.ar.selected,.tr.selected').forEach(function(el){el.classList.remove('selected')});
+    selectedId=id;
+    var row=document.querySelector('[data-eid="'+id+'"]');
+    if(row) row.classList.add('selected');
+
+    var ent=ents[id];
+    if(!ent||!ent.position||!viewer) return;
+    var pos=ent.position.getValue?ent.position.getValue(Cesium.JulianDate.now()):ent.position;
+    var c=Cesium.Cartographic.fromCartesian(pos);
+    var lon=Cesium.Math.toDegrees(c.longitude);
+    var lat=Cesium.Math.toDegrees(c.latitude);
+
+    viewer.camera.flyTo({
+        destination:Cesium.Cartesian3.fromDegrees(lon,lat,8000),
+        orientation:{heading:0,pitch:Cesium.Math.toRadians(-80),roll:0},
+        duration:1.0
+    });
+
+    if(pulseRing){try{viewer.entities.remove(pulseRing)}catch(e){} pulseRing=null}
+    var rc=type==='threat'?Cesium.Color.RED.withAlpha(0.6):Cesium.Color.LIME.withAlpha(0.6);
+    pulseRing=viewer.entities.add({
+        position:Cesium.Cartesian3.fromDegrees(lon,lat,30),
+        ellipse:{semiMinorAxis:300,semiMajorAxis:300,material:rc.withAlpha(0.15),outline:true,outlineColor:rc,outlineWidth:2,height:20}
+    });
+
+    if(ent.point){
+        var orig=ent.point.pixelSize?ent.point.pixelSize.getValue(Cesium.JulianDate.now()):8;
+        ent.point.pixelSize=orig*2.5;
+        ent.point.outlineColor=Cesium.Color.WHITE;
+        ent.point.outlineWidth=3;
+        setTimeout(function(){if(ents[id]&&ents[id].point){ents[id].point.pixelSize=orig;ents[id].point.outlineColor=Cesium.Color.BLACK;ents[id].point.outlineWidth=1}},4000);
+    }
+    setTimeout(function(){if(pulseRing){try{viewer.entities.remove(pulseRing)}catch(e){} pulseRing=null}},5000);
+    console.log("[FIELD] Selected:",id);
+}
+
+function fieldResetView(){
+    if(pulseRing){try{viewer.entities.remove(pulseRing)}catch(e){} pulseRing=null}
+    selectedId=null;
+    document.querySelectorAll('.ar.selected,.tr.selected').forEach(function(el){el.classList.remove('selected')});
+    viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(AO_LNG,AO_LAT,35000),orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0},duration:1.0});
+}
+
+function fieldUpdate(){
+    if(!viewer) return;
+    fetch("/api/assets").then(function(r){return r.json()}).then(function(assets){
+        var h="",cnt=0,ids=Object.keys(assets).sort();
+        for(var i=0;i<ids.length;i++){
+            var id=ids[i],a=assets[id];
+            var dom=(a.domain||"").toLowerCase();
+            if(domFilter!=="all"&&dom!==domFilter) continue;
+            var lat=parseFloat(a.lat||(a.position?a.position.lat:0)||AO_LAT);
+            var lng=parseFloat(a.lng||(a.position?a.position.lng:0)||AO_LNG);
+            var alt=dom==="air"?800:dom==="maritime"?5:20;
+            var st=(a.status||"operational").toLowerCase();
+            var tp=a.type||a.platform||"—";
+            var sc=st==="operational"?"op":st==="degraded"?"dg":"of";
+            var sel=selectedId===id?" selected":"";
+            cnt++;
+            h+='<div class="ar'+sel+'" data-eid="'+id+'" onclick="fieldSelect(\''+id+'\',\'asset\')">'+
+                '<span class="ac" style="color:'+dCSS(dom)+'">'+id+'</span>'+
+                '<span class="at">'+tp.toUpperCase()+'</span>'+
+                '<span class="as '+sc+'">'+st.toUpperCase()+'</span></div>';
+            if(!ents[id]){
+                ents[id]=viewer.entities.add({id:id,name:id,
+                    position:Cesium.Cartesian3.fromDegrees(lng,lat,alt),
+                    point:{pixelSize:dom==="air"?10:8,color:dColor(dom),outlineColor:Cesium.Color.BLACK,outlineWidth:1},
+                    label:{text:id,font:"10px Courier New",fillColor:dColor(dom),style:Cesium.LabelStyle.FILL,
+                        verticalOrigin:Cesium.VerticalOrigin.BOTTOM,pixelOffset:new Cesium.Cartesian2(0,-14),scale:0.8}
+                });
+            } else { ents[id].position=Cesium.Cartesian3.fromDegrees(lng,lat,alt); }
+        }
+        document.getElementById("f-al").innerHTML=h||'<span style="color:#555;font-size:.65em">No assets</span>';
+        document.getElementById("f-ac").textContent=cnt;
+        var mesh=0;
+        for(var j=0;j<ids.length;j++) for(var k=j+1;k<ids.length;k++){
+            var a1=assets[ids[j]],a2=assets[ids[k]];
+            if(Math.abs((a1.lat||0)-(a2.lat||0))+Math.abs((a1.lng||0)-(a2.lng||0))<0.01) mesh++;
+        }
+        document.getElementById("f-mc").textContent=mesh;
+    }).catch(function(e){console.warn("[FIELD]",e)});
+
+    fetch("/api/phase3/threats").then(function(r){return r.json()}).then(function(data){
+        var arr=Array.isArray(data)?data:(data.threats||[]);
+        document.getElementById("f-tc").textContent=arr.length;
+        var h="";
+        for(var i=0;i<arr.length;i++){
+            var t=arr[i],lev=(t.level||t.threat_level||"low").toLowerCase();
+            var lc=lev==="high"?"h":lev==="medium"?"m":"l";
+            var tid=t.id||"THR-"+i;
+            var entId="threat-"+i;
+            var sel=selectedId===entId?" selected":"";
+            h+='<div class="tr'+sel+'" data-eid="'+entId+'" onclick="fieldSelect(\''+entId+'\',\'threat\')">'+
+                '<span class="ti">'+tid+'</span>'+
+                '<span class="tt">'+(t.type||"—")+'</span>'+
+                '<span class="tl '+lc+'">'+lev.toUpperCase()+'</span></div>';
+            var tlat=parseFloat(t.lat||(AO_LAT+(Math.random()-.5)*.08));
+            var tlng=parseFloat(t.lng||(AO_LNG+(Math.random()-.5)*.08));
+            if(!ents[entId]){
+                ents[entId]=viewer.entities.add({id:entId,name:tid,
+                    position:Cesium.Cartesian3.fromDegrees(tlng,tlat,50),
+                    point:{pixelSize:12,color:Cesium.Color.RED,outlineColor:Cesium.Color.WHITE,outlineWidth:1},
+                    label:{text:"⚠ "+tid,font:"9px Courier New",fillColor:Cesium.Color.RED,
+                        verticalOrigin:Cesium.VerticalOrigin.BOTTOM,pixelOffset:new Cesium.Cartesian2(0,-14),scale:0.8}
+                });
+            }
+        }
+        document.getElementById("f-tl").innerHTML=h||'<span style="color:#555;font-size:.65em">No threats</span>';
+    }).catch(function(e){console.warn("[FIELD] threats",e)});
+}
+
+function fDom(d,btn){
+    domFilter=d;
+    document.querySelectorAll(".dbtn").forEach(function(b){b.classList.remove("on")});
+    if(btn) btn.classList.add("on");
+    for(var k in ents){try{viewer.entities.remove(ents[k])}catch(e){}}
+    ents={};selectedId=null;
+    fieldUpdate();
+}
+
+fieldUpdate();
+setInterval(fieldUpdate,5000);
+console.log("[AMOS] Field 3D view ready");
 </script>
 {% endblock %}

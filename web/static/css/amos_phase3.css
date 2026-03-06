@@ -1,113 +1,57 @@
-/* MOS Phase 3 — UI Enhancement System */
-:root{--mos-bg:#0a0a1a;--mos-panel:#111128;--mos-border:#1a1a3e;--mos-green:#00ff41;--mos-red:#ff0040;--mos-yellow:#ffd700;--mos-blue:#00bfff;--mos-cyan:#00ffff;--mos-text:#c0c0c0;--mos-bright:#ffffff}
+/* ═══════════════════════════════════════════════════════════
+   AMOS Phase 3 — Autonomous Mission Operating System
+   Modals, Toasts, Mesh, Tables, Swarm Patterns
+   ═══════════════════════════════════════════════════════════ */
 
-/* === MODAL === */
-.amos-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:10000;justify-content:center;align-items:center}
-.amos-modal-overlay.active{display:flex}
-.amos-modal{background:var(--mos-panel);border:1px solid var(--mos-green);border-radius:8px;width:92%;max-width:720px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,255,65,.2);animation:mSlide .3s ease}
-@keyframes mSlide{from{transform:translateY(-30px);opacity:0}to{transform:translateY(0);opacity:1}}
-.amos-modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--mos-border)}
-.amos-modal-header h2{margin:0;color:var(--mos-green);font-size:17px;font-family:'Courier New',monospace}
-.amos-modal-close{cursor:pointer;color:var(--mos-text);font-size:26px;background:none;border:none;line-height:1}
-.amos-modal-close:hover{color:var(--mos-red)}
-.amos-modal-body{padding:20px}
-.amos-modal-actions{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--mos-border);flex-wrap:wrap}
+/* ── MODAL ── */
+#amos-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);
+  z-index:10000;backdrop-filter:blur(4px);display:none;cursor:pointer}
+#amos-modal-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:#0a0a1a;border:1px solid #00ff41;border-radius:10px;padding:24px;
+  min-width:420px;max-width:620px;max-height:80vh;overflow-y:auto;color:#ccc;
+  font-family:'Courier New',monospace;box-shadow:0 0 40px rgba(0,255,65,.15);cursor:default}
+#amos-modal-box table{width:100%;border-collapse:collapse}
+#amos-modal-box table td{padding:6px 8px;border-bottom:1px solid #1a1a3e;font-size:13px}
+#amos-modal-box table td:first-child{color:#666;white-space:nowrap;width:120px}
 
-/* === TOAST === */
-.amos-toast-container{position:fixed;top:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px;max-width:420px;pointer-events:none}
-.amos-toast{padding:12px 18px;border-radius:6px;font-family:monospace;font-size:13px;color:#fff;animation:tSlide .3s ease;cursor:pointer;border-left:4px solid;background:var(--mos-panel);pointer-events:auto;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.amos-toast.info{border-color:var(--mos-blue)}
-.amos-toast.warning{border-color:var(--mos-yellow)}
-.amos-toast.critical{border-color:var(--mos-red);background:#1a0a0a}
-.amos-toast.success{border-color:var(--mos-green)}
-@keyframes tSlide{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+/* ── TOAST ── */
+#amos-toast-container{position:fixed;top:70px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:350px}
+.amos-toast{background:#0a0a1a;padding:10px 16px;border-radius:6px;
+  font-family:'Courier New',monospace;font-size:12px;pointer-events:auto;
+  animation:amosSlideIn .3s ease;max-width:320px}
+@keyframes amosSlideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* === SORTABLE TABLES === */
-table.sortable th{cursor:pointer;user-select:none;position:relative;padding-right:22px!important;white-space:nowrap}
-table.sortable th:hover{color:var(--mos-green)}
-table.sortable th::after{content:'⇕';position:absolute;right:6px;opacity:.3;font-size:11px}
-table.sortable th.sort-asc::after{content:'▲';opacity:1;color:var(--mos-green)}
-table.sortable th.sort-desc::after{content:'▼';opacity:1;color:var(--mos-green)}
-table.sortable tbody tr{transition:background .15s}
-table.sortable tbody tr:hover{background:rgba(0,255,65,.06)!important;cursor:pointer}
+/* ── CONTEXT MENU ── */
+#amos-ctx-menu{display:none;position:fixed;z-index:10001;background:#0a0a1a;
+  border:1px solid #00ff41;border-radius:6px;padding:4px 0;min-width:180px;
+  font-family:'Courier New',monospace;font-size:12px;box-shadow:0 0 20px rgba(0,255,65,.2)}
+.amos-ctx-item{padding:8px 16px;cursor:pointer;color:#ccc;transition:all .15s}
+.amos-ctx-item:hover{background:#00ff4115;color:#00ff41}
 
-/* === GAUGES === */
-.gauge-row{display:flex;gap:16px;flex-wrap:wrap}
-.gauge-card{background:var(--mos-panel);border:1px solid var(--mos-border);border-radius:8px;padding:14px;min-width:190px;flex:1;cursor:pointer;transition:border-color .2s}
-.gauge-card:hover{border-color:var(--mos-green)}
-.gauge-circle{width:90px;height:90px;border-radius:50%;background:conic-gradient(var(--gauge-color,var(--mos-green)) calc(var(--pct)*1%),#222 calc(var(--pct)*1%));display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
-.gauge-inner{width:70px;height:70px;border-radius:50%;background:var(--mos-bg);display:flex;align-items:center;justify-content:center;color:var(--mos-green);font-weight:bold;font-family:monospace;font-size:15px}
-.bar-gauge{height:14px;background:#222;border-radius:7px;overflow:hidden;margin:4px 0}
-.bar-gauge-fill{height:100%;border-radius:7px;transition:width .6s ease}
-.bar-label{display:flex;justify-content:space-between;font-family:monospace;font-size:11px;color:var(--mos-text)}
+/* ── TABLES ── */
+table thead th{cursor:pointer;user-select:none;transition:color .2s;position:relative}
+table thead th:hover{color:#00ff41 !important}
+table thead th::after{content:'';margin-left:4px;font-size:10px}
+table tbody tr{transition:background .15s}
+table tbody tr:hover{background:rgba(0,255,65,.06) !important}
+table tbody tr[data-clickable]:hover{background:rgba(0,255,65,.12) !important;cursor:pointer}
 
-/* === SPECTRUM / WATERFALL === */
-.spectrum-container,.waterfall-container{background:#050510;border:1px solid var(--mos-border);border-radius:6px;overflow:hidden;position:relative}
-.spectrum-container canvas{width:100%;height:250px;display:block}
-.waterfall-container canvas{width:100%;height:300px;display:block}
+/* ── MESH LINES ── */
+.amos-mesh-line{pointer-events:auto}
+.amos-mesh-tooltip .leaflet-tooltip-content,
+.amos-mesh-tooltip{background:#0a0a1a !important;border:1px solid #00ff41 !important;
+  color:#00ff41 !important;font-family:'Courier New',monospace !important;
+  font-size:11px !important;padding:6px 10px !important;border-radius:4px !important}
 
-/* === KILL CHAIN === */
-.kill-chain{display:flex;align-items:center;gap:0;padding:14px;background:var(--mos-panel);border:1px solid var(--mos-border);border-radius:8px;overflow-x:auto}
-.kc-step{text-align:center;padding:10px 18px;border:1px solid var(--mos-border);border-radius:6px;min-width:85px;font-family:monospace;font-size:12px;color:var(--mos-text);background:var(--mos-bg);transition:all .3s}
-.kc-step.active{border-color:var(--mos-green);color:var(--mos-green);box-shadow:0 0 12px rgba(0,255,65,.3)}
-.kc-step.complete{border-color:var(--mos-green);background:rgba(0,255,65,.1);color:var(--mos-green)}
-.kc-arrow{color:var(--mos-border);font-size:18px;padding:0 4px}
-.kc-arrow.active{color:var(--mos-green)}
+/* ── SWARM PATTERN LINES ── */
+.swarm-pattern-line{stroke-dasharray:8 6;stroke-opacity:0.7}
 
-/* === CONTEXT MENU === */
-.amos-ctx-menu{display:none;position:fixed;background:var(--mos-panel);border:1px solid var(--mos-green);border-radius:6px;z-index:9999;min-width:200px;box-shadow:0 0 20px rgba(0,0,0,.6);overflow:hidden}
-.amos-ctx-menu.active{display:block}
-.amos-ctx-item{padding:10px 16px;cursor:pointer;font-family:monospace;font-size:13px;color:var(--mos-text);border-bottom:1px solid var(--mos-border);transition:background .15s}
-.amos-ctx-item:last-child{border-bottom:none}
-.amos-ctx-item:hover{background:rgba(0,255,65,.1);color:var(--mos-green)}
-.amos-ctx-item .ctx-icon{margin-right:8px}
-
-/* === TIMELINE (AAR) === */
-.amos-timeline{position:relative;padding:20px 0 20px 30px}
-.amos-timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--mos-border)}
-.tl-event{position:relative;margin-bottom:18px;padding:12px 16px;background:var(--mos-panel);border:1px solid var(--mos-border);border-radius:6px;cursor:pointer;transition:border-color .2s}
-.tl-event:hover{border-color:var(--mos-green)}
-.tl-event::before{content:'';position:absolute;left:-25px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--mos-green);border:2px solid var(--mos-bg)}
-.tl-event.threat::before{background:var(--mos-red)}
-.tl-event.ew::before{background:var(--mos-yellow)}
-.tl-event.cyber::before{background:var(--mos-cyan)}
-.tl-event.movement::before{background:var(--mos-blue)}
-.tl-time{font-family:monospace;font-size:11px;color:#666}
-.tl-title{font-weight:bold;color:var(--mos-bright);margin:3px 0;font-size:13px}
-.tl-desc{font-size:12px;color:var(--mos-text)}
-
-/* === TOPOLOGY === */
-.topo-container{background:var(--mos-bg);border:1px solid var(--mos-border);border-radius:6px;min-height:350px;position:relative}
-.topo-container svg{width:100%;height:350px}
-.topo-node circle{cursor:pointer;transition:opacity .2s}
-.topo-node:hover circle{opacity:.7}
-.topo-node text{fill:var(--mos-text);font-family:monospace;font-size:10px}
-.topo-link{stroke:var(--mos-border);stroke-width:1.5}
-.topo-link.active{stroke:var(--mos-green);stroke-width:2}
-.topo-link.attack{stroke:var(--mos-red);stroke-dasharray:5 3;animation:atkPulse 1s infinite}
-@keyframes atkPulse{50%{opacity:.4}}
-
-/* === METRICS === */
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:16px 0}
-.metric-card{background:var(--mos-panel);border:1px solid var(--mos-border);border-radius:8px;padding:14px}
-.metric-card h4{margin:0 0 8px;color:var(--mos-text);font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px}
-.metric-card canvas{width:100%!important;height:170px!important}
-
-/* === DETAIL GRID (modals) === */
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.detail-item{display:flex;flex-direction:column}
-.detail-label{font-size:10px;text-transform:uppercase;color:#666;font-family:monospace;letter-spacing:.5px}
-.detail-value{font-size:14px;color:var(--mos-bright);font-family:monospace;font-weight:bold;margin-top:2px}
-.detail-value.green{color:var(--mos-green)}.detail-value.red{color:var(--mos-red)}.detail-value.yellow{color:var(--mos-yellow)}.detail-value.cyan{color:var(--mos-cyan)}
-
-/* === INTERCEPT FEED === */
-.intercept-feed{max-height:300px;overflow-y:auto;font-family:monospace;font-size:12px}
-.intercept-item{padding:8px 12px;border-bottom:1px solid var(--mos-border);display:flex;gap:10px;align-items:center;transition:background .15s}
-.intercept-item:hover{background:rgba(0,255,65,.05)}
-
-/* === MISSION TOOLBAR === */
-.mission-toolbar{display:flex;gap:8px;padding:10px;background:var(--mos-panel);border-bottom:1px solid var(--mos-border);align-items:center}
-.mission-toolbar .label{font-family:monospace;font-size:12px;color:var(--mos-green);margin-right:8px}
-
-/* === MESH TOOLTIP === */
-.amos-mesh-tooltip{background:var(--mos-panel)!important;color:var(--mos-green)!important;border:1px solid var(--mos-green)!important;font-family:monospace!important;font-size:11px!important}
+/* ── ACTION BUTTONS IN MODAL ── */
+.amos-btn{padding:6px 14px;border-radius:4px;cursor:pointer;font-family:monospace;
+  font-size:12px;transition:all .2s;border-width:1px;border-style:solid;background:transparent}
+.amos-btn:hover{filter:brightness(1.3)}
+.amos-btn-green{color:#00ff41;border-color:#00ff41;background:#0a1a0a}
+.amos-btn-yellow{color:#ffd700;border-color:#ffd700;background:#1a1a0a}
+.amos-btn-red{color:#ff0040;border-color:#ff0040;background:#1a0a0a}
+.amos-btn-blue{color:#4488ff;border-color:#4488ff;background:#0a0a1a}

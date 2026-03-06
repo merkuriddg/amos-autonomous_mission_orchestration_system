@@ -16,21 +16,63 @@
 {% endblock %}
 {% block scripts %}
 <script>
+// ── Planner with checkbox persistence ──
+var _checkedAssets = new Set();
+
 async function refreshPlanner(){
-    const assets=await apiFetch('/api/assets');
-    const div=document.getElementById('sw-assets');
-    div.innerHTML='<div style="color:#888;margin-bottom:4px">Select assets:</div>';
-    for(const id of Object.keys(assets)){div.innerHTML+='<label style="display:inline-block;margin:2px 8px"><input type="checkbox" class="asset-cb" value="'+id+'"> '+id+'</label>';}
-    const swarms=await apiFetch('/api/swarm');
-    const list=document.getElementById('swarm-list'); list.innerHTML='';
-    for(const[id,s]of Object.entries(swarms)){list.innerHTML+='<div style="border:1px solid #00ff41;padding:8px;margin:4px 0"><strong>'+id+'</strong> — '+s.formation+' | '+s.assets.length+' assets<div style="color:#888;font-size:0.8em">'+s.assets.join(', ')+'</div></div>';}
+    // SAVE checked checkboxes BEFORE destroying DOM
+    document.querySelectorAll('.asset-cb:checked').forEach(function(cb){
+        _checkedAssets.add(cb.value);
+    });
+
+    const assets = await apiFetch('/api/assets');
+    const div = document.getElementById('sw-assets');
+    div.innerHTML = '<div style="color:#888;margin-bottom:4px">Select assets:</div>';
+    for(const id of Object.keys(assets)){
+        var checked = _checkedAssets.has(id) ? ' checked' : '';
+        div.innerHTML += '<label style="display:inline-block;margin:2px 8px">' +
+            '<input type="checkbox" class="asset-cb" value="' + id + '"' + checked + '> ' +
+            id + '</label>';
+    }
+
+    const swarms = await apiFetch('/api/swarm');
+    const list = document.getElementById('swarm-list');
+    list.innerHTML = '';
+    for(const [id, s] of Object.entries(swarms)){
+        list.innerHTML += '<div style="border:1px solid #00ff41;padding:8px;margin:4px 0">' +
+            '<strong>' + id + '</strong> — ' +
+            (s.formation || 'none') + ' (' + (s.assets ? s.assets.length : 0) + ' assets)</div>';
+    }
 }
+
 async function createSwarm(){
-    const id=document.getElementById('sw-id').value;const form=document.getElementById('sw-form').value;
-    const cbs=document.querySelectorAll('.asset-cb:checked');const assets=Array.from(cbs).map(function(c){return c.value;});
-    if(!id||assets.length===0){alert('Need swarm ID and assets');return;}
-    await apiPost('/api/swarm/create',{swarm_id:id,assets:assets,formation:form});refreshPlanner();
+    const id = document.getElementById('sw-id').value;
+    const form = document.getElementById('sw-form').value;
+    const cbs = document.querySelectorAll('.asset-cb:checked');
+    const assets = Array.from(cbs).map(function(c){ return c.value; });
+    if(!id || assets.length === 0){ alert('Need swarm ID and assets'); return; }
+    await apiPost('/api/swarm/create', {swarm_id: id, assets: assets, formation: form});
+    refreshPlanner();
 }
-refreshPlanner(); setInterval(refreshPlanner,5000);
+
+// Track checkbox changes in real-time (between refreshes)
+document.addEventListener('change', function(e){
+    if(e.target && e.target.classList.contains('asset-cb')){
+        if(e.target.checked){
+            _checkedAssets.add(e.target.value);
+        } else {
+            _checkedAssets.delete(e.target.value);
+        }
+    }
+}, true);
+
+refreshPlanner();
+setInterval(refreshPlanner, 5000);
 </script>
 {% endblock %}
+
+
+
+
+
+

@@ -18,7 +18,7 @@ button:hover{background:#00ff41;color:#000}
 table{width:100%;font-size:.75em;border-collapse:collapse}
 td{padding:3px 6px;border-bottom:1px solid #1a1a1a}
 .r{color:#666}
-</style>    <link rel="stylesheet" href="/static/css/amos_phase3.css">
+</style>        <link rel="stylesheet" href="/static/css/amos_phase3.css">
 </head><body>
 <div class="login-box">
 <h1>AMOS</h1>
@@ -36,5 +36,21 @@ td{padding:3px 6px;border-bottom:1px solid #1a1a1a}
 {% endfor %}
 </table></div>
 </div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- AMOS Phase 3 UI -->
+<div id="amos-modal-overlay" onclick="AMOS.modal.close()">
+    <div id="amos-modal-box" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 id="amos-modal-title" style="color:#00ff41;margin:0;font-size:16px">Details</h3>
+            <button onclick="AMOS.modal.close()"
+                style="background:none;border:1px solid #333;color:#888;cursor:pointer;padding:4px 10px;border-radius:4px;font-family:monospace">✕</button>
+        </div>
+        <div id="amos-modal-body" style="font-size:13px;line-height:1.7">Loading...</div>
+        <div id="amos-modal-actions" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+</div>
+<div id="amos-toast-container"></div>
+<div id="amos-ctx-menu"></div>
+
 <script src="/static/js/amos_phase3.js"></script>
 </body></html>
