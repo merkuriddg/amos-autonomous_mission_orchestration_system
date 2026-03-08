@@ -111,7 +111,8 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <div class="amos-menu-hdr">OPERATIONS</div>
       {% if 'c2' in access %}<a href="/" class="amos-menu-item{% if request.path=='/' %} active{% endif %}">C2 Console</a>{% endif %}
       {% if 'twin' in access %}<a href="/dashboard" class="amos-menu-item{% if request.path=='/dashboard' %} active{% endif %}">Digital Twin</a>{% endif %}
-      {% if 'plan' in access %}<a href="/planner" class="amos-menu-item{% if request.path=='/planner' %} active{% endif %}">Mission Planner</a>{% endif %}
+      {% if 'plan' in access %}<a href="/planner" class="amos-menu-item{% if request.path=='/planner' %} active{% endif %}">Swarm Planner</a>{% endif %}
+      <a href="/missionplan" class="amos-menu-item{% if request.path=='/missionplan' %} active{% endif %}">Mission Planning</a>
       {% if 'field' in access %}<a href="/field" class="amos-menu-item{% if request.path=='/field' %} active{% endif %}">Field 3D View</a>{% endif %}
       <a href="/tactical" class="amos-menu-item{% if request.path=='/tactical' %} active{% endif %}">Tactical</a>
      </div>
@@ -122,6 +123,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'cyber' in access %}<a href="/cyber" class="amos-menu-item{% if request.path=='/cyber' %} active{% endif %}">Cyber Ops</a>{% endif %}
       {% if 'awacs' in access %}<a href="/awacs" class="amos-menu-item{% if request.path=='/awacs' %} active{% endif %}">AWACS</a>{% endif %}
       {% if 'fusion' in access %}<a href="/fusion" class="amos-menu-item{% if request.path=='/fusion' %} active{% endif %}">Sensor Fusion</a>{% endif %}
+      <a href="/commsnet" class="amos-menu-item{% if request.path=='/commsnet' %} active{% endif %}">Comms Network</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">COMBAT</div>
@@ -135,10 +137,12 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
       {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
       <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">Analytics</a>
+      <a href="/training" class="amos-menu-item{% if request.path=='/training' %} active{% endif %}">Training</a>
       <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">Documents</a>
       <div class="amos-menu-hdr" style="margin-top:10px">SYSTEM</div>
       <a href="/automation" class="amos-menu-item{% if request.path=='/automation' %} active{% endif %}">Automation</a>
       <a href="/readiness" class="amos-menu-item{% if request.path=='/readiness' %} active{% endif %}">Readiness</a>
+      <a href="/syscmd" class="amos-menu-item{% if request.path=='/syscmd' %} active{% endif %}">Sys Command</a>
       <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">Integrations</a>
       <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">Settings</a>
      </div>

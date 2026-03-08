@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Comms Network{% endblock %}
+{% block head %}
+<style>
+#cn-map{height:450px;border:1px solid #222}
+.link-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #111;font-size:.78em}
+.link-bar-wrap{flex:1;background:#1a1a1a;height:14px;border-radius:3px;overflow:hidden}
+.link-bar{height:100%;border-radius:3px;transition:width .5s ease}
+.cn-legend{display:flex;gap:12px;margin-top:4px;font-size:.7em}
+.cn-legend-item{display:flex;align-items:center;gap:4px}
+.cn-legend-dot{width:8px;height:8px;border-radius:50%}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">ADVANCED COMMS & NETWORK</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="cn-nodes">--</div><div class="label">NETWORK NODES</div></div>
+  <div class="card stat"><div class="value" id="cn-links" style="color:#4488ff">--</div><div class="label">ACTIVE LINKS</div></div>
+  <div class="card stat"><div class="value" id="cn-quality" style="color:#00ff41">--</div><div class="label">AVG QUALITY</div></div>
+  <div class="card stat"><div class="value" id="cn-denied" style="color:#ff4444">--</div><div class="label">DENIED</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- MAP -->
+  <div class="card">
+   <h3>MESH NETWORK TOPOLOGY</h3>
+   <div id="cn-map"></div>
+   <div style="display:flex;gap:6px;margin-top:6px">
+    <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="cn-show-links" checked onchange="refreshMap()"> Links</label>
+    <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="cn-show-heatmap" checked onchange="refreshMap()"> Degradation Heatmap</label>
+   </div>
+   <div class="cn-legend">
+    <div class="cn-legend-item"><div class="cn-legend-dot" style="background:#00ff41"></div>Good (&gt;60%)</div>
+    <div class="cn-legend-item"><div class="cn-legend-dot" style="background:#ffaa00"></div>Degraded (25-60%)</div>
+    <div class="cn-legend-item"><div class="cn-legend-dot" style="background:#ff4444"></div>Denied (&lt;25%)</div>
+    <div class="cn-legend-item"><div class="cn-legend-dot" style="background:#4488ff"></div>SATCOM</div>
+   </div>
+  </div>
+
+  <!-- LINK BUDGET -->
+  <div>
+   <div class="card">
+    <h3>LINK BUDGET</h3>
+    <div class="scroll-box" style="max-height:280px" id="cn-budget"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>RELAY PATHS</h3>
+    <div class="scroll-box" style="max-height:180px" id="cn-relay"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var cnMap, cnMarkers={}, cnLinkLines=[], cnHeatLayer=null;
+
+function initMap(){
+ cnMap=L.map('cn-map',{zoomControl:true}).setView([35.689,51.312],9);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(cnMap);
+ setTimeout(function(){cnMap.invalidateSize();},300);
+}
+
+function statusColor(s){return s==='good'?'#00ff41':s==='degraded'?'#ffaa00':'#ff4444';}
+
+async function refreshMap(){
+ var topo=await apiFetch('/api/commsnet/topology');
+ var showLinks=document.getElementById('cn-show-links').checked;
+ var showHeat=document.getElementById('cn-show-heatmap').checked;
+
+ // Stats
+ document.getElementById('cn-nodes').textContent=topo.total_nodes;
+ document.getElementById('cn-links').textContent=topo.active_links;
+ document.getElementById('cn-quality').textContent=topo.avg_quality+'%';
+ var denied=topo.nodes.filter(function(n){return n.status==='denied';}).length;
+ document.getElementById('cn-denied').textContent=denied;
+
+ // Clear old markers and lines
+ cnLinkLines.forEach(function(l){cnMap.removeLayer(l);});cnLinkLines=[];
+ for(var k in cnMarkers){cnMap.removeLayer(cnMarkers[k]);}cnMarkers={};
+ if(cnHeatLayer){cnMap.removeLayer(cnHeatLayer);cnHeatLayer=null;}
+
+ // Nodes
+ var nodeMap={};
+ topo.nodes.forEach(function(n){
+  nodeMap[n.id]=n;
+  var col=statusColor(n.status);
+  var isSat=n.method==='SATCOM';
+  var m=L.circleMarker([n.lat,n.lng],{radius:isSat?8:6,color:isSat?'#4488ff':col,fillColor:isSat?'#4488ff':col,fillOpacity:.8,weight:2}).addTo(cnMap);
+  m.bindTooltip('<b>'+n.id+'</b><br>'+n.status.toUpperCase()+' ('+n.comms_pct+'%)<br>'+n.method+(n.relay_hops?' | '+n.relay_hops+' hops':''),{direction:'top'});
+  m.on('click',function(){showRelayFor(n.id,topo);});
+  cnMarkers[n.id]=m;
+ });
+
+ // Links
+ if(showLinks){
+  topo.links.forEach(function(lk){
+   var a=nodeMap[lk.from],b=nodeMap[lk.to];
+   if(!a||!b)return;
+   var col=lk.quality>70?'#00ff41':lk.quality>40?'#ffaa00':'#ff4444';
+   var weight=lk.active?2:1;
+   var dash=lk.active?null:'4,4';
+   var line=L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:col,weight:weight,opacity:.6,dashArray:dash}).addTo(cnMap);
+   line.bindTooltip(lk.from+' → '+lk.to+': '+lk.quality+'% | '+lk.bandwidth_kbps+'kbps',{sticky:true});
+   cnLinkLines.push(line);
+  });
+ }
+
+ // Heatmap
+ if(showHeat){
+  var hm=await apiFetch('/api/commsnet/heatmap');
+  if(hm.points&&hm.points.length){
+   var hData=hm.points.map(function(p){return[p.lat,p.lng,p.intensity];});
+   cnHeatLayer=L.heatLayer(hData,{radius:30,blur:20,maxZoom:17,gradient:{0.2:'#ffaa00',0.5:'#ff6600',0.8:'#ff4444',1.0:'#ff0000'}}).addTo(cnMap);
+  }
+ }
+
+ // Auto-fit
+ var lats=topo.nodes.map(function(n){return n.lat;});
+ var lngs=topo.nodes.map(function(n){return n.lng;});
+ if(lats.length>1){
+  cnMap.fitBounds([[Math.min.apply(null,lats)-.01,Math.min.apply(null,lngs)-.01],[Math.max.apply(null,lats)+.01,Math.max.apply(null,lngs)+.01]]);
+ }
+}
+
+function showRelayFor(assetId,topo){
+ // Highlight relay chain: find all links involving this asset
+ var relayHtml='<div style="font-size:.78em;color:#00ff41;margin-bottom:4px">RELAY PATH FOR: <strong>'+assetId+'</strong></div>';
+ var paths=topo.links.filter(function(l){return l.from===assetId||l.to===assetId;});
+ if(!paths.length){relayHtml+='<div style="color:#666">No direct links</div>';}
+ else{
+  paths.forEach(function(p){
+   var col=p.quality>70?'#00ff41':p.quality>40?'#ffaa00':'#ff4444';
+   relayHtml+='<div style="padding:2px 0;border-bottom:1px solid #111"><span style="color:'+col+'">●</span> '+p.from+' → '+p.to+' <span style="color:#888">('+p.quality+'% | '+p.bandwidth_kbps+'kbps)</span></div>';
+  });
+ }
+ document.getElementById('cn-relay').innerHTML=relayHtml;
+}
+
+async function refreshBudget(){
+ var links=await apiFetch('/api/commsnet/links');
+ var h='';
+ links.forEach(function(l){
+  var snrCol=l.snr_db>20?'#00ff41':l.snr_db>10?'#ffaa00':'#ff4444';
+  var utilCol=l.bandwidth_util_pct>70?'#ff4444':l.bandwidth_util_pct>40?'#ffaa00':'#00ff41';
+  var dc={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+  var col=dc[l.domain]||'#888';
+  h+='<div class="link-row">';
+  h+='<span style="width:100px;color:'+col+';font-weight:bold">'+l.asset_id+'</span>';
+  h+='<span style="width:50px;color:#888;font-size:.7em">'+l.signal_dbm+'dBm</span>';
+  h+='<span style="width:45px;color:'+snrCol+'">SNR '+l.snr_db+'</span>';
+  h+='<div class="link-bar-wrap"><div class="link-bar" style="width:'+Math.min(100,l.bandwidth_util_pct)+'%;background:'+utilCol+'"></div></div>';
+  h+='<span style="width:60px;text-align:right;color:#888;font-size:.7em">'+l.latency_ms+'ms</span>';
+  h+='<span style="width:50px;text-align:right;color:'+(l.packet_loss_pct>2?'#ff4444':'#00ff41')+';font-size:.7em">'+l.packet_loss_pct+'%</span>';
+  h+='</div>';
+ });
+ document.getElementById('cn-budget').innerHTML=h||'<div style="color:#666;padding:8px">No link data</div>';
+}
+
+async function refreshRelay(){
+ var topo=await apiFetch('/api/commsnet/topology');
+ var h='<div style="font-size:.72em;color:#666;margin-bottom:4px">Click a node on the map to see its relay chain</div>';
+ // Show nodes with relay hops
+ var relayed=topo.nodes.filter(function(n){return n.relay_hops>0;});
+ relayed.forEach(function(n){
+  var col=statusColor(n.status);
+  h+='<div style="padding:3px 0;border-bottom:1px solid #111;font-size:.78em"><span style="color:'+col+'">●</span> '+n.id+' — '+n.relay_hops+' hop'+(n.relay_hops>1?'s':'')+' via '+n.method+'</div>';
+ });
+ if(!relayed.length) h+='<div style="color:#666;font-size:.78em">All nodes on direct link</div>';
+ document.getElementById('cn-relay').innerHTML=h;
+}
+
+// Init
+initMap();
+refreshMap();refreshBudget();refreshRelay();
+setInterval(function(){refreshMap();refreshBudget();},5000);
+</script>
+{% endblock %}

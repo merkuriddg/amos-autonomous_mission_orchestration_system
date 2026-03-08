@@ -97,12 +97,31 @@ app = Flask(__name__,
 app.secret_key = os.environ.get("MOS_SECRET", "mos-shadow-forge-2026")
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
+@app.before_request
+def _track_request_start():
+    """Phase 9: Track request start time for API metrics."""
+    request._amos_start = time.time()
+
 @app.after_request
 def add_no_cache(response):
     """Prevent browser from caching during development"""
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    # Phase 9: API metrics tracking
+    if request.path.startswith("/api/"):
+        ep = request.path
+        _api_metrics["requests"] += 1
+        if response.status_code >= 400:
+            _api_metrics["errors"] += 1
+        if ep not in _api_metrics["by_endpoint"]:
+            _api_metrics["by_endpoint"][ep] = {"count": 0, "errors": 0, "total_ms": 0}
+        m = _api_metrics["by_endpoint"][ep]
+        m["count"] += 1
+        if response.status_code >= 400:
+            m["errors"] += 1
+        elapsed_ms = (time.time() - getattr(request, '_amos_start', time.time())) * 1000
+        m["total_ms"] += elapsed_ms
     return response
 
 
@@ -165,6 +184,12 @@ _exercise = {"active": False, "name": "", "started_at": None, "injects": [], "sc
              "events": [], "completed_injects": 0}
 _sitreps = []  # list of generated SITREPs
 _alert_cooldowns = {}  # {alert_key: last_fired_time} — prevents toast spam
+
+# ── Phase 9: Mission Plans, Training, API Metrics, Uptime ──
+_mission_plans = {}  # {plan_id: {id, name, template, waypoints, phases, pace, assets, created_at, created_by}}
+_training_records = []  # [{id, operator, name, exercise_name, score, max_score, pct, passed, timestamp}]
+_api_metrics = {"requests": 0, "errors": 0, "by_endpoint": {}, "start_time": time.time()}
+_uptime_pings = []  # [{timestamp, assets, threats, cpu, memory, uptime_sec}]
 
 # Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
 _online_ops = {}
@@ -667,6 +692,23 @@ def integrations_page(): return render_template("integrations.html", **ctx())
 @app.route("/analytics")
 @login_required
 def analytics_page(): return render_template("analytics.html", **ctx())
+
+# Phase 9 pages
+@app.route("/missionplan")
+@login_required
+def missionplan_page(): return render_template("missionplan.html", **ctx())
+
+@app.route("/syscmd")
+@login_required
+def syscmd_page(): return render_template("syscmd.html", **ctx())
+
+@app.route("/training")
+@login_required
+def training_page(): return render_template("training.html", **ctx())
+
+@app.route("/commsnet")
+@login_required
+def commsnet_page(): return render_template("commsnet.html", **ctx())
 
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS API
@@ -2316,6 +2358,15 @@ def api_exercise_stop():
     aar_events.append({"type": "exercise_end", "timestamp": now_iso(),
         "elapsed": sim_clock["elapsed_sec"],
         "details": f"Exercise '{_exercise['name']}' ended: {_exercise['score']}/{_exercise['max_score']} pts"})
+    # Phase 9: Auto-record training result
+    c = ctx()
+    ms = _exercise["max_score"] or 1
+    pct = round(_exercise["score"] / ms * 100, 1)
+    _training_records.append({
+        "id": f"TR-{uuid.uuid4().hex[:8]}", "operator": c["user"], "name": c["name"],
+        "exercise_name": _exercise["name"], "score": _exercise["score"],
+        "max_score": _exercise["max_score"], "pct": pct, "passed": pct >= 60,
+        "timestamp": now_iso()})
     return jsonify({"status": "ok", "results": final})
 
 @app.route("/api/exercise/presets")
@@ -2874,11 +2925,282 @@ def api_theater_switch():
         "details": f"Theater switched to {loc.get('name', key)} by {c['name']}"})
     return jsonify({"status": "ok", "theater": key, "name": loc.get("name", key)})
 
+# ═══════════════════════════════════════════════════════════
+#  PHASE 9: MISSION PLANNING SUITE
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/missionplan/templates")
+@login_required
+def api_missionplan_templates():
+    """Predefined mission plan templates."""
+    return jsonify([
+        {"id": "recon_patrol", "name": "Recon Patrol",
+         "phases": [{"name": "Departure", "duration_min": 10}, {"name": "Route March", "duration_min": 30},
+                    {"name": "ISR Collection", "duration_min": 45}, {"name": "RTB", "duration_min": 20}],
+         "pace": {"primary": "SATCOM", "alternate": "HF Radio", "contingency": "Mesh Network", "emergency": "Visual Signal"},
+         "asset_roles": ["recon", "isr_strike"], "description": "Standard ISR patrol with 4-phase route"},
+        {"id": "strike_mission", "name": "Strike Mission",
+         "phases": [{"name": "Assembly", "duration_min": 15}, {"name": "Infiltration", "duration_min": 25},
+                    {"name": "Target Acquisition", "duration_min": 20}, {"name": "Execution", "duration_min": 10},
+                    {"name": "Exfiltration", "duration_min": 30}],
+         "pace": {"primary": "Link-16", "alternate": "SATCOM", "contingency": "HF Radio", "emergency": "Code Word"},
+         "asset_roles": ["isr_strike", "direct_action", "ew"], "description": "Coordinated strike with ISR/EW support"},
+        {"id": "area_denial", "name": "Area Denial",
+         "phases": [{"name": "Deploy", "duration_min": 20}, {"name": "Establish Perimeter", "duration_min": 30},
+                    {"name": "Active Denial", "duration_min": 120}, {"name": "Withdrawal", "duration_min": 25}],
+         "pace": {"primary": "Mesh Network", "alternate": "SATCOM", "contingency": "UHF", "emergency": "Runner"},
+         "asset_roles": ["direct_action", "ew", "recon"], "description": "Perimeter defense with EW support"},
+        {"id": "csar", "name": "CSAR (Combat Search & Rescue)",
+         "phases": [{"name": "Alert", "duration_min": 5}, {"name": "Ingress", "duration_min": 30},
+                    {"name": "Search", "duration_min": 45}, {"name": "Recovery", "duration_min": 15},
+                    {"name": "Egress", "duration_min": 25}],
+         "pace": {"primary": "SATCOM", "alternate": "Guard Freq", "contingency": "Mesh Network", "emergency": "EPIRB/PLB"},
+         "asset_roles": ["medevac", "recon", "air_superiority"], "description": "Personnel recovery with air cover"},
+    ])
+
+@app.route("/api/missionplan/save", methods=["POST"])
+@login_required
+def api_missionplan_save():
+    d = request.json or {}
+    pid = d.get("id") or f"MP-{uuid.uuid4().hex[:8]}"
+    c = ctx()
+    _mission_plans[pid] = {
+        "id": pid, "name": d.get("name", "Unnamed Plan"),
+        "template": d.get("template", ""),
+        "waypoints": d.get("waypoints", []),
+        "phases": d.get("phases", []),
+        "pace": d.get("pace", {}),
+        "assets": d.get("assets", []),
+        "created_at": now_iso(), "created_by": c["name"]}
+    return jsonify({"status": "ok", "plan": _mission_plans[pid]})
+
+@app.route("/api/missionplan/list")
+@login_required
+def api_missionplan_list():
+    return jsonify(list(_mission_plans.values()))
+
+@app.route("/api/missionplan/<plan_id>")
+@login_required
+def api_missionplan_get(plan_id):
+    p = _mission_plans.get(plan_id)
+    if not p:
+        return jsonify({"error": "Plan not found"}), 404
+    return jsonify(p)
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 9: SYSTEM COMMAND CENTER
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/syscmd/health")
+@login_required
+def api_syscmd_health():
+    """Server health metrics."""
+    import platform
+    uptime_sec = time.time() - _api_metrics["start_time"]
+    # Simulated CPU/memory (real psutil not guaranteed)
+    cpu = round(random.uniform(8, 45) + len(sim_assets) * 0.5, 1)
+    mem_mb = round(80 + len(sim_assets) * 2.5 + len(aar_events) * 0.01, 1)
+    # Record uptime ping
+    _uptime_pings.append({"ts": now_iso(), "cpu": cpu, "mem": mem_mb, "uptime": round(uptime_sec)})
+    if len(_uptime_pings) > 60:
+        del _uptime_pings[:1]
+    return jsonify({
+        "uptime_sec": round(uptime_sec), "cpu_pct": cpu, "memory_mb": mem_mb,
+        "python": platform.python_version(), "flask": "3.x",
+        "platform": platform.platform(), "hostname": platform.node(),
+        "assets_loaded": len(sim_assets), "threats_loaded": len(sim_threats),
+        "aar_events": len(aar_events), "sim_speed": sim_clock["speed"],
+        "uptime_history": _uptime_pings[-60:]})
+
+@app.route("/api/syscmd/metrics")
+@login_required
+def api_syscmd_metrics():
+    """API request metrics."""
+    top = sorted(_api_metrics["by_endpoint"].items(), key=lambda x: x[1]["count"], reverse=True)[:30]
+    endpoints = []
+    for ep, m in top:
+        avg_ms = round(m["total_ms"] / max(1, m["count"]), 2)
+        endpoints.append({"endpoint": ep, "count": m["count"], "errors": m["errors"], "avg_ms": avg_ms})
+    return jsonify({"total_requests": _api_metrics["requests"], "total_errors": _api_metrics["errors"],
+                    "unique_endpoints": len(_api_metrics["by_endpoint"]), "top_endpoints": endpoints})
+
+@app.route("/api/syscmd/logs")
+@login_required
+def api_syscmd_logs():
+    """Read last 50 lines from /tmp/amos.log."""
+    lines = []
+    try:
+        with open("/tmp/amos.log", "r") as f:
+            lines = f.readlines()[-50:]
+    except Exception:
+        lines = ["(Log file not available)\n"]
+    return jsonify({"lines": [l.rstrip() for l in lines], "count": len(lines)})
+
+@app.route("/api/syscmd/diagnostics")
+@login_required
+def api_syscmd_diagnostics():
+    """System connectivity diagnostics."""
+    connected_sockets = len(_online_ops)
+    return jsonify({
+        "socketio_clients": connected_sockets,
+        "px4": {"available": bool(_px4), "connected": _px4.connected if _px4 else False},
+        "tak": {"available": bool(_tak), "connected": _tak.connected if _tak else False},
+        "link16": {"available": bool(_link16), "active": bool(_link16)},
+        "ros2": {"available": ros2_bridge.available if ros2_bridge else False},
+        "database": {"connected": db_check(), "tables": _count_db_tables()},
+        "recording": _recording["active"],
+        "exercise": _exercise["active"],
+        "automation_rules": len(_automation_rules),
+        "mission_plans": len(_mission_plans),
+        "training_records": len(_training_records)})
+
+def _count_db_tables():
+    """Count DB tables safely."""
+    try:
+        rows = fetchall("SHOW TABLES")
+        return len(rows) if rows else 0
+    except Exception:
+        return 0
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 9: TRAINING & CERTIFICATION
+# ═══════════════════════════════════════════════════════════
+_CERT_LEVELS = [
+    {"level": 1, "name": "NOVICE", "min_exercises": 0, "min_avg": 0, "color": "#888"},
+    {"level": 2, "name": "BASIC", "min_exercises": 2, "min_avg": 40, "color": "#ffaa00"},
+    {"level": 3, "name": "QUALIFIED", "min_exercises": 5, "min_avg": 60, "color": "#00ff41"},
+    {"level": 4, "name": "EXPERT", "min_exercises": 10, "min_avg": 75, "color": "#00ccff"},
+    {"level": 5, "name": "MASTER", "min_exercises": 20, "min_avg": 85, "color": "#ff44ff"},
+]
+
+def _compute_cert(user):
+    recs = [r for r in _training_records if r["operator"] == user]
+    count = len(recs)
+    avg = sum(r["pct"] for r in recs) / max(1, count)
+    best = max((r["pct"] for r in recs), default=0)
+    cert = _CERT_LEVELS[0]
+    for cl in _CERT_LEVELS:
+        if count >= cl["min_exercises"] and avg >= cl["min_avg"]:
+            cert = cl
+    return {"user": user, "exercises": count, "avg_score": round(avg, 1),
+            "best_score": round(best, 1), "cert_level": cert["level"],
+            "cert_name": cert["name"], "cert_color": cert["color"]}
+
+@app.route("/api/training/history")
+@login_required
+def api_training_history():
+    return jsonify(_training_records)
+
+@app.route("/api/training/leaderboard")
+@login_required
+def api_training_leaderboard():
+    operators = set(r["operator"] for r in _training_records)
+    board = []
+    for op in operators:
+        info = _compute_cert(op)
+        total = sum(r["score"] for r in _training_records if r["operator"] == op)
+        info["total_score"] = total
+        info["name"] = next((r["name"] for r in _training_records if r["operator"] == op), op)
+        board.append(info)
+    board.sort(key=lambda x: x["total_score"], reverse=True)
+    for i, b in enumerate(board):
+        b["rank"] = i + 1
+    return jsonify(board)
+
+@app.route("/api/training/cert/<user>")
+@login_required
+def api_training_cert(user):
+    return jsonify(_compute_cert(user))
+
+@app.route("/api/training/record", methods=["POST"])
+@login_required
+def api_training_record():
+    """Manually record a training result."""
+    d = request.json or {}
+    c = ctx()
+    score = int(d.get("score", 0))
+    mx = int(d.get("max_score", 100))
+    pct = round(score / max(1, mx) * 100, 1)
+    rec = {"id": f"TR-{uuid.uuid4().hex[:8]}", "operator": d.get("operator", c["user"]),
+           "name": d.get("name", c["name"]), "exercise_name": d.get("exercise_name", "Manual Entry"),
+           "score": score, "max_score": mx, "pct": pct, "passed": pct >= 60,
+           "timestamp": now_iso()}
+    _training_records.append(rec)
+    return jsonify({"status": "ok", "record": rec})
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 9: ADVANCED COMMS & NETWORK
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/commsnet/topology")
+@login_required
+def api_commsnet_topology():
+    """Live mesh network topology with asset positions and link quality."""
+    nodes = []
+    links = []
+    for aid, a in sim_assets.items():
+        cs = a["health"]["comms_strength"]
+        status = "good" if cs > 60 else "degraded" if cs > 25 else "denied"
+        nodes.append({"id": aid, "type": a["type"], "domain": a["domain"],
+            "lat": a["position"]["lat"], "lng": a["position"]["lng"],
+            "comms_pct": round(cs), "status": status,
+            "method": "SATCOM" if a["domain"] == "air" else "Mesh",
+            "relay_hops": random.randint(0, 2) if cs > 25 else 0})
+    # Generate links between nearby assets (simulated mesh)
+    asset_list = list(sim_assets.values())
+    for i, a in enumerate(asset_list):
+        for j in range(i + 1, len(asset_list)):
+            b = asset_list[j]
+            dlat = abs(a["position"]["lat"] - b["position"]["lat"])
+            dlng = abs(a["position"]["lng"] - b["position"]["lng"])
+            dist = math.sqrt(dlat**2 + dlng**2)
+            if dist < 0.08:  # within ~8km
+                quality = max(10, 100 - dist * 1200 + random.uniform(-10, 10))
+                links.append({"from": a["id"], "to": b["id"],
+                    "quality": round(min(100, quality)), "distance_deg": round(dist, 4),
+                    "active": quality > 20, "encrypted": True,
+                    "bandwidth_kbps": round(random.uniform(128, 2048) * (quality / 100))})
+    return jsonify({"nodes": nodes, "links": links,
+                    "total_nodes": len(nodes), "active_links": sum(1 for l in links if l["active"]),
+                    "avg_quality": round(sum(n["comms_pct"] for n in nodes) / max(1, len(nodes)), 1)})
+
+@app.route("/api/commsnet/links")
+@login_required
+def api_commsnet_links():
+    """Per-link signal budget details."""
+    link_details = []
+    for aid, a in sim_assets.items():
+        cs = a["health"]["comms_strength"]
+        snr = round(cs * 0.3 + random.uniform(-2, 2), 1)
+        link_details.append({"asset_id": aid, "domain": a["domain"],
+            "signal_dbm": round(-90 + cs * 0.6 + random.uniform(-3, 3)),
+            "noise_dbm": round(-110 + random.uniform(-5, 5)),
+            "snr_db": max(0, snr), "bandwidth_util_pct": round(random.uniform(15, 85), 1),
+            "latency_ms": round(random.uniform(5, 200) * (100 / max(10, cs))),
+            "packet_loss_pct": round(max(0, (100 - cs) * 0.15 + random.uniform(-1, 1)), 2),
+            "encryption": "AES-256", "protocol": "MANET" if a["domain"] != "air" else "SATCOM"})
+    return jsonify(link_details)
+
+@app.route("/api/commsnet/heatmap")
+@login_required
+def api_commsnet_heatmap():
+    """Comms degradation heatmap overlay data."""
+    points = []
+    for a in sim_assets.values():
+        cs = a["health"]["comms_strength"]
+        if cs < 70:  # Only show degraded/denied areas
+            intensity = (70 - cs) / 70  # higher = worse
+            points.append({"lat": a["position"]["lat"], "lng": a["position"]["lng"],
+                           "intensity": round(intensity, 2)})
+            # Add surrounding area
+            for _ in range(2):
+                points.append({"lat": a["position"]["lat"] + random.uniform(-0.01, 0.01),
+                               "lng": a["position"]["lng"] + random.uniform(-0.01, 0.01),
+                               "intensity": round(intensity * 0.6, 2)})
+    return jsonify({"points": points, "count": len(points)})
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 8")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 9")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)

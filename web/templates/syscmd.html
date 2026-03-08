@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}System Command Center{% endblock %}
+{% block head %}
+<style>
+.diag-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #111;font-size:.82em}
+.diag-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #111;font-size:.78em}
+.log-line{padding:2px 0;font-size:.72em;color:#aaa;border-bottom:1px solid #0a0a0a;font-family:'Courier New',monospace;word-break:break-all}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">SYSTEM COMMAND CENTER</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="sc-uptime" style="color:#4488ff">--</div><div class="label">UPTIME</div></div>
+  <div class="card stat"><div class="value" id="sc-cpu">--</div><div class="label">CPU %</div></div>
+  <div class="card stat"><div class="value" id="sc-mem" style="color:#ffaa00">--</div><div class="label">MEMORY MB</div></div>
+  <div class="card stat"><div class="value" id="sc-reqs" style="color:#ff44ff">--</div><div class="label">API REQUESTS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- Server Health -->
+  <div class="card">
+   <h3>SERVER HEALTH</h3>
+   <div id="sc-health" style="font-size:.82em"></div>
+  </div>
+  <!-- System Diagnostics -->
+  <div class="card">
+   <h3>SYSTEM DIAGNOSTICS</h3>
+   <div id="sc-diag"></div>
+  </div>
+ </div>
+
+ <!-- Uptime Chart -->
+ <div class="card" style="margin-top:8px">
+  <h3>UPTIME / CPU HISTORY</h3>
+  <canvas id="uptimeChart" height="120"></canvas>
+ </div>
+
+ <div class="grid-2" style="margin-top:8px">
+  <!-- API Metrics -->
+  <div class="card">
+   <h3>API METRICS <span class="badge badge-blue" id="sc-unique-eps">0</span></h3>
+   <div style="display:flex;justify-content:space-between;font-size:.7em;color:#666;padding:2px 0;border-bottom:1px solid #333">
+    <span style="flex:3">ENDPOINT</span><span style="width:60px;text-align:right">CALLS</span><span style="width:60px;text-align:right">ERR</span><span style="width:60px;text-align:right">AVG MS</span>
+   </div>
+   <div class="scroll-box" style="max-height:300px" id="sc-metrics"></div>
+  </div>
+  <!-- Log Viewer -->
+  <div class="card">
+   <h3>LOG VIEWER <button class="btn" style="float:right;padding:1px 8px;font-size:.7em" onclick="refreshLogs()">REFRESH</button></h3>
+   <div class="scroll-box" style="max-height:340px" id="sc-logs"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var uptimeChart=null;
+
+function initUptimeChart(){
+ var ctx=document.getElementById('uptimeChart').getContext('2d');
+ uptimeChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[
+  {label:'CPU %',data:[],borderColor:'#00ff41',backgroundColor:'#00ff4120',tension:.3,fill:true,pointRadius:0},
+  {label:'Memory MB',data:[],borderColor:'#ffaa00',backgroundColor:'#ffaa0010',tension:.3,fill:false,pointRadius:0,yAxisID:'y1'}
+ ]},options:{responsive:true,animation:false,plugins:{legend:{labels:{color:'#888',font:{size:10}}}},
+  scales:{x:{display:true,ticks:{color:'#555',maxTicksLimit:10,font:{size:9}},grid:{color:'#1a1a1a'}},
+          y:{position:'left',ticks:{color:'#00ff41',font:{size:9}},grid:{color:'#1a1a1a'}},
+          y1:{position:'right',ticks:{color:'#ffaa00',font:{size:9}},grid:{display:false}}}}});
+}
+
+async function refreshHealth(){
+ var h=await apiFetch('/api/syscmd/health');
+ // Stats
+ var m=Math.floor(h.uptime_sec/60);var hr=Math.floor(m/60);
+ document.getElementById('sc-uptime').textContent=(hr?hr+'h ':'')+(m%60)+'m';
+ document.getElementById('sc-cpu').textContent=h.cpu_pct+'%';
+ document.getElementById('sc-cpu').style.color=h.cpu_pct>70?'#ff4444':h.cpu_pct>40?'#ffaa00':'#00ff41';
+ document.getElementById('sc-mem').textContent=h.memory_mb;
+ // Health details
+ document.getElementById('sc-health').innerHTML=
+  '<div>Python: <span style="color:#fff">'+h.python+'</span></div>'+
+  '<div>Flask: <span style="color:#fff">'+h.flask+'</span></div>'+
+  '<div>Platform: <span style="color:#fff">'+h.platform+'</span></div>'+
+  '<div>Host: <span style="color:#fff">'+h.hostname+'</span></div>'+
+  '<div style="margin-top:6px;border-top:1px solid #222;padding-top:4px">Assets: <span style="color:#00ff41">'+h.assets_loaded+'</span> | Threats: <span style="color:#ff4444">'+h.threats_loaded+'</span></div>'+
+  '<div>AAR Events: <span style="color:#4488ff">'+h.aar_events+'</span></div>'+
+  '<div>Sim Speed: <span style="color:#ffaa00">'+h.sim_speed+'x</span></div>';
+ // Chart update
+ if(uptimeChart && h.uptime_history){
+  var labels=h.uptime_history.map(function(p){return(p.ts||'').substring(11,19);});
+  var cpuD=h.uptime_history.map(function(p){return p.cpu;});
+  var memD=h.uptime_history.map(function(p){return p.mem;});
+  uptimeChart.data.labels=labels;
+  uptimeChart.data.datasets[0].data=cpuD;
+  uptimeChart.data.datasets[1].data=memD;
+  uptimeChart.update();
+ }
+}
+
+async function refreshMetrics(){
+ var m=await apiFetch('/api/syscmd/metrics');
+ document.getElementById('sc-reqs').textContent=m.total_requests;
+ document.getElementById('sc-unique-eps').textContent=m.unique_endpoints;
+ var h='';
+ (m.top_endpoints||[]).forEach(function(e){
+  var errCol=e.errors>0?'#ff4444':'#333';
+  var msCol=e.avg_ms>100?'#ff4444':e.avg_ms>30?'#ffaa00':'#00ff41';
+  h+='<div class="metric-row"><span style="flex:3;color:#888">'+e.endpoint+'</span><span style="width:60px;text-align:right;color:#00ff41">'+e.count+'</span><span style="width:60px;text-align:right;color:'+errCol+'">'+e.errors+'</span><span style="width:60px;text-align:right;color:'+msCol+'">'+e.avg_ms+'</span></div>';
+ });
+ document.getElementById('sc-metrics').innerHTML=h||'<div style="color:#666;padding:8px">No API calls yet</div>';
+}
+
+async function refreshDiag(){
+ var d=await apiFetch('/api/syscmd/diagnostics');
+ var rows=[
+  {name:'SocketIO Clients',ok:d.socketio_clients>0,val:d.socketio_clients+' connected'},
+  {name:'PX4 Autopilot',ok:d.px4.connected,val:d.px4.connected?'Connected':'Offline'},
+  {name:'TAK Server',ok:d.tak.connected,val:d.tak.connected?'Connected':'Offline'},
+  {name:'Link-16',ok:d.link16.active,val:d.link16.active?'Active':'Offline'},
+  {name:'ROS 2',ok:d.ros2.available,val:d.ros2.available?'Connected':'Standalone'},
+  {name:'Database',ok:d.database.connected,val:d.database.connected?d.database.tables+' tables':'Offline'},
+  {name:'Recording',ok:d.recording,val:d.recording?'Active':'Inactive'},
+  {name:'Exercise',ok:d.exercise,val:d.exercise?'Active':'Inactive'},
+  {name:'Mission Plans',ok:d.mission_plans>0,val:d.mission_plans+' saved'},
+  {name:'Training Records',ok:d.training_records>0,val:d.training_records+' records'},
+  {name:'Automation Rules',ok:d.automation_rules>0,val:d.automation_rules+' rules'},
+ ];
+ var h='';
+ rows.forEach(function(r){
+  var col=r.ok?'#00ff41':'#ff4444';
+  h+='<div class="diag-row"><div class="diag-dot" style="background:'+col+'"></div><span style="flex:1">'+r.name+'</span><span style="color:'+col+'">'+r.val+'</span></div>';
+ });
+ document.getElementById('sc-diag').innerHTML=h;
+}
+
+async function refreshLogs(){
+ var l=await apiFetch('/api/syscmd/logs');
+ var h='';
+ (l.lines||[]).forEach(function(line){
+  var col='#aaa';
+  if(line.indexOf('ERROR')>=0||line.indexOf('error')>=0) col='#ff4444';
+  else if(line.indexOf('WARNING')>=0||line.indexOf('warning')>=0) col='#ffaa00';
+  else if(line.indexOf('[AMOS]')>=0) col='#00ff41';
+  h+='<div class="log-line" style="color:'+col+'">'+line.replace(/</g,'&lt;')+'</div>';
+ });
+ document.getElementById('sc-logs').innerHTML=h||'<div style="color:#666;padding:8px">No log data</div>';
+ var el=document.getElementById('sc-logs');el.scrollTop=el.scrollHeight;
+}
+
+// Init
+initUptimeChart();
+refreshHealth();refreshMetrics();refreshDiag();refreshLogs();
+setInterval(function(){refreshHealth();refreshMetrics();refreshDiag();},5000);
+</script>
+{% endblock %}

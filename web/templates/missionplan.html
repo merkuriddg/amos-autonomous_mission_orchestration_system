@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Mission Planner{% endblock %}
+{% block head %}
+<style>
+#mp-map{height:400px;border:1px solid #222}
+.phase-bar{display:flex;gap:2px;margin:6px 0;min-height:44px}
+.phase-block{flex:1;background:#1a1a1a;border:1px solid #333;padding:6px;font-size:.72em;text-align:center;cursor:pointer;position:relative;min-width:60px;transition:border-color .2s}
+.phase-block:hover,.phase-block.active{border-color:#00ff41;background:#00ff4110}
+.phase-block .ph-name{color:#00ff41;font-weight:bold}
+.phase-block .ph-dur{color:#666;font-size:.85em}
+.pace-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.pace-item{padding:6px;border:1px solid #333;font-size:.75em}
+.pace-item .pace-label{color:#666;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px}
+.asset-drag{padding:4px 8px;margin:2px;border:1px solid #333;font-size:.75em;cursor:grab;display:inline-block;border-radius:3px}
+.asset-drag:hover{border-color:#00ff41;background:#00ff4110}
+.asset-drag.assigned{border-color:#4488ff;background:#4488ff20;color:#4488ff}
+.wp-list-item{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #111;font-size:.78em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">MISSION PLANNING SUITE</h2>
+
+ <div class="grid-3" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="mp-wps">0</div><div class="label">WAYPOINTS</div></div>
+  <div class="card stat"><div class="value" id="mp-phases" style="color:#ffaa00">0</div><div class="label">PHASES</div></div>
+  <div class="card stat"><div class="value" id="mp-saved" style="color:#4488ff">0</div><div class="label">SAVED PLANS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- LEFT: Map + Waypoints -->
+  <div>
+   <div class="card">
+    <h3>ROUTE MAP <span style="font-size:.7em;color:#666">(click map to add waypoints)</span></h3>
+    <div id="mp-map"></div>
+    <div style="display:flex;gap:4px;margin-top:6px">
+     <button class="btn" onclick="clearWaypoints()">CLEAR ROUTE</button>
+     <button class="btn btn-yellow" onclick="undoWaypoint()">UNDO LAST</button>
+    </div>
+   </div>
+   <div class="card">
+    <h3>WAYPOINTS</h3>
+    <div class="scroll-box" style="max-height:150px" id="wp-list"></div>
+   </div>
+  </div>
+
+  <!-- RIGHT: Template + Plan Name + Save -->
+  <div>
+   <div class="card">
+    <h3>MISSION TEMPLATE</h3>
+    <select id="mp-template" onchange="loadTemplate()" style="width:100%;margin-bottom:6px">
+     <option value="">— Custom Plan —</option>
+    </select>
+    <div id="tpl-desc" style="font-size:.75em;color:#666;min-height:20px"></div>
+    <div style="margin-top:8px">
+     <input id="mp-name" type="text" placeholder="Mission name" style="width:100%;margin-bottom:6px">
+     <div style="display:flex;gap:6px">
+      <button class="btn" onclick="savePlan()" style="flex:1">SAVE PLAN</button>
+      <button class="btn btn-yellow" onclick="newPlan()" style="flex:1">NEW PLAN</button>
+     </div>
+     <div id="mp-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+
+   <!-- Asset Tasking -->
+   <div class="card">
+    <h3>ASSET TASKING</h3>
+    <div id="asset-pool" style="margin-bottom:6px"></div>
+    <div style="font-size:.7em;color:#666">Click asset to assign/unassign to mission</div>
+   </div>
+
+   <!-- Saved Plans -->
+   <div class="card">
+    <h3>SAVED PLANS</h3>
+    <div class="scroll-box" style="max-height:150px" id="plan-list"></div>
+   </div>
+  </div>
+ </div>
+
+ <!-- PHASE TIMELINE -->
+ <div class="card" style="margin-top:8px">
+  <h3>PHASE TIMELINE</h3>
+  <div class="phase-bar" id="phase-bar"></div>
+  <div style="display:flex;gap:4px;margin-top:6px">
+   <input id="ph-name" type="text" placeholder="Phase name" style="flex:2">
+   <input id="ph-dur" type="number" placeholder="Min" style="width:70px" value="30">
+   <button class="btn" onclick="addPhase()">ADD PHASE</button>
+   <button class="btn btn-red" onclick="clearPhases()">CLEAR</button>
+  </div>
+ </div>
+
+ <!-- PACE COMMS PLAN -->
+ <div class="card" style="margin-top:8px">
+  <h3>PACE COMMS PLAN</h3>
+  <div class="pace-grid">
+   <div class="pace-item"><div class="pace-label" style="color:#00ff41">PRIMARY</div>
+    <select id="pace-p" style="width:100%">
+     <option>SATCOM</option><option>Link-16</option><option>HF Radio</option><option>Mesh Network</option><option>UHF</option><option>VHF</option>
+    </select></div>
+   <div class="pace-item"><div class="pace-label" style="color:#ffaa00">ALTERNATE</div>
+    <select id="pace-a" style="width:100%">
+     <option>HF Radio</option><option>SATCOM</option><option>Link-16</option><option>Mesh Network</option><option>UHF</option><option>VHF</option>
+    </select></div>
+   <div class="pace-item"><div class="pace-label" style="color:#ff4444">CONTINGENCY</div>
+    <select id="pace-c" style="width:100%">
+     <option>Mesh Network</option><option>HF Radio</option><option>SATCOM</option><option>UHF</option><option>Guard Freq</option><option>Runner</option>
+    </select></div>
+   <div class="pace-item"><div class="pace-label" style="color:#ff00ff">EMERGENCY</div>
+    <select id="pace-e" style="width:100%">
+     <option>Visual Signal</option><option>Code Word</option><option>EPIRB/PLB</option><option>Guard Freq</option><option>Runner</option>
+    </select></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var mpMap, mpRoute, mpMarkers=[], wpData=[], phases=[], templates=[], assignedAssets=new Set();
+
+function initMap(){
+ mpMap=L.map('mp-map',{zoomControl:true}).setView([35.689,51.312],9);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(mpMap);
+ mpRoute=L.polyline([],{color:'#00ff41',weight:3,dashArray:'8,6'}).addTo(mpMap);
+ mpMap.on('click',function(e){
+  addWaypoint(e.latlng.lat,e.latlng.lng);
+ });
+ setTimeout(function(){mpMap.invalidateSize();},300);
+}
+
+function addWaypoint(lat,lng){
+ var idx=wpData.length+1;
+ wpData.push({lat:lat,lng:lng,name:'WP-'+idx});
+ var m=L.circleMarker([lat,lng],{radius:7,color:'#00ff41',fillColor:'#00ff41',fillOpacity:.8,weight:1}).addTo(mpMap);
+ m.bindTooltip('WP-'+idx,{permanent:true,direction:'top',className:''});
+ mpMarkers.push(m);
+ mpRoute.setLatLngs(wpData.map(function(w){return[w.lat,w.lng];}));
+ renderWpList();
+ document.getElementById('mp-wps').textContent=wpData.length;
+}
+
+function renderWpList(){
+ var h='';
+ wpData.forEach(function(w,i){
+  h+='<div class="wp-list-item"><span style="color:#00ff41">WP-'+(i+1)+'</span><span style="color:#888">'+w.lat.toFixed(4)+', '+w.lng.toFixed(4)+'</span><button class="btn btn-red" style="padding:1px 6px;font-size:.65em" onclick="removeWp('+i+')">✕</button></div>';
+ });
+ document.getElementById('wp-list').innerHTML=h||'<div style="color:#666;padding:6px">Click the map to add waypoints</div>';
+}
+
+function removeWp(i){
+ wpData.splice(i,1); mpMap.removeLayer(mpMarkers[i]); mpMarkers.splice(i,1);
+ mpRoute.setLatLngs(wpData.map(function(w){return[w.lat,w.lng];}));
+ // Re-label markers
+ mpMarkers.forEach(function(m,j){m.unbindTooltip();m.bindTooltip('WP-'+(j+1),{permanent:true,direction:'top'});});
+ renderWpList(); document.getElementById('mp-wps').textContent=wpData.length;
+}
+
+function clearWaypoints(){
+ mpMarkers.forEach(function(m){mpMap.removeLayer(m);}); mpMarkers=[]; wpData=[];
+ mpRoute.setLatLngs([]); renderWpList(); document.getElementById('mp-wps').textContent=0;
+}
+
+function undoWaypoint(){
+ if(!wpData.length)return;
+ removeWp(wpData.length-1);
+}
+
+// Phases
+function addPhase(){
+ var name=document.getElementById('ph-name').value.trim()||'Phase '+(phases.length+1);
+ var dur=parseInt(document.getElementById('ph-dur').value)||30;
+ phases.push({name:name,duration_min:dur});
+ renderPhases(); document.getElementById('ph-name').value='';
+}
+function clearPhases(){phases=[];renderPhases();}
+function renderPhases(){
+ var bar=document.getElementById('phase-bar');
+ if(!phases.length){bar.innerHTML='<div style="color:#666;padding:10px;font-size:.8em;width:100%;text-align:center">Add mission phases below</div>';document.getElementById('mp-phases').textContent=0;return;}
+ var total=phases.reduce(function(s,p){return s+p.duration_min;},0);
+ var h='';
+ phases.forEach(function(p,i){
+  var pct=Math.round(p.duration_min/total*100);
+  h+='<div class="phase-block" style="flex:'+pct+'" onclick="removePhase('+i+')"><div class="ph-name">'+p.name+'</div><div class="ph-dur">'+p.duration_min+'min</div></div>';
+ });
+ bar.innerHTML=h;
+ document.getElementById('mp-phases').textContent=phases.length;
+}
+function removePhase(i){phases.splice(i,1);renderPhases();}
+
+// Templates
+async function loadTemplates(){
+ templates=await apiFetch('/api/missionplan/templates');
+ var sel=document.getElementById('mp-template');
+ templates.forEach(function(t){
+  var o=document.createElement('option');o.value=t.id;o.textContent=t.name;sel.appendChild(o);
+ });
+}
+function loadTemplate(){
+ var id=document.getElementById('mp-template').value;
+ if(!id){document.getElementById('tpl-desc').textContent='';return;}
+ var tpl=templates.find(function(t){return t.id===id;});
+ if(!tpl)return;
+ document.getElementById('tpl-desc').textContent=tpl.description;
+ document.getElementById('mp-name').value=tpl.name;
+ // Load phases
+ phases=tpl.phases.map(function(p){return{name:p.name,duration_min:p.duration_min};});
+ renderPhases();
+ // Load PACE
+ if(tpl.pace){
+  document.getElementById('pace-p').value=tpl.pace.primary||'SATCOM';
+  document.getElementById('pace-a').value=tpl.pace.alternate||'HF Radio';
+  document.getElementById('pace-c').value=tpl.pace.contingency||'Mesh Network';
+  document.getElementById('pace-e').value=tpl.pace.emergency||'Visual Signal';
+ }
+}
+
+// Assets
+async function loadAssets(){
+ var assets=await apiFetch('/api/assets');
+ var pool=document.getElementById('asset-pool');
+ var h='';
+ for(var id in assets){
+  var a=assets[id];
+  var dc={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+  var col=dc[a.domain]||'#888';
+  h+='<span class="asset-drag" data-id="'+id+'" onclick="toggleAsset(this,\''+id+'\')" style="border-color:'+col+';color:'+col+'">'+id+'</span>';
+ }
+ pool.innerHTML=h||'<div style="color:#666">No assets</div>';
+}
+function toggleAsset(el,id){
+ if(assignedAssets.has(id)){assignedAssets.delete(id);el.classList.remove('assigned');}
+ else{assignedAssets.add(id);el.classList.add('assigned');}
+}
+
+// Save / Load Plans
+async function savePlan(){
+ var name=document.getElementById('mp-name').value.trim();
+ if(!name){showMsg('mp-msg','Plan name required','#ff4444');return;}
+ var plan={name:name,template:document.getElementById('mp-template').value,
+  waypoints:wpData, phases:phases,
+  pace:{primary:document.getElementById('pace-p').value,alternate:document.getElementById('pace-a').value,
+        contingency:document.getElementById('pace-c').value,emergency:document.getElementById('pace-e').value},
+  assets:Array.from(assignedAssets)};
+ var r=await apiPost('/api/missionplan/save',plan);
+ if(r.status==='ok'){showMsg('mp-msg','Plan saved: '+r.plan.id,'#00ff41');refreshPlans();}
+ else showMsg('mp-msg',r.error||'Error','#ff4444');
+}
+function newPlan(){
+ clearWaypoints();clearPhases();assignedAssets.clear();
+ document.querySelectorAll('.asset-drag').forEach(function(e){e.classList.remove('assigned');});
+ document.getElementById('mp-name').value='';document.getElementById('mp-template').value='';
+ document.getElementById('tpl-desc').textContent='';
+}
+async function refreshPlans(){
+ var plans=await apiFetch('/api/missionplan/list');
+ document.getElementById('mp-saved').textContent=plans.length;
+ var h='';
+ plans.forEach(function(p){
+  h+='<div style="border:1px solid #222;padding:6px;margin:3px 0;cursor:pointer" onclick="loadPlan(\''+p.id+'\')"><strong style="color:#4488ff">'+p.name+'</strong><div style="font-size:.68em;color:#555">'+p.waypoints.length+' WPs | '+p.phases.length+' phases | '+(p.assets||[]).length+' assets | '+p.created_by+'</div></div>';
+ });
+ document.getElementById('plan-list').innerHTML=h||'<div style="color:#666;padding:6px">No saved plans</div>';
+}
+async function loadPlan(id){
+ var p=await apiFetch('/api/missionplan/'+id);
+ if(p.error)return;
+ clearWaypoints();
+ (p.waypoints||[]).forEach(function(w){addWaypoint(w.lat,w.lng);});
+ phases=p.phases||[];renderPhases();
+ if(p.pace){
+  document.getElementById('pace-p').value=p.pace.primary||'SATCOM';
+  document.getElementById('pace-a').value=p.pace.alternate||'HF Radio';
+  document.getElementById('pace-c').value=p.pace.contingency||'Mesh Network';
+  document.getElementById('pace-e').value=p.pace.emergency||'Visual Signal';
+ }
+ document.getElementById('mp-name').value=p.name;
+ assignedAssets=new Set(p.assets||[]);
+ document.querySelectorAll('.asset-drag').forEach(function(el){
+  el.classList.toggle('assigned',assignedAssets.has(el.dataset.id));
+ });
+ if(wpData.length){mpMap.fitBounds(mpRoute.getBounds().pad(0.2));}
+}
+
+function showMsg(id,msg,color){var el=document.getElementById(id);el.style.color=color;el.textContent=msg;setTimeout(function(){el.textContent='';},4000);}
+
+// Init
+initMap();loadTemplates();loadAssets();refreshPlans();renderPhases();renderWpList();
+</script>
+{% endblock %}

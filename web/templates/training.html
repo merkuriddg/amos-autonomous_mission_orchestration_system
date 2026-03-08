@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Training & Certification{% endblock %}
+{% block head %}
+<style>
+.cert-badge{display:inline-block;padding:4px 14px;border:2px solid;border-radius:4px;font-weight:bold;font-size:1em;letter-spacing:2px}
+.rank-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #111;font-size:.82em}
+.rank-pos{width:30px;text-align:center;font-size:1.2em;font-weight:bold}
+.score-card{border:1px solid #222;padding:8px;margin:4px 0;border-radius:3px}
+.score-card .sc-top{display:flex;justify-content:space-between;align-items:center}
+.score-card .sc-name{font-weight:bold;color:#ffaa00}
+.score-card .sc-detail{font-size:.72em;color:#666;margin-top:2px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">OPERATOR TRAINING & CERTIFICATION</h2>
+
+ <!-- Your Cert -->
+ <div class="grid-3" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="tr-cert-name" style="color:#888">--</div><div class="label">YOUR CERTIFICATION</div></div>
+  <div class="card stat"><div class="value" id="tr-ex-count">0</div><div class="label">EXERCISES COMPLETED</div></div>
+  <div class="card stat"><div class="value" id="tr-avg" style="color:#ffaa00">--</div><div class="label">AVG SCORE</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- Leaderboard -->
+  <div class="card">
+   <h3>LEADERBOARD</h3>
+   <div class="scroll-box" style="max-height:350px" id="tr-leaderboard"></div>
+  </div>
+
+  <!-- Your Cert Details -->
+  <div class="card">
+   <h3>YOUR CERTIFICATION</h3>
+   <div id="tr-cert-detail" style="text-align:center;padding:20px"></div>
+   <div style="margin-top:10px">
+    <div style="font-size:.75em;color:#666;margin-bottom:4px">CERTIFICATION TIERS</div>
+    <div id="tr-cert-tiers"></div>
+   </div>
+  </div>
+ </div>
+
+ <!-- Exercise History Chart -->
+ <div class="card" style="margin-top:8px">
+  <h3>SCORE HISTORY</h3>
+  <canvas id="scoreChart" height="110"></canvas>
+ </div>
+
+ <!-- Exercise Scorecards -->
+ <div class="card" style="margin-top:8px">
+  <h3>EXERCISE SCORECARDS <span class="badge badge-green" id="tr-total">0</span></h3>
+  <div class="scroll-box" style="max-height:300px" id="tr-scorecards"></div>
+ </div>
+
+ <!-- Manual Record -->
+ <div class="card" style="margin-top:8px">
+  <h3>MANUAL TRAINING RECORD</h3>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+   <input id="tr-ex-name" type="text" placeholder="Exercise name" style="flex:2">
+   <input id="tr-score" type="number" placeholder="Score" style="width:80px">
+   <input id="tr-max" type="number" placeholder="Max" value="100" style="width:80px">
+   <button class="btn" onclick="recordManual()">RECORD</button>
+   <span id="tr-msg" style="font-size:.75em"></span>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var scoreChart=null;
+
+function initScoreChart(){
+ var ctx=document.getElementById('scoreChart').getContext('2d');
+ scoreChart=new Chart(ctx,{type:'bar',data:{labels:[],datasets:[
+  {label:'Score %',data:[],backgroundColor:[],borderColor:[],borderWidth:1}
+ ]},options:{responsive:true,animation:false,plugins:{legend:{display:false}},
+  scales:{x:{ticks:{color:'#888',font:{size:9},maxRotation:45},grid:{color:'#1a1a1a'}},
+          y:{min:0,max:100,ticks:{color:'#00ff41',font:{size:9}},grid:{color:'#1a1a1a'}}}}});
+}
+
+async function refreshAll(){
+ await Promise.all([refreshCert(),refreshLeaderboard(),refreshHistory()]);
+}
+
+async function refreshCert(){
+ var c=await apiFetch('/api/training/cert/{{ user }}');
+ document.getElementById('tr-cert-name').textContent=c.cert_name;
+ document.getElementById('tr-cert-name').style.color=c.cert_color;
+ document.getElementById('tr-ex-count').textContent=c.exercises;
+ document.getElementById('tr-avg').textContent=c.avg_score+'%';
+ // Cert detail
+ document.getElementById('tr-cert-detail').innerHTML=
+  '<div class="cert-badge" style="color:'+c.cert_color+';border-color:'+c.cert_color+'">LEVEL '+c.cert_level+' — '+c.cert_name+'</div>'+
+  '<div style="margin-top:10px;font-size:.82em">'+
+  '<div>Exercises: <span style="color:#fff">'+c.exercises+'</span></div>'+
+  '<div>Average: <span style="color:'+c.cert_color+'">'+c.avg_score+'%</span></div>'+
+  '<div>Best: <span style="color:#00ff41">'+c.best_score+'%</span></div></div>';
+ // Tiers
+ var tiers=[
+  {level:1,name:'NOVICE',min_ex:0,min_avg:0,color:'#888'},
+  {level:2,name:'BASIC',min_ex:2,min_avg:40,color:'#ffaa00'},
+  {level:3,name:'QUALIFIED',min_ex:5,min_avg:60,color:'#00ff41'},
+  {level:4,name:'EXPERT',min_ex:10,min_avg:75,color:'#00ccff'},
+  {level:5,name:'MASTER',min_ex:20,min_avg:85,color:'#ff44ff'},
+ ];
+ var th='';
+ tiers.forEach(function(t){
+  var active=t.level===c.cert_level;
+  th+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.78em'+(active?';background:#00ff4110;border-left:3px solid '+t.color+';padding-left:5px':'')+'"><span style="color:'+t.color+';width:20px;font-weight:bold">'+t.level+'</span><span style="color:'+t.color+';width:80px">'+t.name+'</span><span style="color:#666">'+t.min_ex+'+ exercises, '+t.min_avg+'%+ avg</span></div>';
+ });
+ document.getElementById('tr-cert-tiers').innerHTML=th;
+}
+
+async function refreshLeaderboard(){
+ var board=await apiFetch('/api/training/leaderboard');
+ var h='';
+ board.forEach(function(b){
+  var posCol=b.rank===1?'#ffaa00':b.rank===2?'#aaa':b.rank===3?'#cc6633':'#555';
+  h+='<div class="rank-row"><div class="rank-pos" style="color:'+posCol+'">#'+b.rank+'</div><div style="flex:1"><strong style="color:'+b.cert_color+'">'+b.name+'</strong><div style="font-size:.7em;color:#666">'+b.cert_name+' | '+b.exercises+' exercises | Avg: '+b.avg_score+'%</div></div><div style="color:#ffaa00;font-weight:bold">'+b.total_score+' pts</div></div>';
+ });
+ document.getElementById('tr-leaderboard').innerHTML=h||'<div style="color:#666;padding:10px;text-align:center">No training records yet. Complete exercises on the Automation page to build your profile.</div>';
+}
+
+async function refreshHistory(){
+ var recs=await apiFetch('/api/training/history');
+ document.getElementById('tr-total').textContent=recs.length;
+ // Scorecards
+ var h='';
+ recs.slice().reverse().forEach(function(r){
+  var col=r.passed?'#00ff41':'#ff4444';
+  var border=r.passed?'#00ff41':'#ff4444';
+  h+='<div class="score-card" style="border-left:3px solid '+border+'"><div class="sc-top"><span class="sc-name">'+r.exercise_name+'</span><span style="color:'+col+';font-weight:bold;font-size:1.1em">'+r.pct+'%</span></div><div class="sc-detail">'+r.name+' | '+r.score+'/'+r.max_score+' pts | '+(r.passed?'<span style="color:#00ff41">PASS</span>':'<span style="color:#ff4444">FAIL</span>')+' | '+(r.timestamp||'').substring(0,19)+'</div></div>';
+ });
+ document.getElementById('tr-scorecards').innerHTML=h||'<div style="color:#666;padding:10px;text-align:center">No exercise results recorded yet</div>';
+ // Chart
+ if(scoreChart){
+  var labels=recs.map(function(r){return r.exercise_name;});
+  var data=recs.map(function(r){return r.pct;});
+  var colors=recs.map(function(r){return r.passed?'#00ff4180':'#ff444480';});
+  var borders=recs.map(function(r){return r.passed?'#00ff41':'#ff4444';});
+  scoreChart.data.labels=labels;
+  scoreChart.data.datasets[0].data=data;
+  scoreChart.data.datasets[0].backgroundColor=colors;
+  scoreChart.data.datasets[0].borderColor=borders;
+  scoreChart.update();
+ }
+}
+
+async function recordManual(){
+ var name=document.getElementById('tr-ex-name').value.trim();
+ if(!name){document.getElementById('tr-msg').style.color='#ff4444';document.getElementById('tr-msg').textContent='Name required';return;}
+ var score=parseInt(document.getElementById('tr-score').value)||0;
+ var mx=parseInt(document.getElementById('tr-max').value)||100;
+ var r=await apiPost('/api/training/record',{exercise_name:name,score:score,max_score:mx});
+ if(r.status==='ok'){
+  document.getElementById('tr-msg').style.color='#00ff41';
+  document.getElementById('tr-msg').textContent='Recorded!';
+  document.getElementById('tr-ex-name').value='';
+  document.getElementById('tr-score').value='';
+  refreshAll();
+ }
+ setTimeout(function(){document.getElementById('tr-msg').textContent='';},3000);
+}
+
+// Init
+initScoreChart();refreshAll();
+setInterval(refreshAll,10000);
+</script>
+{% endblock %}
