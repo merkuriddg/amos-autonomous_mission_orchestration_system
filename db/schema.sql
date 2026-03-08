@@ -135,3 +135,22 @@ CREATE TABLE IF NOT EXISTS recording_frames (
     CONSTRAINT fk_recording_frames_session
         FOREIGN KEY (session_id) REFERENCES recording_sessions(session_id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- ─── CHAT MESSAGES (Phase 2) ─────────────────────────
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    channel         VARCHAR(64)  NOT NULL DEFAULT 'general',
+    sender          VARCHAR(64)  NOT NULL,
+    message         TEXT         NOT NULL,
+    timestamp       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_channel_ts (channel, timestamp)
+) ENGINE=InnoDB;
+
+-- ─── ASSET LOCKS (Phase 2) ───────────────────────────
+CREATE TABLE IF NOT EXISTS asset_locks (
+    asset_id        VARCHAR(32)  PRIMARY KEY,
+    locked_by       VARCHAR(64)  NOT NULL,
+    locked_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    expires_at      TIMESTAMP    NULL,
+    INDEX idx_locked_by (locked_by)
+) ENGINE=InnoDB;

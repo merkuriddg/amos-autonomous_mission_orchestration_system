@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Tactical View{% endblock %}
+{% block head %}
+<style>
+/* Override base styles for mobile-first tactical view */
+.main{padding:0!important;margin-top:38px}
+#tac-map{position:fixed;top:38px;left:0;right:0;bottom:0;z-index:1}
+/* Bottom drawer */
+#tac-drawer{position:fixed;bottom:0;left:0;right:0;z-index:500;background:#111;border-top:2px solid #00ff41;transition:transform .3s ease}
+#tac-drawer.collapsed{transform:translateY(calc(100% - 42px))}
+#tac-drawer-handle{padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+#tac-drawer-handle:active{background:#1a1a1a}
+#tac-drawer-content{padding:8px 12px;max-height:45vh;overflow-y:auto}
+/* Status cards */
+.tac-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.tac-stat{text-align:center;background:#0a0a0a;padding:8px;border:1px solid #222;border-radius:4px}
+.tac-stat .tv{font-size:1.4em;font-weight:bold}
+.tac-stat .tl{font-size:.65em;color:#666;margin-top:2px}
+/* Alerts list */
+.tac-alerts{max-height:150px;overflow-y:auto}
+.tac-alert{padding:6px 10px;border-left:3px solid #ffaa00;margin:3px 0;font-size:.82em}
+/* HAL approvals */
+.tac-approval{padding:8px 10px;border:1px solid #4488ff;margin:4px 0;border-radius:4px;font-size:.82em}
+.tac-approval .approve-btns{margin-top:6px;display:flex;gap:8px}
+.tac-approval .approve-btns button{padding:6px 16px;border:none;border-radius:3px;font-family:inherit;cursor:pointer;font-weight:bold;font-size:.9em}
+/* Touch targets */
+@media(max-width:768px){
+ .tac-stats{grid-template-columns:repeat(2,1fr)}
+ .tac-stat .tv{font-size:1.1em}
+}
+@media(pointer:coarse){
+ .tac-approval .approve-btns button{padding:10px 20px;font-size:1em}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div id="tac-map"></div>
+<div id="tac-drawer" class="collapsed">
+ <div id="tac-drawer-handle" onclick="toggleDrawer()">
+  <span style="color:#00ff41;font-weight:bold">▲ TACTICAL STATUS</span>
+  <span id="tac-summary" style="color:#888;font-size:.8em">--</span>
+ </div>
+ <div id="tac-drawer-content">
+  <div class="tac-stats">
+   <div class="tac-stat"><div class="tv" id="ts-assets" style="color:#00ff41">--</div><div class="tl">ASSETS</div></div>
+   <div class="tac-stat"><div class="tv" id="ts-threats" style="color:#ff4444">--</div><div class="tl">THREATS</div></div>
+   <div class="tac-stat"><div class="tv" id="ts-risk" style="color:#ffaa00">--</div><div class="tl">RISK</div></div>
+   <div class="tac-stat"><div class="tv" id="ts-hal" style="color:#4488ff">--</div><div class="tl">PENDING</div></div>
+  </div>
+  <div style="margin-bottom:6px;color:#00ff41;font-size:.8em;font-weight:bold">ALERTS</div>
+  <div class="tac-alerts" id="tac-alerts"><div style="color:#555">No alerts</div></div>
+  <div style="margin:8px 0 6px;color:#4488ff;font-size:.8em;font-weight:bold">PENDING APPROVALS</div>
+  <div id="tac-approvals"><div style="color:#555">None pending</div></div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Full-screen tactical map
+const map=L.map('tac-map',{zoomControl:false,attributionControl:false}).setView([35.689,51.312],11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+window._amosMap=map;
+
+// Cursor sharing
+let _ct=0;
+map.on('mousemove',function(e){var n=Date.now();if(n-_ct<200)return;_ct=n;socket.emit('operator_cursor',{lat:e.latlng.lat,lng:e.latlng.lng});});
+
+let aM={},tM={};
+const DC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+function mkI(c,s){s=s||10;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 8px '+c+'"></div>',iconSize:[s,s],className:''});}
+
+// Drawer toggle
+let _drawerOpen=false;
+function toggleDrawer(){
+ _drawerOpen=!_drawerOpen;
+ document.getElementById('tac-drawer').classList.toggle('collapsed',!_drawerOpen);
+ document.getElementById('tac-drawer-handle').querySelector('span').textContent=_drawerOpen?'▼ TACTICAL STATUS':'▲ TACTICAL STATUS';
+ setTimeout(function(){map.invalidateSize();},350);
+}
+
+// Sim update
+window.onSimUpdate=function(d){
+ document.getElementById('ts-assets').textContent=d.asset_count||0;
+ document.getElementById('ts-threats').textContent=d.threat_count||0;
+ document.getElementById('ts-risk').textContent=d.risk_level||'LOW';
+ document.getElementById('ts-risk').style.color=d.risk_level==='HIGH'?'#ff4444':d.risk_level==='MEDIUM'?'#ffaa00':'#00ff41';
+ document.getElementById('ts-hal').textContent=d.pending_hal||0;
+ document.getElementById('tac-summary').textContent=d.asset_count+' assets | '+d.threat_count+' threats | '+d.risk_level;
+};
+
+// Refresh positions
+async function refresh(){
+ const assets=await apiFetch('/api/assets');
+ for(const[id,a]of Object.entries(assets)){
+  const c=DC[a.domain]||'#888';const p=[a.position.lat,a.position.lng];
+  if(aM[id])aM[id].setLatLng(p);
+  else{aM[id]=L.marker(p,{icon:mkI(c,12)}).bindTooltip(id,{direction:'top'}).addTo(map);}
+ }
+ const threats=await apiFetch('/api/threats');
+ for(const[id,t]of Object.entries(threats)){
+  if(t.neutralized){if(tM[id]){map.removeLayer(tM[id]);delete tM[id];}continue;}
+  if(!t.lat||!t.lng)continue;
+  const p=[t.lat,t.lng];
+  if(tM[id])tM[id].setLatLng(p);
+  else{tM[id]=L.marker(p,{icon:mkI('#ff4444',12)}).bindTooltip(id,{direction:'top'}).addTo(map);}
+ }
+ // Alerts
+ const alerts=await apiFetch('/api/geofences/alerts');
+ const ad=document.getElementById('tac-alerts');
+ if(!alerts.length)ad.innerHTML='<div style="color:#555">No alerts</div>';
+ else ad.innerHTML=alerts.slice(-10).reverse().map(function(a){
+  return '<div class="tac-alert" style="border-color:'+(a.geofence_type==='restricted'?'#ff4444':'#ffaa00')+'"><strong>'+a.event.toUpperCase()+'</strong> '+a.entity_id+' — '+a.geofence_name+'</div>';
+ }).join('');
+ // HAL approvals
+ const hal=await apiFetch('/api/hal/recommendations');
+ const pending=(hal||[]).filter(function(r){return r.status==='pending';});
+ const hp=document.getElementById('tac-approvals');
+ if(!pending.length)hp.innerHTML='<div style="color:#555">None pending</div>';
+ else hp.innerHTML=pending.slice(0,5).map(function(r){
+  return '<div class="tac-approval"><strong style="color:#4488ff">'+r.type+'</strong> '+r.asset+' → '+r.target+' ('+Math.round(r.confidence*100)+'%)<br><span style="color:#888">'+r.reasoning+'</span><div class="approve-btns"><button style="background:#00ff41;color:#000" onclick="halAction(\''+r.id+'\',\'approve\')">APPROVE</button><button style="background:#ff4444;color:#fff" onclick="halAction(\''+r.id+'\',\'deny\')">DENY</button></div></div>';
+ }).join('');
+}
+
+async function halAction(id,action){
+ await apiPost('/api/hal/'+action,{id:id});
+ refresh();
+}
+
+refresh(); setInterval(refresh,2000);
+</script>
+{% endblock %}

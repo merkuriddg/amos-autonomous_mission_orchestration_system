@@ -6,7 +6,7 @@ import os, sys, json, time, random, math, uuid, threading, yaml
 from datetime import datetime, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit as sio_emit, join_room, leave_room
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +30,21 @@ from mos_core.nodes.learning_engine import LearningEngine
 
 # Phase 3
 import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+
+# PX4 Bridge (Phase 2)
+try:
+    sys.path.insert(0, os.path.join(ROOT_DIR, "integrations"))
+    from px4_bridge import PX4Bridge
+    _px4 = PX4Bridge()
+    _px4_ok = _px4.connect()
+    if _px4_ok:
+        print("[AMOS] PX4 SITL: Connected")
+    else:
+        print("[AMOS] PX4 SITL: Offline (standalone mode)")
+except Exception as e:
+    print(f"[AMOS] PX4 SITL: Not available ({e})")
+    _px4 = None
+    _px4_ok = False
 
 # Database
 from db.connection import fetchall, fetchone, execute as db_execute, to_json, from_json, check as db_check
@@ -118,6 +133,10 @@ USERS, _DB_AUTH = _load_users_from_db()
 
 # Recording state
 _recording = {"active": False, "session_id": None, "frame_seq": 0, "tick_count": 0}
+
+# Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
+_online_ops = {}
+_asset_locks = {}  # {asset_id: {locked_by, locked_at, expires_at}}
 def login_required(f):
     @wraps(f)
     def dec(*a, **kw):
@@ -313,6 +332,10 @@ def sim_tick():
         if ros2_bridge.available:
             ros2_bridge.publish_assets(sim_assets)
 
+        # PX4 SITL sync — push real telemetry into sim_assets
+        if _px4 and _px4.connected:
+            _px4.sync_to_amos(sim_assets)
+
         # ── Phase 10 ticks ──
         cognitive_engine.tick(sim_assets, sim_threats, dt)
         contested_env.tick(sim_assets, sim_threats, dt)
@@ -464,6 +487,10 @@ def redforce(): return render_template("redforce.html", **ctx())
 @app.route("/settings")
 @login_required
 def settings_page(): return render_template("settings.html", **ctx())
+
+@app.route("/tactical")
+@login_required
+def tactical(): return render_template("tactical.html", **ctx())
 
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS API
@@ -1549,6 +1576,220 @@ def api_recording_frames(session_id):
     return jsonify([{"seq": r["frame_seq"], "elapsed": float(r["clock_elapsed"]),
                      "assets": from_json(r["asset_state"]), "threats": from_json(r["threat_state"]),
                      "ts": str(r["timestamp"])} for r in rows])
+
+# ═══════════════════════════════════════════════════════════
+#  PX4 SITL BRIDGE API (Phase 2)
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/bridge/px4/status")
+@login_required
+def api_px4_status():
+    if not _px4:
+        return jsonify({"connected": False, "error": "Bridge not loaded"})
+    return jsonify(_px4.get_status())
+
+@app.route("/api/bridge/px4/telemetry")
+@login_required
+def api_px4_telemetry():
+    if not _px4:
+        return jsonify({})
+    return jsonify({aid: _px4.get_telemetry(aid) for aid in _px4.vehicles})
+
+@app.route("/api/bridge/px4/register", methods=["POST"])
+@login_required
+def api_px4_register():
+    if not _px4:
+        return jsonify({"error": "PX4 bridge not available"}), 503
+    d = request.get_json() or {}
+    amos_id = d.get("asset_id", "").strip().upper()
+    sysid = d.get("system_id", 1)
+    if not amos_id:
+        return jsonify({"error": "asset_id required"}), 400
+    _px4.register_vehicle(amos_id, system_id=sysid)
+    # Auto-register in sim_assets if not present
+    if amos_id not in sim_assets:
+        sim_assets[amos_id] = {
+            "id": amos_id, "type": "PX4_SITL", "domain": "air", "role": "recon",
+            "autonomy_tier": 3, "sensors": ["GPS", "IMU", "CAMERA"],
+            "weapons": [], "endurance_hr": 0.5,
+            "position": {"lat": base_pos["lat"], "lng": base_pos["lng"], "alt_ft": 0},
+            "status": "standby", "health": {"battery_pct": 100, "comms_strength": 100,
+                                            "cpu_temp_c": 40, "gps_fix": True},
+            "speed_kts": 0, "heading_deg": 0,
+            "integration": "px4", "bridge_addr": _px4.connection_string
+        }
+    return jsonify({"status": "ok", "asset_id": amos_id, "system_id": sysid})
+
+@app.route("/api/bridge/px4/command", methods=["POST"])
+@login_required
+def api_px4_command():
+    if not _px4 or not _px4.connected:
+        return jsonify({"error": "PX4 not connected"}), 503
+    d = request.get_json() or {}
+    aid = d.get("asset_id", "").strip().upper()
+    cmd = d.get("command", "").upper()
+    ok = False
+    if cmd == "ARM":
+        ok = _px4.arm(aid)
+    elif cmd == "WAYPOINT":
+        ok = _px4.send_waypoint(aid, d.get("lat", 0), d.get("lng", 0),
+                                d.get("alt_m", 50), d.get("speed_ms", 15))
+    elif cmd in ("RTL", "LAND", "HOLD", "OFFBOARD", "AUTO"):
+        ok = _px4.set_mode(aid, cmd)
+    else:
+        return jsonify({"error": f"Unknown command: {cmd}"}), 400
+    return jsonify({"status": "ok" if ok else "failed", "command": cmd, "asset_id": aid})
+
+# ═══════════════════════════════════════════════════════════
+#  MULTI-OPERATOR COLLABORATION (Phase 2)
+# ═══════════════════════════════════════════════════════════
+_OP_COLORS = ["#00ff41","#4488ff","#ff4444","#ffaa00","#ff66ff","#00cccc","#ff8800","#88ff00"]
+
+def _broadcast_presence():
+    """Send current operator list to all connected clients."""
+    ops = []
+    for sid, info in _online_ops.items():
+        ops.append({"user": info["user"], "name": info["name"], "role": info["role"],
+                    "page": info.get("page", ""), "color": info.get("color", "#888")})
+    socketio.emit("operator_presence", ops)
+
+@socketio.on("connect")
+def ws_connect():
+    """Track operator connection."""
+    # Session may not have user yet (login page)
+    u = session.get("user")
+    if not u:
+        return
+    info = USERS.get(u, {})
+    color_idx = len(_online_ops) % len(_OP_COLORS)
+    _online_ops[request.sid] = {
+        "user": u, "name": info.get("name", u), "role": info.get("role", ""),
+        "page": "", "cursor": None, "color": _OP_COLORS[color_idx],
+        "connected_at": now_iso()
+    }
+    _broadcast_presence()
+
+@socketio.on("disconnect")
+def ws_disconnect():
+    """Clean up on disconnect."""
+    sid = request.sid
+    op = _online_ops.pop(sid, None)
+    if op:
+        # Release any asset locks held by this operator
+        to_unlock = [aid for aid, lk in _asset_locks.items() if lk["locked_by"] == op["user"]]
+        for aid in to_unlock:
+            _asset_locks.pop(aid, None)
+        _broadcast_presence()
+        socketio.emit("asset_locks", _asset_locks)
+
+@socketio.on("operator_page")
+def ws_operator_page(data):
+    """Operator reports which page they're viewing."""
+    sid = request.sid
+    if sid in _online_ops:
+        _online_ops[sid]["page"] = data.get("page", "")
+        _broadcast_presence()
+
+@socketio.on("operator_cursor")
+def ws_operator_cursor(data):
+    """Relay cursor position to all other operators."""
+    sid = request.sid
+    op = _online_ops.get(sid)
+    if not op:
+        return
+    op["cursor"] = {"lat": data.get("lat"), "lng": data.get("lng")}
+    socketio.emit("cursor_update", {
+        "user": op["user"], "name": op["name"], "color": op["color"],
+        "lat": data.get("lat"), "lng": data.get("lng")
+    }, include_self=False)
+
+@socketio.on("team_chat")
+def ws_team_chat(data):
+    """Broadcast a chat message and persist it."""
+    sid = request.sid
+    op = _online_ops.get(sid)
+    u = op["user"] if op else session.get("user", "anonymous")
+    name = op["name"] if op else u
+    channel = data.get("channel", "general")
+    msg = (data.get("message", "") or "").strip()
+    if not msg:
+        return
+    try:
+        db_execute("INSERT INTO chat_messages (channel, sender, message) VALUES(%s,%s,%s)",
+                   (channel, u, msg))
+    except Exception:
+        pass
+    socketio.emit("chat_message", {
+        "channel": channel, "sender": u, "name": name,
+        "message": msg, "timestamp": now_iso(),
+        "color": op.get("color", "#888") if op else "#888"
+    })
+
+@socketio.on("asset_lock")
+def ws_asset_lock(data):
+    """Lock an asset for exclusive control."""
+    sid = request.sid
+    op = _online_ops.get(sid)
+    if not op:
+        return
+    aid = data.get("asset_id", "").strip().upper()
+    if not aid:
+        return
+    existing = _asset_locks.get(aid)
+    if existing and existing["locked_by"] != op["user"]:
+        sio_emit("lock_denied", {"asset_id": aid, "locked_by": existing["locked_by"]})
+        return
+    _asset_locks[aid] = {"locked_by": op["user"], "locked_at": now_iso()}
+    try:
+        db_execute(
+            "INSERT INTO asset_locks (asset_id, locked_by) VALUES(%s,%s) "
+            "ON DUPLICATE KEY UPDATE locked_by=%s, locked_at=CURRENT_TIMESTAMP",
+            (aid, op["user"], op["user"]))
+    except Exception:
+        pass
+    socketio.emit("asset_locks", _asset_locks)
+
+@socketio.on("asset_unlock")
+def ws_asset_unlock(data):
+    """Release an asset lock."""
+    sid = request.sid
+    op = _online_ops.get(sid)
+    if not op:
+        return
+    aid = data.get("asset_id", "").strip().upper()
+    existing = _asset_locks.get(aid)
+    if existing and existing["locked_by"] == op["user"]:
+        _asset_locks.pop(aid, None)
+        try:
+            db_execute("DELETE FROM asset_locks WHERE asset_id=%s", (aid,))
+        except Exception:
+            pass
+    socketio.emit("asset_locks", _asset_locks)
+
+@app.route("/api/operators/online")
+@login_required
+def api_operators_online():
+    ops = []
+    for sid, info in _online_ops.items():
+        ops.append({"user": info["user"], "name": info["name"], "role": info["role"],
+                    "page": info.get("page", ""), "color": info.get("color"),
+                    "connected_at": info["connected_at"]})
+    return jsonify(ops)
+
+@app.route("/api/chat/history")
+@login_required
+def api_chat_history():
+    channel = request.args.get("channel", "general")
+    limit = request.args.get("limit", 50, type=int)
+    rows = fetchall(
+        "SELECT sender, message, timestamp FROM chat_messages WHERE channel=%s ORDER BY id DESC LIMIT %s",
+        (channel, limit))
+    return jsonify([{"sender": r["sender"], "message": r["message"],
+                     "timestamp": str(r["timestamp"])} for r in reversed(rows)])
+
+@app.route("/api/asset/locks")
+@login_required
+def api_asset_locks():
+    return jsonify(_asset_locks)
 
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()

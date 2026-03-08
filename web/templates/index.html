@@ -105,6 +105,10 @@ function togglePanel(hdr){
 
 const map=L.map('map',{zoomControl:false}).setView([35.689,51.312],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(map);
+window._amosMap=map;
+// Cursor sharing — broadcast on mousemove (throttled)
+let _cursorThrottle=0;
+map.on('mousemove',function(e){var n=Date.now();if(n-_cursorThrottle<200)return;_cursorThrottle=n;socket.emit('operator_cursor',{lat:e.latlng.lat,lng:e.latlng.lng});});
 let aM={},tM={},wpM={},wpL={},gfL={},wpMode=false;
 const DC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
 function mkI(c,s){s=s||8;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 6px '+c+'"></div>',iconSize:[s,s],className:''});}
