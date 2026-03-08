@@ -84,6 +84,15 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
 #chat-btn{background:transparent;border:1px solid #00ff41;color:#00ff41;padding:3px 10px;cursor:pointer;font-size:.85em;border-radius:3px;position:relative}
 #chat-btn:hover{background:#00ff41;color:#000}
 #chat-btn .chat-unread{position:absolute;top:-4px;right:-4px;background:#ff4444;color:#fff;font-size:.6em;width:14px;height:14px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1}
+/* Toast alerts */
+#amos-alert-container{position:fixed;top:44px;right:10px;z-index:3000;display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:360px}
+.amos-alert{padding:8px 14px;border-radius:4px;font-size:.8em;font-family:'Courier New',monospace;pointer-events:auto;animation:alertSlide .3s ease-out;border-left:3px solid}
+.amos-alert.critical{background:#330000;border-color:#ff4444;color:#ff4444}
+.amos-alert.warning{background:#332200;border-color:#ffaa00;color:#ffaa00}
+.amos-alert.info{background:#001133;border-color:#4488ff;color:#4488ff}
+@keyframes alertSlide{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.amos-alert.fade-out{animation:alertFade .4s ease-in forwards}
+@keyframes alertFade{to{opacity:0;transform:translateX(40px)}}
 /* Responsive */
 @media(max-width:768px){.topbar{font-size:.7em;padding:4px 8px}.amos-menu{min-width:90vw}#chat-panel{width:100%}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
 </style>
@@ -166,10 +175,22 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
   <button onclick="sendChat()">SEND</button>
  </div>
 </div>
+<div id="amos-alert-container"></div>
 <div class="main">{% block content %}{% endblock %}</div>
 <script>
 const socket=io();
 socket.on('sim_update',function(d){if(window.onSimUpdate)window.onSimUpdate(d);});
+socket.on('amos_alerts',function(alerts){
+ const c=document.getElementById('amos-alert-container'); if(!c) return;
+ alerts.forEach(function(a){
+  const d=document.createElement('div');
+  d.className='amos-alert '+(a.level||'info');
+  d.textContent='['+a.level.toUpperCase()+'] '+a.msg;
+  c.appendChild(d);
+  setTimeout(function(){d.classList.add('fade-out');setTimeout(function(){d.remove();},500);},6000);
+ });
+ while(c.children.length>5) c.removeChild(c.firstChild);
+});
 function apiFetch(u){return fetch(u).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
 // Menu

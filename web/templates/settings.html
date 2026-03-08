@@ -7,6 +7,8 @@
   <button class="btn tab-btn active" onclick="showTab('locations',this)">LOCATIONS</button>
   <button class="btn tab-btn" onclick="showTab('assets',this)">ASSETS</button>
   <button class="btn tab-btn" onclick="showTab('profile',this)">PROFILE</button>
+  <button class="btn tab-btn" onclick="showTab('users',this)">USERS</button>
+  <button class="btn tab-btn" onclick="showTab('scenario',this)">SCENARIOS</button>
   <button class="btn tab-btn" onclick="showTab('system',this)">SYSTEM</button>
  </div>
 
@@ -153,6 +155,69 @@
     <div>Role: <span style="color:#fff">{{ role }}</span></div>
     <div>Domain: <span style="color:#fff">{{ domain }}</span></div>
     <div style="margin-top:6px">Access: {% for a in access %}<span class="badge badge-green" style="margin:2px">{{ a }}</span>{% endfor %}</div>
+   </div>
+  </div>
+ </div>
+
+ <!-- USERS TAB -->
+ <div id="tab-users" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>USER ACCOUNTS <span class="badge badge-green" id="user-count">0</span></h3>
+    <div id="user-list" class="scroll-box" style="max-height:420px"></div>
+   </div>
+   <div class="card">
+    <h3 id="user-form-title">ADD NEW USER</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <input id="u-username" type="text" placeholder="Username (min 2 chars)" style="width:100%">
+     <input id="u-name" type="text" placeholder="Display Name" style="width:100%">
+     <input id="u-password" type="password" placeholder="Password (min 4 chars)" style="width:100%">
+     <div class="grid-2">
+      <select id="u-role" style="width:100%">
+       <option value="commander">Commander</option>
+       <option value="pilot">Pilot</option>
+       <option value="ground_op">Ground Op</option>
+       <option value="maritime_op">Maritime Op</option>
+       <option value="field_op">Field Op</option>
+       <option value="observer" selected>Observer</option>
+      </select>
+      <select id="u-domain" style="width:100%">
+       <option value="all">All Domains</option>
+       <option value="air">Air</option>
+       <option value="ground">Ground</option>
+       <option value="maritime">Maritime</option>
+      </select>
+     </div>
+     <div style="font-size:.7em;color:#666;margin-top:2px">ACCESS MODULES (comma-separated)</div>
+     <input id="u-access" type="text" placeholder="c2,twin,hal,aar,field" style="width:100%" value="c2,twin,hal,aar,field">
+     <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="btn" onclick="saveUser()">SAVE USER</button>
+      <button class="btn btn-yellow" onclick="clearUserForm()">CLEAR</button>
+     </div>
+     <div id="user-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- SCENARIO TAB -->
+ <div id="tab-scenario" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>EXPORT SCENARIO</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <input id="sc-name" type="text" placeholder="Scenario name (optional)" style="width:100%">
+     <button class="btn" onclick="exportScenario()">EXPORT CURRENT STATE</button>
+     <div id="sc-export-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+   <div class="card">
+    <h3>IMPORT SCENARIO</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <textarea id="sc-json" placeholder="Paste scenario JSON here…" style="width:100%;height:200px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:inherit;font-size:.8em;resize:vertical"></textarea>
+     <button class="btn" onclick="importScenario()">LOAD SCENARIO</button>
+     <div id="sc-import-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
    </div>
   </div>
  </div>
@@ -412,8 +477,103 @@ function clearAssetForm(){
  document.getElementById('asset-form-title').textContent='ADD NEW ASSET';
 }
 
+/* ── USERS (Admin CRUD) ── */
+function refreshUsers(){
+ apiFetch('/api/settings/users').then(function(users){
+  var keys=Object.keys(users).sort();
+  document.getElementById('user-count').textContent=keys.length;
+  var h='';
+  keys.forEach(function(u){
+   var info=users[u];
+   var rc={commander:'#ff4444',pilot:'#00aaff',ground_op:'#00ff41',maritime_op:'#ff44ff',field_op:'#ffaa00',observer:'#888'};
+   var col=rc[info.role]||'#888';
+   h+='<div style="border:1px solid #222;padding:6px;margin:3px 0;border-radius:3px;border-left:3px solid '+col+'">';
+   h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+   h+='<div><strong style="color:'+col+'">'+u+'</strong> <span style="color:#666;font-size:.7em">'+info.name+'</span>';
+   h+='<div style="font-size:.65em;color:#555">'+info.role+' | '+info.domain+' | '+(info.access||[]).join(',')+'</div>';
+   h+='</div><div style="display:flex;gap:3px">';
+   h+='<button class="btn btn-yellow" style="padding:1px 6px;font-size:.65em" onclick="editUser(\''+u+'\')">EDIT</button>';
+   h+='<button class="btn btn-red" style="padding:1px 6px;font-size:.65em" onclick="deleteUser(\''+u+'\')">DEL</button>';
+   h+='</div></div></div>';
+  });
+  document.getElementById('user-list').innerHTML=h||'<div style="color:#666;padding:8px">Commander access required</div>';
+ }).catch(function(){document.getElementById('user-list').innerHTML='<div style="color:#666;padding:8px">Commander access required</div>';});
+}
+var _editingUser=null;
+function saveUser(){
+ var username=document.getElementById('u-username').value.trim().toLowerCase();
+ var name=document.getElementById('u-name').value.trim();
+ var password=document.getElementById('u-password').value;
+ var role=document.getElementById('u-role').value;
+ var domain=document.getElementById('u-domain').value;
+ var access=document.getElementById('u-access').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ if(_editingUser){
+  apiPost('/api/settings/users/update',{username:_editingUser,name:name||undefined,role:role,domain:domain,access:access,password:password||undefined}).then(function(r){
+   if(r.status==='ok'){showMsg('user-msg','User updated','#00ff41');clearUserForm();refreshUsers();}
+   else showMsg('user-msg',r.error||'Error','#ff4444');
+  });
+ }else{
+  if(!username){showMsg('user-msg','Username required','#ff4444');return;}
+  apiPost('/api/settings/users/create',{username:username,name:name||username,password:password,role:role,domain:domain,access:access}).then(function(r){
+   if(r.status==='ok'){showMsg('user-msg','User created: '+r.username,'#00ff41');clearUserForm();refreshUsers();}
+   else showMsg('user-msg',r.error||'Error','#ff4444');
+  });
+ }
+}
+function editUser(u){
+ apiFetch('/api/settings/users').then(function(users){
+  var info=users[u]; if(!info)return;
+  _editingUser=u;
+  document.getElementById('u-username').value=u;
+  document.getElementById('u-username').disabled=true;
+  document.getElementById('u-name').value=info.name||'';
+  document.getElementById('u-password').value='';
+  document.getElementById('u-password').placeholder='Leave blank to keep';
+  document.getElementById('u-role').value=info.role||'observer';
+  document.getElementById('u-domain').value=info.domain||'all';
+  document.getElementById('u-access').value=(info.access||[]).join(',');
+  document.getElementById('user-form-title').textContent='EDIT: '+u;
+ });
+}
+function deleteUser(u){
+ if(!confirm('Delete user "'+u+'"?'))return;
+ apiPost('/api/settings/users/delete',{username:u}).then(function(){refreshUsers();});
+}
+function clearUserForm(){
+ _editingUser=null;
+ document.getElementById('u-username').value='';document.getElementById('u-username').disabled=false;
+ document.getElementById('u-name').value='';
+ document.getElementById('u-password').value='';document.getElementById('u-password').placeholder='Password (min 4 chars)';
+ document.getElementById('u-role').value='observer';document.getElementById('u-domain').value='all';
+ document.getElementById('u-access').value='c2,twin,hal,aar,field';
+ document.getElementById('user-form-title').textContent='ADD NEW USER';
+}
+
+/* ── SCENARIOS ── */
+function exportScenario(){
+ var name=document.getElementById('sc-name').value.trim();
+ apiPost('/api/scenario/save',{name:name||undefined}).then(function(r){
+  if(r.error){showMsg('sc-export-msg',r.error,'#ff4444');return;}
+  var blob=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(r.name||'scenario').replace(/\s+/g,'_')+'.json';
+  a.click();
+  showMsg('sc-export-msg','Exported: '+r.name,'#00ff41');
+ });
+}
+function importScenario(){
+ var raw=document.getElementById('sc-json').value.trim();
+ if(!raw){showMsg('sc-import-msg','Paste scenario JSON first','#ff4444');return;}
+ try{var data=JSON.parse(raw);}catch(e){showMsg('sc-import-msg','Invalid JSON','#ff4444');return;}
+ apiPost('/api/scenario/load',data).then(function(r){
+  if(r.status==='ok'){showMsg('sc-import-msg','Loaded: '+r.name+' ('+r.loaded.assets+' assets, '+r.loaded.threats+' threats)','#00ff41');}
+  else showMsg('sc-import-msg',r.error||'Error','#ff4444');
+ });
+}
+
 // Init
-refreshLocs();refreshSystem();refreshFleet();
+refreshLocs();refreshSystem();refreshFleet();refreshUsers();
 setTimeout(initLocMap,300);
 </script>
 {% endblock %}

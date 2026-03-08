@@ -424,6 +424,21 @@ def sim_tick():
             "fused_tracks": len(sensor_fusion.get_tracks()),
             "anomalies": len(learning_anomalies)})
 
+        # ── Phase 5: Alert system ──
+        alerts = []
+        if risk.get("level") in ("HIGH", "CRITICAL"):
+            alerts.append({"level": "critical", "msg": f"Risk level {risk['level']} — score {risk.get('score',0)}"})
+        low_batt = [a["id"] for a in sim_assets.values() if a["health"]["battery_pct"] < 15]
+        if low_batt:
+            alerts.append({"level": "warning", "msg": f"Low battery: {', '.join(low_batt[:3])}"})
+        low_comms = [a["id"] for a in sim_assets.values() if a["health"]["comms_strength"] < 25]
+        if low_comms:
+            alerts.append({"level": "warning", "msg": f"Comms degraded: {', '.join(low_comms[:3])}"})
+        if phal > 5:
+            alerts.append({"level": "info", "msg": f"{phal} pending HAL approvals"})
+        if alerts:
+            socketio.emit("amos_alerts", alerts)
+
 # ═══════════════════════════════════════════════════════════
 #  AUTH ROUTES
 # ═══════════════════════════════════════════════════════════
@@ -642,6 +657,172 @@ def api_settings_system():
         "sim_speed": sim_clock["speed"],
         "uptime_sec": round(time.time() - sim_clock["start_time"], 1)
     })
+
+# ═══════════════════════════════════════════════════════════
+#  SETTINGS – USERS (Admin CRUD)
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/settings/users")
+@login_required
+def api_settings_users():
+    c = ctx()
+    if c["role"] != "commander":
+        return jsonify({"error": "Commander access required"}), 403
+    result = {}
+    for u, info in USERS.items():
+        result[u] = {"name": info.get("name", u), "role": info.get("role", ""),
+                     "domain": info.get("domain", "all"),
+                     "access": info.get("access", [])}
+    return jsonify(result)
+
+@app.route("/api/settings/users/create", methods=["POST"])
+@login_required
+def api_settings_users_create():
+    c = ctx()
+    if c["role"] != "commander":
+        return jsonify({"error": "Commander access required"}), 403
+    d = request.json or {}
+    username = d.get("username", "").strip().lower()
+    if not username or len(username) < 2:
+        return jsonify({"error": "Username must be at least 2 characters"}), 400
+    if username in USERS:
+        return jsonify({"error": f"User '{username}' already exists"}), 409
+    password = d.get("password", "").strip()
+    if len(password) < 4:
+        return jsonify({"error": "Password must be at least 4 characters"}), 400
+    access = d.get("access", ["c2", "twin", "hal", "aar", "field"])
+    pw_hash = generate_password_hash(password)
+    USERS[username] = {
+        "password_hash": pw_hash, "role": d.get("role", "observer"),
+        "name": d.get("name", username).strip(),
+        "domain": d.get("domain", "all"), "access": access}
+    try:
+        db_execute(
+            "INSERT INTO users (username, password_hash, role, name, domain, access) VALUES(%s,%s,%s,%s,%s,%s)",
+            (username, pw_hash, USERS[username]["role"], USERS[username]["name"],
+             USERS[username]["domain"], to_json(access)))
+    except Exception as e:
+        print(f"[AMOS] DB user create error: {e}")
+    return jsonify({"status": "ok", "username": username})
+
+@app.route("/api/settings/users/update", methods=["POST"])
+@login_required
+def api_settings_users_update():
+    c = ctx()
+    if c["role"] != "commander":
+        return jsonify({"error": "Commander access required"}), 403
+    d = request.json or {}
+    username = d.get("username", "").strip().lower()
+    if username not in USERS:
+        return jsonify({"error": "User not found"}), 404
+    usr = USERS[username]
+    if d.get("name"): usr["name"] = d["name"].strip()
+    if d.get("role"): usr["role"] = d["role"]
+    if d.get("domain"): usr["domain"] = d["domain"]
+    if d.get("access"): usr["access"] = d["access"]
+    if d.get("password") and len(d["password"]) >= 4:
+        usr["password_hash"] = generate_password_hash(d["password"])
+    try:
+        db_execute(
+            "UPDATE users SET role=%s, name=%s, domain=%s, access=%s WHERE username=%s",
+            (usr["role"], usr["name"], usr["domain"], to_json(usr["access"]), username))
+        if d.get("password"):
+            db_execute("UPDATE users SET password_hash=%s WHERE username=%s",
+                       (usr["password_hash"], username))
+    except Exception:
+        pass
+    return jsonify({"status": "ok", "username": username})
+
+@app.route("/api/settings/users/delete", methods=["POST"])
+@login_required
+def api_settings_users_delete():
+    c = ctx()
+    if c["role"] != "commander":
+        return jsonify({"error": "Commander access required"}), 403
+    username = (request.json or {}).get("username", "").strip().lower()
+    if username == c["user"]:
+        return jsonify({"error": "Cannot delete yourself"}), 400
+    if username in USERS:
+        del USERS[username]
+        try:
+            db_execute("UPDATE users SET active=0 WHERE username=%s", (username,))
+        except Exception:
+            pass
+    return jsonify({"status": "ok"})
+
+# ═══════════════════════════════════════════════════════════
+#  SCENARIO SAVE/LOAD
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/scenario/save", methods=["POST"])
+@login_required
+def api_scenario_save():
+    """Export full mission state as JSON."""
+    d = request.json or {}
+    scenario = {
+        "version": "amos-scenario-v1",
+        "name": d.get("name", f"Scenario {now_iso()[:16]}"),
+        "exported_at": now_iso(),
+        "exported_by": ctx()["name"],
+        "elapsed_sec": round(sim_clock["elapsed_sec"], 1),
+        "platoon": platoon,
+        "assets": {aid: {
+            "id": a["id"], "type": a["type"], "domain": a["domain"],
+            "role": a["role"], "autonomy_tier": a["autonomy_tier"],
+            "sensors": a["sensors"], "weapons": a["weapons"],
+            "endurance_hr": a.get("endurance_hr", 0),
+            "position": a["position"], "status": a["status"],
+            "health": a["health"], "speed_kts": a["speed_kts"],
+            "heading_deg": a["heading_deg"],
+        } for aid, a in sim_assets.items()},
+        "threats": {tid: {
+            "id": t["id"], "type": t["type"],
+            "lat": t.get("lat"), "lng": t.get("lng"),
+            "speed_kts": t.get("speed_kts", 0),
+            "neutralized": t.get("neutralized", False),
+        } for tid, t in sim_threats.items()},
+        "waypoints": waypoint_nav.get_all(),
+        "geofences": geofence_mgr.get_all(),
+        "swarms": swarms,
+        "ew_active": ew_active_jams,
+        "event_count": len(aar_events),
+    }
+    return jsonify(scenario)
+
+@app.route("/api/scenario/load", methods=["POST"])
+@login_required
+def api_scenario_load():
+    """Import a scenario JSON to restore mission state."""
+    d = request.json or {}
+    if d.get("version") != "amos-scenario-v1":
+        return jsonify({"error": "Invalid scenario format"}), 400
+    loaded = {"assets": 0, "threats": 0}
+    # Load assets
+    for aid, a in d.get("assets", {}).items():
+        sim_assets[aid] = {
+            "id": aid, "type": a.get("type", ""), "domain": a.get("domain", ""),
+            "role": a.get("role", ""), "autonomy_tier": a.get("autonomy_tier", 2),
+            "sensors": a.get("sensors", []), "weapons": a.get("weapons", []),
+            "endurance_hr": a.get("endurance_hr", 0),
+            "position": a.get("position", {"lat": 0, "lng": 0, "alt_ft": 0}),
+            "status": a.get("status", "operational"),
+            "health": a.get("health", {"battery_pct": 100, "comms_strength": 100,
+                                       "cpu_temp_c": 40, "gps_fix": True}),
+            "speed_kts": a.get("speed_kts", 0), "heading_deg": a.get("heading_deg", 0),
+        }
+        loaded["assets"] += 1
+    # Load threats
+    for tid, t in d.get("threats", {}).items():
+        sim_threats[tid] = {
+            "id": tid, "type": t.get("type", ""),
+            "lat": t.get("lat"), "lng": t.get("lng"),
+            "speed_kts": t.get("speed_kts", 0),
+            "neutralized": t.get("neutralized", False),
+            "detected_by": [], "first_detected": None,
+        }
+        loaded["threats"] += 1
+    aar_events.append({"type": "scenario_loaded", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"Scenario '{d.get('name','')}' loaded: {loaded['assets']} assets, {loaded['threats']} threats"})
+    return jsonify({"status": "ok", "loaded": loaded, "name": d.get("name", "")})
 
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS – ASSETS (Fleet CRUD)
