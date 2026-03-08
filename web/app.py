@@ -159,6 +159,12 @@ _recording = {"active": False, "session_id": None, "frame_seq": 0, "tick_count":
 # ── Phase 6: Threat Intel Database (in-memory) ──
 _threat_intel = {}  # {threat_type: {count, engagements, neutralized, first_seen, last_seen, positions}}
 
+# ── Phase 7: Rule Engine + Exercise Mode ──
+_automation_rules = {}  # {rule_id: {name, trigger_type, trigger_params, action_type, action_params, enabled, fired_count, last_fired}}
+_exercise = {"active": False, "name": "", "started_at": None, "injects": [], "score": 0, "max_score": 0,
+             "events": [], "completed_injects": 0}
+_sitreps = []  # list of generated SITREPs
+
 # Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
 _online_ops = {}
 _asset_locks = {}  # {asset_id: {locked_by, locked_at, expires_at}}
@@ -447,6 +453,79 @@ def sim_tick():
             "fused_tracks": len(sensor_fusion.get_tracks()),
             "anomalies": len(learning_anomalies)})
 
+        # ── Phase 7: Rule Engine evaluation ──
+        for rid, rule in list(_automation_rules.items()):
+            if not rule.get("enabled"):
+                continue
+            triggered = False
+            tp = rule.get("trigger_type", "")
+            tparams = rule.get("trigger_params", {})
+            if tp == "threat_count" and act >= tparams.get("threshold", 999):
+                triggered = True
+            elif tp == "risk_level" and risk.get("level") in tparams.get("levels", []):
+                triggered = True
+            elif tp == "battery_low":
+                low_ct = sum(1 for a in sim_assets.values() if a["health"]["battery_pct"] < tparams.get("threshold", 15))
+                if low_ct >= tparams.get("min_count", 1):
+                    triggered = True
+            elif tp == "pending_hal" and phal >= tparams.get("threshold", 10):
+                triggered = True
+            elif tp == "elapsed_time" and sim_clock["elapsed_sec"] >= tparams.get("seconds", 9999):
+                triggered = True
+            if triggered:
+                rule["fired_count"] = rule.get("fired_count", 0) + 1
+                rule["last_fired"] = now_iso()
+                ap = rule.get("action_type", "")
+                aparams = rule.get("action_params", {})
+                if ap == "alert":
+                    socketio.emit("amos_alerts", [{"level": aparams.get("level", "warning"),
+                        "msg": f"[RULE] {rule['name']}: {aparams.get('message', 'Triggered')}",
+                        "link": aparams.get("link", "/automation")}])
+                elif ap == "rtb_all":
+                    for aid in sim_assets:
+                        waypoint_nav.set_waypoint(aid, base_pos["lat"], base_pos["lng"])
+                    aar_events.append({"type": "automation", "timestamp": now_iso(),
+                        "elapsed": sim_clock["elapsed_sec"], "details": f"Rule '{rule['name']}': RTB ALL executed"})
+                elif ap == "speed_change":
+                    sim_clock["speed"] = aparams.get("speed", 1.0)
+                elif ap == "disable_rule":
+                    rule["enabled"] = False
+                _exercise["events"].append({"type": "rule_fired", "rule": rule["name"],
+                    "time": now_iso(), "elapsed": round(sim_clock["elapsed_sec"], 1)})
+
+        # ── Phase 7: Exercise inject processing ──
+        if _exercise["active"]:
+            for inj in _exercise["injects"]:
+                if inj.get("fired") or sim_clock["elapsed_sec"] < inj.get("trigger_at_sec", 9999):
+                    continue
+                inj["fired"] = True
+                inj["fired_at"] = now_iso()
+                it = inj.get("type", "")
+                if it == "spawn_threat":
+                    tid = f"EX-{uuid.uuid4().hex[:6]}"
+                    sim_threats[tid] = {"id": tid, "type": inj.get("threat_type", "drone"),
+                        "lat": inj.get("lat", base_pos["lat"] + 0.03),
+                        "lng": inj.get("lng", base_pos["lng"] + 0.03),
+                        "speed_kts": inj.get("speed_kts", 30), "neutralized": False,
+                        "detected_by": [], "first_detected": None}
+                elif it == "degrade_comms":
+                    for a in sim_assets.values():
+                        a["health"]["comms_strength"] = max(5, a["health"]["comms_strength"] - inj.get("amount", 40))
+                elif it == "drain_battery":
+                    targets = inj.get("targets", list(sim_assets.keys())[:3])
+                    for aid in targets:
+                        if aid in sim_assets:
+                            sim_assets[aid]["health"]["battery_pct"] = max(5, sim_assets[aid]["health"]["battery_pct"] - inj.get("amount", 50))
+                elif it == "message":
+                    socketio.emit("amos_alerts", [{"level": "info",
+                        "msg": f"[EXERCISE] {inj.get('message', 'Inject triggered')}",
+                        "link": "/automation"}])
+                _exercise["completed_injects"] += 1
+                _exercise["score"] += inj.get("points", 10)
+                aar_events.append({"type": "exercise_inject", "timestamp": now_iso(),
+                    "elapsed": sim_clock["elapsed_sec"],
+                    "details": f"Exercise inject: {it} — {inj.get('description', '')}"})
+
         # ── Phase 5: Alert system ──
         alerts = []
         if risk.get("level") in ("HIGH", "CRITICAL"):
@@ -555,6 +634,10 @@ def redforce(): return render_template("redforce.html", **ctx())
 @app.route("/readiness")
 @login_required
 def readiness(): return render_template("readiness.html", **ctx())
+
+@app.route("/automation")
+@login_required
+def automation(): return render_template("automation.html", **ctx())
 
 @app.route("/settings")
 @login_required
@@ -2153,6 +2236,185 @@ def api_analytics_summary():
     })
 
 # ═══════════════════════════════════════════════════════════
+#  PHASE 7: AUTOMATION, EXERCISE, OVERLAYS, SITREP
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/automation/rules")
+@login_required
+def api_automation_rules():
+    return jsonify(_automation_rules)
+
+@app.route("/api/automation/rules/create", methods=["POST"])
+@login_required
+def api_automation_rules_create():
+    d = request.json or {}
+    rid = f"RULE-{uuid.uuid4().hex[:6]}"
+    _automation_rules[rid] = {
+        "id": rid, "name": d.get("name", "Unnamed Rule"),
+        "trigger_type": d.get("trigger_type", ""),
+        "trigger_params": d.get("trigger_params", {}),
+        "action_type": d.get("action_type", ""),
+        "action_params": d.get("action_params", {}),
+        "enabled": True, "fired_count": 0, "last_fired": None,
+        "created_at": now_iso(), "created_by": ctx()["name"]}
+    return jsonify({"status": "ok", "rule": _automation_rules[rid]})
+
+@app.route("/api/automation/rules/toggle", methods=["POST"])
+@login_required
+def api_automation_rules_toggle():
+    rid = (request.json or {}).get("rule_id", "")
+    if rid in _automation_rules:
+        _automation_rules[rid]["enabled"] = not _automation_rules[rid]["enabled"]
+        return jsonify({"status": "ok", "enabled": _automation_rules[rid]["enabled"]})
+    return jsonify({"error": "Rule not found"}), 404
+
+@app.route("/api/automation/rules/delete", methods=["POST"])
+@login_required
+def api_automation_rules_delete():
+    rid = (request.json or {}).get("rule_id", "")
+    _automation_rules.pop(rid, None)
+    return jsonify({"status": "ok"})
+
+# ── Exercise Mode ──
+@app.route("/api/exercise/status")
+@login_required
+def api_exercise_status():
+    return jsonify(_exercise)
+
+@app.route("/api/exercise/start", methods=["POST"])
+@login_required
+def api_exercise_start():
+    d = request.json or {}
+    _exercise["active"] = True
+    _exercise["name"] = d.get("name", f"Exercise {now_iso()[:10]}")
+    _exercise["started_at"] = now_iso()
+    _exercise["injects"] = d.get("injects", [])
+    _exercise["score"] = 0
+    _exercise["max_score"] = sum(i.get("points", 10) for i in _exercise["injects"])
+    _exercise["events"] = []
+    _exercise["completed_injects"] = 0
+    aar_events.append({"type": "exercise_start", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"Exercise '{_exercise['name']}' started with {len(_exercise['injects'])} injects"})
+    return jsonify({"status": "ok", "exercise": _exercise})
+
+@app.route("/api/exercise/stop", methods=["POST"])
+@login_required
+def api_exercise_stop():
+    _exercise["active"] = False
+    final = {"name": _exercise["name"], "score": _exercise["score"],
+             "max_score": _exercise["max_score"], "completed": _exercise["completed_injects"],
+             "total_injects": len(_exercise["injects"]), "events": _exercise["events"]}
+    aar_events.append({"type": "exercise_end", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"Exercise '{_exercise['name']}' ended: {_exercise['score']}/{_exercise['max_score']} pts"})
+    return jsonify({"status": "ok", "results": final})
+
+@app.route("/api/exercise/presets")
+@login_required
+def api_exercise_presets():
+    """Pre-built exercise scenarios."""
+    return jsonify([
+        {"name": "Quick React", "description": "3 threat injects over 60s",
+         "injects": [
+             {"type": "spawn_threat", "trigger_at_sec": sim_clock["elapsed_sec"] + 10,
+              "threat_type": "drone", "description": "Enemy drone detected", "points": 20},
+             {"type": "spawn_threat", "trigger_at_sec": sim_clock["elapsed_sec"] + 35,
+              "threat_type": "missile_launcher", "description": "SAM site active", "points": 30},
+             {"type": "degrade_comms", "trigger_at_sec": sim_clock["elapsed_sec"] + 50,
+              "amount": 40, "description": "Comms jamming detected", "points": 25},
+         ]},
+        {"name": "Sustained Ops", "description": "Battery drain + multi-axis threat",
+         "injects": [
+             {"type": "drain_battery", "trigger_at_sec": sim_clock["elapsed_sec"] + 15,
+              "amount": 40, "description": "Extended patrol battery drain", "points": 15},
+             {"type": "spawn_threat", "trigger_at_sec": sim_clock["elapsed_sec"] + 30,
+              "threat_type": "submarine", "description": "Subsurface contact", "points": 25},
+             {"type": "spawn_threat", "trigger_at_sec": sim_clock["elapsed_sec"] + 45,
+              "threat_type": "fighter_jet", "description": "Air threat inbound", "points": 30},
+             {"type": "message", "trigger_at_sec": sim_clock["elapsed_sec"] + 55,
+              "message": "Higher HQ requests SITREP", "description": "SITREP request", "points": 10},
+         ]},
+    ])
+
+# ── Map Overlays ──
+@app.route("/api/overlays/heatmap")
+@login_required
+def api_overlays_heatmap():
+    """Threat density heatmap data."""
+    points = []
+    for t in sim_threats.values():
+        if t.get("lat") and not t.get("neutralized"):
+            points.append({"lat": t["lat"], "lng": t.get("lng", 0), "intensity": 1.0})
+    for ti in _threat_intel.values():
+        for p in ti.get("positions", [])[-10:]:
+            points.append({"lat": p["lat"], "lng": p["lng"], "intensity": 0.4})
+    return jsonify({"points": points, "count": len(points)})
+
+@app.route("/api/overlays/sectors")
+@login_required
+def api_overlays_sectors():
+    """Domain sector coverage."""
+    sectors = []
+    for domain in ["air", "ground", "maritime"]:
+        assets = [a for a in sim_assets.values() if a["domain"] == domain]
+        if not assets:
+            continue
+        lats = [a["position"]["lat"] for a in assets]
+        lngs = [a["position"]["lng"] for a in assets]
+        sectors.append({"domain": domain, "asset_count": len(assets),
+            "bounds": {"north": max(lats) + 0.01, "south": min(lats) - 0.01,
+                       "east": max(lngs) + 0.01, "west": min(lngs) - 0.01},
+            "center": {"lat": sum(lats) / len(lats), "lng": sum(lngs) / len(lngs)}})
+    return jsonify(sectors)
+
+@app.route("/api/overlays/engagement-zones")
+@login_required
+def api_overlays_engagement_zones():
+    """Weapon engagement envelopes."""
+    zones = []
+    for a in sim_assets.values():
+        if not a.get("weapons"):
+            continue
+        rng = 0.015 if a["domain"] == "air" else 0.008  # approximate range in degrees
+        zones.append({"asset_id": a["id"], "domain": a["domain"],
+            "center": {"lat": a["position"]["lat"], "lng": a["position"]["lng"]},
+            "radius_deg": rng, "weapons": a["weapons"]})
+    return jsonify(zones)
+
+# ── SITREP Generator ──
+@app.route("/api/sitrep/generate", methods=["POST"])
+@login_required
+def api_sitrep_generate():
+    """Generate a formatted SITREP."""
+    at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
+    nt = sum(1 for t in sim_threats.values() if t.get("neutralized"))
+    risk = commander_support.get_risk()
+    c = ctx()
+    moving = len(waypoint_nav.routes)
+    avg_batt = sum(a["health"]["battery_pct"] for a in sim_assets.values()) / max(1, len(sim_assets))
+    sitrep = {
+        "id": f"SITREP-{len(_sitreps)+1:03d}",
+        "dtg": datetime.now(timezone.utc).strftime("%d%H%MZ %b %Y").upper(),
+        "generated_by": c["name"],
+        "classification": "UNCLASSIFIED//FOUO",
+        "mission": platoon.get("name", "UNNAMED"),
+        "callsign": platoon.get("callsign", ""),
+        "elapsed": round(sim_clock["elapsed_sec"] / 60, 1),
+        "line1_enemy": f"{at} active threats, {nt} neutralized. Risk: {risk.get('level','LOW')} ({risk.get('score',0)})",
+        "line2_friendly": f"{len(sim_assets)} assets operational, {moving} on mission, avg battery {avg_batt:.0f}%",
+        "line3_operations": f"{len(cm_log)} engagements, {len(aar_events)} total events logged",
+        "line4_logistics": f"Low battery: {sum(1 for a in sim_assets.values() if a['health']['battery_pct']<30)} assets. Comms degraded: {sum(1 for a in sim_assets.values() if a['health']['comms_strength']<40)}",
+        "line5_command": f"Pending approvals: {sum(1 for r in hal_recommendations if r.get('status')=='pending')}. Exercise: {'ACTIVE' if _exercise['active'] else 'NONE'}",
+    }
+    _sitreps.append(sitrep)
+    return jsonify(sitrep)
+
+@app.route("/api/sitrep/history")
+@login_required
+def api_sitrep_history():
+    return jsonify(_sitreps[-20:])
+
+# ═══════════════════════════════════════════════════════════
 #  PHASE 6: MISSION INTELLIGENCE & REPORTING
 # ═══════════════════════════════════════════════════════════
 @app.route("/api/aar/timeline")
@@ -2453,7 +2715,7 @@ if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 6")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 7")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)
