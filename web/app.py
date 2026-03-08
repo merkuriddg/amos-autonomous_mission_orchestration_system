@@ -164,6 +164,7 @@ _automation_rules = {}  # {rule_id: {name, trigger_type, trigger_params, action_
 _exercise = {"active": False, "name": "", "started_at": None, "injects": [], "score": 0, "max_score": 0,
              "events": [], "completed_injects": 0}
 _sitreps = []  # list of generated SITREPs
+_alert_cooldowns = {}  # {alert_key: last_fired_time} — prevents toast spam
 
 # Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
 _online_ops = {}
@@ -526,20 +527,28 @@ def sim_tick():
                     "elapsed": sim_clock["elapsed_sec"],
                     "details": f"Exercise inject: {it} — {inj.get('description', '')}"})
 
-        # ── Phase 5: Alert system ──
+        # ── Phase 5: Alert system (throttled — 30s cooldown per alert type) ──
+        _ALERT_COOLDOWN_SEC = 30
         alerts = []
         if risk.get("level") in ("HIGH", "CRITICAL"):
-            alerts.append({"level": "critical", "msg": f"Risk level {risk['level']} — score {risk.get('score',0)}", "link": "/cognitive"})
+            alerts.append({"key": "risk", "level": "critical", "msg": f"Risk level {risk['level']} — score {risk.get('score',0)}", "link": "/cognitive"})
         low_batt = [a["id"] for a in sim_assets.values() if a["health"]["battery_pct"] < 15]
         if low_batt:
-            alerts.append({"level": "warning", "msg": f"Low battery: {', '.join(low_batt[:3])}", "link": "/dashboard"})
+            alerts.append({"key": "low_batt", "level": "warning", "msg": f"Low battery: {', '.join(low_batt[:3])}", "link": "/dashboard"})
         low_comms = [a["id"] for a in sim_assets.values() if a["health"]["comms_strength"] < 25]
         if low_comms:
-            alerts.append({"level": "warning", "msg": f"Comms degraded: {', '.join(low_comms[:3])}", "link": "/integrations"})
+            alerts.append({"key": "low_comms", "level": "warning", "msg": f"Comms degraded: {', '.join(low_comms[:3])}", "link": "/integrations"})
         if phal > 5:
-            alerts.append({"level": "info", "msg": f"{phal} pending HAL approvals", "link": "/hal"})
-        if alerts:
-            socketio.emit("amos_alerts", alerts)
+            alerts.append({"key": "pending_hal", "level": "info", "msg": f"{phal} pending HAL approvals", "link": "/hal"})
+        # Filter by cooldown
+        ready = []
+        for al in alerts:
+            k = al.pop("key")
+            if now - _alert_cooldowns.get(k, 0) >= _ALERT_COOLDOWN_SEC:
+                _alert_cooldowns[k] = now
+                ready.append(al)
+        if ready:
+            socketio.emit("amos_alerts", ready)
 
 # ═══════════════════════════════════════════════════════════
 #  AUTH ROUTES
