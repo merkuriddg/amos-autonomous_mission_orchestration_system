@@ -210,22 +210,12 @@ def killchain():
     return jsonify({'active_engagement': {'threat_id':'scan','stage':random.choice(['FIND','FIX','TRACK'])}})
 
 # ---- ALERTS ----
+# NOTE: Random demo alerts removed — Phase 5 SocketIO amos_alerts is the canonical alert system.
+# This endpoint now only returns action-triggered alerts (engage, dispatch, etc.)
 @phase3_bp.route('/alerts')
 def alerts():
     since = int(request.args.get('since', 0))
     new = [a for a in _alerts if a['id'] > since]
-    if not new and random.random() < 0.2:
-        msgs = [
-            ('SIGINT: New emitter detected on 2.4 GHz','warning'),
-            ('Geofence proximity alert — Air-2','warning'),
-            ('EW jam confirmed effective on target','success'),
-            ('Comm degraded: GND-3 ↔ GND-7','warning'),
-            ('AMOS: New COA generated for threat sector','info'),
-            ('Cyber: Port scan detected on mesh','critical'),
-            ('AWACS: 2 new tracks NE of AO','info'),
-            ('Battery warning: Air-3 at 22%','warning'),
-        ]
-        m, s = random.choice(msgs); _alert(m, s); new = [_alerts[-1]]
     return jsonify(new[-5:])
 
 # ---- EW SPECTRUM ----

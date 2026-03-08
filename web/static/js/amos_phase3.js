@@ -363,20 +363,9 @@ A.drawSwarmPattern = function(){
 
 
 /* ═══════════════════════════
-   ALERTS POLLER
+   ALERTS POLLER (disabled — Phase 5 SocketIO amos_alerts is canonical)
    ═══════════════════════════ */
-var lastAlertId = 0;
-A.pollAlerts = function(){
-    fetch('/api/phase3/alerts?since='+lastAlertId)
-    .then(function(r){return r.json()})
-    .then(function(alerts){
-        if(!Array.isArray(alerts)) return;
-        alerts.forEach(function(al){
-            if(al.id > lastAlertId) lastAlertId = al.id;
-            A.toast(al.message || al.msg || 'Alert', al.severity || 'info');
-        });
-    }).catch(function(e){});
-};
+A.pollAlerts = function(){};  // No-op — real alerts via SocketIO
 
 
 /* ═══════════════════════════
@@ -476,8 +465,7 @@ document.addEventListener('DOMContentLoaded', function(){
         }
     }, 1000);
 
-    // Alert poller
-    setInterval(A.pollAlerts, 5000);
+    // Alert poller disabled — Phase 5 SocketIO handles all alerts
 
     console.log('[AMOS] Phase 3 init complete');
 });
