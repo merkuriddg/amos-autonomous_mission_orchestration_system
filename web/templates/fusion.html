@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Sensor Fusion{% endblock %}
+{% block content %}
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="fused-tracks">--</div><div class="label">FUSED TRACKS</div></div>
+    <div class="card stat"><div class="value" id="coverage-gaps" style="color:#ff4444">--</div><div class="label">COVERAGE GAPS</div></div>
+    <div class="card stat"><div class="value" id="kill-chain-active" style="color:#ffa500">--</div><div class="label">KILL CHAINS</div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>FUSED TRACKS</h3><div class="scroll-box" id="tracks-list" style="max-height:350px"></div></div>
+    <div class="card"><h3>KILL CHAIN PIPELINE</h3>
+        <div id="kc-phases" style="display:flex;gap:6px;margin:10px 0"></div>
+        <div class="scroll-box" id="kc-log" style="max-height:250px"></div>
+    </div>
+</div>
+<div class="card"><h3>COVERAGE GAPS</h3><div class="scroll-box" id="gaps-list" style="max-height:200px"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const KC_COLORS={DETECT:'#00ff41',IDENTIFY:'#00ccff',DECIDE:'#ffa500',ENGAGE:'#ff4444',ASSESS:'#ff00ff'};
+async function refreshFusion(){
+    const tracks=await apiFetch('/api/fusion/tracks');
+    const tDiv=document.getElementById('tracks-list');
+    const entries=Object.entries(tracks||{});
+    document.getElementById('fused-tracks').textContent=entries.length;
+    if(!entries.length){tDiv.innerHTML='<div style="color:#666;padding:10px">No fused tracks</div>';return;}
+    tDiv.innerHTML=entries.map(function(e){const t=e[1];
+        const col=t.classification==='drone'?'#ff4444':t.classification==='vessel'?'#ffa500':'#00ccff';
+        return '<div style="border:1px solid '+col+';padding:6px;margin:3px 0"><strong style="color:'+col+'">'+t.id+'</strong> '+t.classification+' | conf: '+(t.confidence*100).toFixed(0)+'% | sources: '+t.source_count+' | KC: <span style="color:'+KC_COLORS[t.kill_chain.phase]+'">'+t.kill_chain.phase+'</span><br><small>'+t.lat.toFixed(4)+', '+t.lng.toFixed(4)+' | age: '+t.age_sec.toFixed(0)+'s</small></div>';
+    }).join('');
+
+    const kc=await apiFetch('/api/fusion/killchain');
+    const kcDiv=document.getElementById('kc-phases');
+    kcDiv.innerHTML=Object.entries(kc.phase_counts||{}).map(function(e){
+        return '<div style="flex:1;text-align:center;padding:8px;background:#111;border:1px solid '+(KC_COLORS[e[0]]||'#333')+'"><div style="font-size:22px;color:'+(KC_COLORS[e[0]]||'#fff')+'">'+e[1]+'</div><small>'+e[0]+'</small></div>';
+    }).join('');
+    const kcLog=document.getElementById('kc-log');
+    kcLog.innerHTML=(kc.log||[]).slice(-10).reverse().map(function(l){
+        return '<div style="padding:3px 0;border-bottom:1px solid #222"><span style="color:'+(KC_COLORS[l.phase]||'#ccc')+'">'+l.phase+'</span> '+l.track_id+' | '+l.total_elapsed_sec+'s | '+l.operator+'</div>';
+    }).join('');
+
+    const gaps=await apiFetch('/api/fusion/gaps');
+    document.getElementById('coverage-gaps').textContent=gaps.length;
+    document.getElementById('kill-chain-active').textContent=entries.length;
+    const gDiv=document.getElementById('gaps-list');
+    if(!gaps.length)gDiv.innerHTML='<div style="color:#00ff41;padding:10px">Full coverage — no gaps detected</div>';
+    else gDiv.innerHTML=gaps.slice(0,30).map(function(g){return '<span style="display:inline-block;background:#330000;border:1px solid #ff4444;padding:2px 6px;margin:2px;font-size:11px">'+g.lat.toFixed(3)+','+g.lng.toFixed(3)+'</span>';}).join('');
+}
+refreshFusion(); setInterval(refreshFusion,3000);
+</script>
+{% endblock %}

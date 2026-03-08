@@ -17,6 +17,16 @@ from mos_core.nodes.geofence_manager import GeofenceManager
 from mos_core.nodes.voice_parser import VoiceParser
 from mos_core.nodes.ros2_bridge import ROS2Bridge
 
+# Phase 10
+from mos_core.nodes.cognitive_engine import CognitiveEngine
+from mos_core.nodes.nlp_mission_parser import NLPMissionParser
+from mos_core.nodes.environment_effects import ContestedEnvironment
+from mos_core.nodes.task_allocator import TaskAllocator
+from mos_core.nodes.red_force_ai import RedForceAI
+from mos_core.nodes.sensor_fusion_engine import SensorFusionEngine
+from mos_core.nodes.commander_support import CommanderSupport
+from mos_core.nodes.learning_engine import LearningEngine
+
 # Phase 3
 import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
@@ -119,6 +129,16 @@ geofence_mgr = GeofenceManager()
 voice_parser = VoiceParser()
 ros2_bridge = ROS2Bridge()
 
+# Phase 10 subsystems
+cognitive_engine = CognitiveEngine()
+nlp_parser = NLPMissionParser(sim_assets)
+contested_env = ContestedEnvironment(base_pos)
+task_allocator = TaskAllocator()
+red_force_ai = RedForceAI(base_pos["lat"], base_pos["lng"])
+sensor_fusion = SensorFusionEngine()
+commander_support = CommanderSupport()
+learning_engine = LearningEngine()
+
 ew_active_jams, ew_intercepts = [], []
 sigint_intercepts, sigint_emitter_db = [], {}
 cyber_events, cyber_blocked_ips = [], set()
@@ -148,6 +168,8 @@ print(f"[AMOS]  EW-capable: {len(ew_capable)}")
 print(f"[AMOS]  Geofences:  {len(geofence_mgr.get_all())}")
 print(f"[AMOS]  Users:      {len(USERS)}")
 print(f"[AMOS]  ROS 2:      {'Connected' if ros2_bridge.available else 'Standalone'}")
+print(f"[AMOS]  Phase 10:   cognitive, nlp, contested, tasks,")
+print(f"[AMOS]              red_force, fusion, commander, learning")
 print(f"[AMOS] ═══════════════════════════════════════\n")
 
 # ═══════════════════════════════════════════════════════════
@@ -247,6 +269,22 @@ def sim_tick():
         if ros2_bridge.available:
             ros2_bridge.publish_assets(sim_assets)
 
+        # ── Phase 10 ticks ──
+        cognitive_engine.tick(sim_assets, sim_threats, dt)
+        contested_env.tick(sim_assets, sim_threats, dt)
+        task_allocator.tick(sim_assets, dt)
+        red_events = red_force_ai.tick(sim_assets, sim_threats, ew_active_jams, dt)
+        for re in red_events:
+            aar_events.append({"type": "red_force", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"], "details": str(re)})
+        sensor_fusion.tick(sim_assets, sim_threats, dt)
+        cmdr_events = commander_support.tick(sim_assets, sim_threats, contested_env, dt)
+        for ce in cmdr_events:
+            aar_events.append({"type": "contingency", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"], "details": str(ce)})
+            learning_engine.record_event("CONTINGENCY_TRIGGERED", ce)
+        learning_anomalies = learning_engine.tick(sim_assets, sim_threats, dt)
+
         # Trim
         for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
             if len(lst) > 1000: del lst[:500]
@@ -255,12 +293,18 @@ def sim_tick():
         # Emit
         act = sum(1 for t in sim_threats.values() if not t.get("neutralized") and "lat" in t)
         phal = sum(1 for r in hal_recommendations if r.get("status") == "pending")
+        risk = commander_support.get_risk()
+        red_count = len([u for u in red_force_ai.get_units().values() if u["state"] != "DESTROYED"])
         socketio.emit("sim_update", {
             "clock": {"elapsed_sec": round(sim_clock["elapsed_sec"],1), "speed": sim_clock["speed"]},
             "asset_count": len(sim_assets), "threat_count": act,
             "hostile_tracks": act, "pending_hal": phal,
             "gf_alerts": len(geofence_mgr.get_alerts()),
-            "active_waypoints": len(waypoint_nav.routes)})
+            "active_waypoints": len(waypoint_nav.routes),
+            "risk_level": risk.get("level", "LOW"), "risk_score": risk.get("score", 0),
+            "red_force_units": red_count,
+            "fused_tracks": len(sensor_fusion.get_tracks()),
+            "anomalies": len(learning_anomalies)})
 
 # ═══════════════════════════════════════════════════════════
 #  AUTH ROUTES
@@ -327,6 +371,22 @@ def awacs(): return render_template("awacs.html", **ctx())
 @app.route("/field")
 @login_required
 def field(): return render_template("field.html", **ctx())
+
+@app.route("/fusion")
+@login_required
+def fusion(): return render_template("fusion.html", **ctx())
+
+@app.route("/cognitive")
+@login_required
+def cognitive(): return render_template("cognitive.html", **ctx())
+
+@app.route("/contested")
+@login_required
+def contested(): return render_template("contested.html", **ctx())
+
+@app.route("/redforce")
+@login_required
+def redforce(): return render_template("redforce.html", **ctx())
 
 # ═══════════════════════════════════════════════════════════
 #  ASSET API
@@ -674,6 +734,247 @@ def api_voice():
     return jsonify(result)
 
 # ═══════════════════════════════════════════════════════════
+#  COGNITIVE ENGINE API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/cognitive/ooda")
+@login_required
+def api_cognitive_ooda():
+    return jsonify(cognitive_engine.get_loops())
+
+@app.route("/api/cognitive/coa")
+@login_required
+def api_cognitive_coa():
+    return jsonify(cognitive_engine.get_coas())
+
+@app.route("/api/cognitive/reasoning")
+@login_required
+def api_cognitive_reasoning():
+    return jsonify(cognitive_engine.get_recommendations())
+
+# ═══════════════════════════════════════════════════════════
+#  NLP MISSION PARSER API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/nlp/parse", methods=["POST"])
+@login_required
+def api_nlp_parse():
+    text = request.json.get("text", "")
+    result = nlp_parser.parse(text)
+    return jsonify(result)
+
+@app.route("/api/nlp/execute", methods=["POST"])
+@login_required
+def api_nlp_execute():
+    text = request.json.get("text", "")
+    parsed = nlp_parser.parse(text)
+    executed = []
+    for order in parsed.get("orders", []):
+        assets = order.get("resolved_assets", [])
+        action = order.get("action", "")
+        for aid in assets:
+            if aid in sim_assets and action in ("move", "patrol", "recon"):
+                loc = order.get("location", {})
+                if "lat" in loc and "lng" in loc:
+                    waypoint_nav.set_waypoint(aid, loc["lat"], loc["lng"])
+                    executed.append({"asset": aid, "action": action, "location": loc})
+    c = ctx()
+    aar_events.append({"type": "nlp_command", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"NLP [{c['name']}]: {text} -> {len(executed)} actions"})
+    return jsonify({"parsed": parsed, "executed": executed})
+
+# ═══════════════════════════════════════════════════════════
+#  CONTESTED ENVIRONMENT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/contested/status")
+@login_required
+def api_contested_status():
+    return jsonify(contested_env.get_status())
+
+@app.route("/api/contested/gps-denial/add", methods=["POST"])
+@login_required
+def api_contested_gps_add():
+    d = request.json
+    contested_env.add_gps_denial_zone(
+        d.get("lat", 0), d.get("lng", 0),
+        d.get("radius_nm", 5), d.get("js_ratio_db", 20))
+    return jsonify({"status": "ok", "zones": len(contested_env.gps_denial_zones)})
+
+@app.route("/api/contested/gps-denial/remove", methods=["POST"])
+@login_required
+def api_contested_gps_remove():
+    zid = request.json.get("zone_id", "")
+    contested_env.gps_denial_zones = [
+        z for z in contested_env.gps_denial_zones if z.get("id") != zid]
+    return jsonify({"status": "ok"})
+
+@app.route("/api/contested/mesh")
+@login_required
+def api_contested_mesh():
+    return jsonify(contested_env.get_mesh())
+
+# ═══════════════════════════════════════════════════════════
+#  TASK ALLOCATOR API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/tasks")
+@login_required
+def api_tasks():
+    return jsonify(task_allocator.get_tasks())
+
+@app.route("/api/tasks/gantt")
+@login_required
+def api_tasks_gantt():
+    return jsonify(task_allocator.get_gantt())
+
+@app.route("/api/tasks/assign", methods=["POST"])
+@login_required
+def api_tasks_assign():
+    d = request.json
+    task_allocator.create_task(
+        d.get("task_type", "patrol"), priority=d.get("priority", 5),
+        location=d.get("location", {}), required_sensors=d.get("required_capabilities", []))
+    return jsonify({"status": "ok", "tasks": len(task_allocator.tasks)})
+
+# ═══════════════════════════════════════════════════════════
+#  RED FORCE API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/redforce/status")
+@login_required
+def api_redforce_status():
+    return jsonify(red_force_ai.get_stats())
+
+@app.route("/api/redforce/units")
+@login_required
+def api_redforce_units():
+    return jsonify(red_force_ai.get_units())
+
+@app.route("/api/redforce/spawn", methods=["POST"])
+@login_required
+def api_redforce_spawn():
+    d = request.json
+    uid = f"RED-SPAWN-{len(red_force_ai.units)+1:02d}"
+    from mos_core.nodes.red_force_ai import RedUnit
+    lat = d.get("lat", base_pos["lat"] + 0.05)
+    lng = d.get("lng", base_pos["lng"] + 0.05)
+    utype = d.get("unit_type", "drone")
+    unit = RedUnit(uid, lat, lng, utype)
+    unit.state = "PROBING"
+    red_force_ai.units[uid] = unit
+    red_force_ai.stats["units_spawned"] += 1
+    return jsonify({"status": "ok", "unit": unit.to_dict()})
+
+# ═══════════════════════════════════════════════════════════
+#  SENSOR FUSION API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/fusion/tracks")
+@login_required
+def api_fusion_tracks():
+    return jsonify(sensor_fusion.get_tracks())
+
+@app.route("/api/fusion/coverage")
+@login_required
+def api_fusion_coverage():
+    return jsonify(sensor_fusion.get_coverage())
+
+@app.route("/api/fusion/killchain")
+@login_required
+def api_fusion_killchain():
+    return jsonify(sensor_fusion.get_kill_chain_summary())
+
+@app.route("/api/fusion/gaps")
+@login_required
+def api_fusion_gaps():
+    return jsonify(sensor_fusion.get_coverage_gaps())
+
+# ═══════════════════════════════════════════════════════════
+#  COMMANDER SUPPORT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/commander/risk")
+@login_required
+def api_commander_risk():
+    return jsonify(commander_support.get_risk())
+
+@app.route("/api/commander/risk/trend")
+@login_required
+def api_commander_risk_trend():
+    return jsonify(commander_support.get_risk_trend())
+
+@app.route("/api/commander/resources")
+@login_required
+def api_commander_resources():
+    mins = request.args.get("minutes", 60, type=int)
+    return jsonify(commander_support.get_resources(sim_assets, mins))
+
+@app.route("/api/commander/contingencies")
+@login_required
+def api_commander_contingencies():
+    return jsonify(commander_support.get_contingency_plans())
+
+@app.route("/api/commander/triggered")
+@login_required
+def api_commander_triggered():
+    return jsonify(commander_support.get_triggered_plans())
+
+@app.route("/api/commander/contingency/add", methods=["POST"])
+@login_required
+def api_commander_contingency_add():
+    d = request.json
+    plan = commander_support.add_contingency(
+        d.get("name", ""), d.get("trigger_type", ""),
+        d.get("trigger_params", {}), d.get("actions", []),
+        d.get("priority", 5))
+    return jsonify({"status": "ok", "plan": plan})
+
+@app.route("/api/commander/contingency/cancel", methods=["POST"])
+@login_required
+def api_commander_contingency_cancel():
+    pid = request.json.get("plan_id", "")
+    ok = commander_support.cancel_contingency(pid)
+    return jsonify({"status": "ok" if ok else "not_found"})
+
+# ═══════════════════════════════════════════════════════════
+#  LEARNING ENGINE API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/learning/anomalies")
+@login_required
+def api_learning_anomalies():
+    return jsonify(learning_engine.get_anomalies())
+
+@app.route("/api/learning/engagements")
+@login_required
+def api_learning_engagements():
+    return jsonify(learning_engine.get_recent_engagements())
+
+@app.route("/api/learning/engagement-stats")
+@login_required
+def api_learning_engagement_stats():
+    return jsonify(learning_engine.get_engagement_stats())
+
+@app.route("/api/learning/swarm-params")
+@login_required
+def api_learning_swarm_params():
+    return jsonify(learning_engine.get_swarm_params())
+
+@app.route("/api/learning/swarm/tune", methods=["POST"])
+@login_required
+def api_learning_swarm_tune():
+    d = request.json
+    params = learning_engine.tune_swarm(
+        d.get("metric", ""), d.get("score", 0.5), d.get("weight", 1.0))
+    return jsonify({"status": "ok", "params": params})
+
+@app.route("/api/learning/aar")
+@login_required
+def api_learning_aar():
+    return jsonify(learning_engine.generate_aar())
+
+@app.route("/api/learning/events")
+@login_required
+def api_learning_events():
+    etype = request.args.get("type", None)
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(learning_engine.get_events(event_type=etype, limit=limit))
+
+# ═══════════════════════════════════════════════════════════
 #  ROS2 / USER / SIM APIs
 # ═══════════════════════════════════════════════════════════
 @app.route("/api/ros2/status")
@@ -908,8 +1209,8 @@ def swarm_debug():
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0")
-    print("  http://localhost:5000")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 10")
+    print("  http://localhost:2600")
     print("-" * 58)
     for u, i in USERS.items():
         print(f"  {u:12s} / {i['password']:14s} [{i['role']}]")

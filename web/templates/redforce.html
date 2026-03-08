@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Red Force{% endblock %}
+{% block content %}
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="rf-active" style="color:#ff4444">--</div><div class="label">ACTIVE UNITS</div></div>
+    <div class="card stat"><div class="value" id="rf-strategy" style="color:#ffa500">--</div><div class="label">STRATEGY</div></div>
+    <div class="card stat"><div class="value" id="rf-aggression" style="color:#ff00ff">--</div><div class="label">AGGRESSION</div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>RED FORCE UNITS</h3><div class="scroll-box" id="rf-units" style="max-height:400px"></div></div>
+    <div class="card"><h3>RED FORCE INTEL</h3>
+        <div id="rf-stats" style="margin-bottom:10px"></div>
+        <h4 style="color:#ff4444">SPAWN UNIT</h4>
+        <div style="display:flex;gap:4px;margin-bottom:8px">
+            <select id="spawn-type" style="flex:1;background:#0a0a0a;color:#ff4444;border:1px solid #333;padding:4px;font-family:inherit">
+                <option value="drone">Drone</option><option value="vessel">Vessel</option>
+                <option value="gps_jammer">GPS Jammer</option><option value="rf_emitter">RF Emitter</option>
+            </select>
+            <button class="btn btn-red" onclick="spawnUnit()">SPAWN</button>
+        </div>
+        <h4 style="color:#ffa500;margin-top:12px">RECENT EVENTS</h4>
+        <div class="scroll-box" id="rf-events" style="max-height:200px"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const STATE_COL={STAGING:'#666',PROBING:'#ffa500',ATTACKING:'#ff4444',WITHDRAWING:'#00ccff',DECOYING:'#ff00ff',DESTROYED:'#444'};
+async function refreshRF(){
+    const stats=await apiFetch('/api/redforce/status');
+    if(stats){
+        document.getElementById('rf-active').textContent=stats.active_units||0;
+        document.getElementById('rf-strategy').textContent=stats.strategy||'--';
+        document.getElementById('rf-aggression').textContent=((stats.aggression||0)*100).toFixed(0)+'%';
+        document.getElementById('rf-stats').innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+            '<span>Spawned: <b>'+stats.units_spawned+'</b></span>'+
+            '<span>Destroyed: <b style="color:#00ff41">'+stats.units_destroyed+'</b></span>'+
+            '<span>Freq Hops: <b style="color:#ffa500">'+stats.freq_hops+'</b></span>'+
+            '<span>Decoys: <b style="color:#ff00ff">'+stats.decoys_deployed+'</b></span>'+
+            '<span>Attacks: <b style="color:#ff4444">'+stats.attacks_launched+'</b></span></div>';
+    }
+    const units=await apiFetch('/api/redforce/units');
+    const uDiv=document.getElementById('rf-units');
+    const entries=Object.entries(units||{});
+    if(!entries.length){uDiv.innerHTML='<div style="color:#666;padding:10px">No red force units</div>';}
+    else uDiv.innerHTML=entries.map(function(e){const u=e[1];
+        const sc=STATE_COL[u.state]||'#666';
+        return '<div style="border-left:3px solid '+sc+';padding:4px 8px;margin:3px 0;background:#0a0a0a;'+(u.state==='DESTROYED'?'opacity:0.4':'')+'"><strong style="color:'+sc+'">'+u.id+'</strong> ['+u.state+'] '+u.type+(u.is_decoy?' <span style="color:#ff00ff">DECOY</span>':'')+'<br><small>'+u.lat.toFixed(4)+', '+u.lng.toFixed(4)+' | '+u.speed_kts+'kts | RF: '+u.rf_freq_mhz+'MHz'+(u.jammed?' <span style="color:#ffa500">JAMMED</span>':'')+(u.freq_hops?' | hops:'+u.freq_hops:'')+'</small></div>';
+    }).join('');
+}
+async function spawnUnit(){const t=document.getElementById('spawn-type').value;await apiPost('/api/redforce/spawn',{unit_type:t});refreshRF();}
+refreshRF(); setInterval(refreshRF,3000);
+</script>
+{% endblock %}

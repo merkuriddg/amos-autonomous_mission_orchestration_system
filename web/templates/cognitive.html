@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Cognitive Engine{% endblock %}
+{% block content %}
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="ooda-loops">--</div><div class="label">OODA LOOPS</div></div>
+    <div class="card stat"><div class="value" id="coa-count" style="color:#00ccff">--</div><div class="label">COAs GENERATED</div></div>
+    <div class="card stat"><div class="value" id="recs-pending" style="color:#ffa500">--</div><div class="label">PENDING RECS</div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>ACTIVE OODA LOOPS</h3><div class="scroll-box" id="ooda-list" style="max-height:350px"></div></div>
+    <div class="card"><h3>REASONING & RECOMMENDATIONS</h3><div class="scroll-box" id="recs-list" style="max-height:350px"></div></div>
+</div>
+<div class="card"><h3>COURSES OF ACTION</h3><div class="scroll-box" id="coa-list" style="max-height:250px"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const PHASE_COL={OBSERVE:'#00ff41',ORIENT:'#00ccff',DECIDE:'#ffa500',ACT:'#ff4444'};
+async function refreshCog(){
+    const loops=await apiFetch('/api/cognitive/ooda');
+    const entries=Object.entries(loops||{});
+    document.getElementById('ooda-loops').textContent=entries.length;
+    const lDiv=document.getElementById('ooda-list');
+    if(!entries.length){lDiv.innerHTML='<div style="color:#666;padding:10px">No active OODA loops</div>';}
+    else lDiv.innerHTML=entries.map(function(e){const l=e[1];
+        return '<div style="border-left:3px solid '+(PHASE_COL[l.phase]||'#333')+';padding:6px;margin:4px 0;background:#0a0a0a"><strong style="color:'+(PHASE_COL[l.phase]||'#fff')+'">'+l.phase+'</strong> | Threat: '+e[0]+' | Loop #'+l.loop_count+'<br><small>Pressure: '+((l.time_pressure||0)*100).toFixed(0)+'% | Since: '+l.time_in_phase_sec.toFixed(0)+'s</small></div>';
+    }).join('');
+
+    const recs=await apiFetch('/api/cognitive/reasoning');
+    const pending=(recs||[]).filter(function(r){return r.status==='pending';});
+    document.getElementById('recs-pending').textContent=pending.length;
+    const rDiv=document.getElementById('recs-list');
+    rDiv.innerHTML=(recs||[]).slice(-15).reverse().map(function(r){
+        const sc=r.status==='pending'?'#ffa500':'#00ff41';
+        return '<div style="border:1px solid '+sc+';padding:6px;margin:3px 0"><strong style="color:'+sc+'">'+r.id+'</strong> ['+r.status.toUpperCase()+']<br>Threat: '+r.threat_id+' ('+r.threat_type+') | Assets: '+(r.recommended_assets||[]).join(', ')+'<br><small>'+(r.reasoning_chain||[]).slice(0,2).map(function(rc){return rc.step+': '+rc.detail;}).join(' → ')+'</small></div>';
+    }).join('');
+
+    const coas=await apiFetch('/api/cognitive/coa');
+    const coaEntries=typeof coas==='object'?Object.entries(coas):[]; 
+    let total=0;
+    const cDiv=document.getElementById('coa-list');
+    let html='';
+    coaEntries.forEach(function(e){const tid=e[0];const list=e[1]||[];total+=list.length;
+        html+='<div style="margin:6px 0"><strong style="color:#00ccff">'+tid+'</strong>';
+        list.forEach(function(c){html+='<div style="border-left:2px solid #00ccff;padding:4px 8px;margin:2px 0;background:#0a0a0a">'+c.name+' | Score: '+c.score.toFixed(2)+' | Risk: '+c.risk_level+' | '+(c.win_rate*100).toFixed(0)+'% win</div>';});
+        html+='</div>';
+    });
+    document.getElementById('coa-count').textContent=total;
+    cDiv.innerHTML=html||'<div style="color:#666;padding:10px">No COAs generated yet</div>';
+}
+refreshCog(); setInterval(refreshCog,3000);
+</script>
+{% endblock %}

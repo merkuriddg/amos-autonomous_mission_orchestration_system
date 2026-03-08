@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Contested Ops{% endblock %}
+{% block content %}
+<div class="grid-3" style="margin-bottom:10px">
+    <div class="card stat"><div class="value" id="gps-denied" style="color:#ff4444">--</div><div class="label">GPS DENIED</div></div>
+    <div class="card stat"><div class="value" id="comms-denied" style="color:#ffa500">--</div><div class="label">COMMS DENIED</div></div>
+    <div class="card stat"><div class="value" id="escalations" style="color:#ff00ff">--</div><div class="label">AUTO-ESCALATIONS</div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>GPS DENIAL ZONES</h3>
+        <div class="scroll-box" id="gps-zones" style="max-height:180px"></div>
+        <div style="margin-top:8px;display:flex;gap:4px">
+            <input id="gps-lat" type="number" step="0.001" placeholder="Lat" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit">
+            <input id="gps-lng" type="number" step="0.001" placeholder="Lng" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit">
+            <input id="gps-rad" type="number" value="5" placeholder="NM" style="width:60px;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit">
+            <button class="btn btn-red" onclick="addGPS()">ADD</button>
+        </div>
+    </div>
+    <div class="card"><h3>ASSET GPS STATUS</h3><div class="scroll-box" id="gps-status" style="max-height:250px"></div></div>
+</div>
+<div class="grid-2">
+    <div class="card"><h3>COMMS / MESH STATUS</h3><div class="scroll-box" id="comms-status" style="max-height:250px"></div></div>
+    <div class="card"><h3>AUTO-ESCALATION LOG</h3><div class="scroll-box" id="esc-log" style="max-height:250px"></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshContested(){
+    const s=await apiFetch('/api/contested/status');
+    if(!s)return;
+    document.getElementById('gps-denied').textContent=s.stats.gps_denied_assets||0;
+    document.getElementById('comms-denied').textContent=s.stats.comms_denied_assets||0;
+    document.getElementById('escalations').textContent=s.stats.escalations||0;
+
+    const zDiv=document.getElementById('gps-zones');
+    const zones=s.gps_denial_zones||[];
+    zDiv.innerHTML=zones.length?zones.map(function(z){
+        return '<div style="border:1px solid #ff4444;padding:4px;margin:2px 0">'+z.name+' | '+z.center_lat.toFixed(3)+','+z.center_lng.toFixed(3)+' | R:'+z.radius_nm+'nm | '+(z.active?'<span style="color:#ff4444">ACTIVE</span>':'OFF')+'</div>';
+    }).join(''):'<div style="color:#00ff41;padding:6px">No GPS denial zones active</div>';
+
+    const gDiv=document.getElementById('gps-status');
+    const gps=Object.entries(s.gps_status||{});
+    gDiv.innerHTML=gps.map(function(e){const g=e[1];
+        const col=g.jammed?'#ff4444':'#00ff41';
+        return '<div style="padding:3px 0;border-bottom:1px solid #222"><span style="color:'+col+'">●</span> '+e[0]+' | '+g.nav_mode+' | CEP: '+g.cep_m+'m'+(g.jammed?' | J/S: '+g.j_s_ratio_db+'dB':'')+'</div>';
+    }).join('')||'<div style="color:#666">No GPS data</div>';
+
+    const cDiv=document.getElementById('comms-status');
+    const comms=Object.entries(s.comms_status||{});
+    cDiv.innerHTML=comms.map(function(e){const c=e[1];
+        const col=c.comms_state==='GOOD'?'#00ff41':c.comms_state==='DEGRADED'?'#ffa500':'#ff4444';
+        return '<div style="padding:3px 0;border-bottom:1px solid #222"><span style="color:'+col+'">●</span> '+e[0]+' | '+c.comms_state+' ('+c.quality_pct.toFixed(0)+'%) | '+c.method+(c.relay_path.length?' via '+c.relay_path.join('→'):'')+'</div>';
+    }).join('')||'<div style="color:#666">No comms data</div>';
+
+    const eDiv=document.getElementById('esc-log');
+    eDiv.innerHTML=(s.auto_escalations||[]).slice(-10).reverse().map(function(e){
+        return '<div style="padding:3px 0;border-bottom:1px solid #222;color:#ff00ff">'+e.asset_id+' | Tier '+e.from_tier+'→'+e.to_tier+' | '+e.reason+' | '+(e.timestamp||'').substring(11,19)+'</div>';
+    }).join('')||'<div style="color:#00ff41">No escalations</div>';
+}
+async function addGPS(){const lat=parseFloat(document.getElementById('gps-lat').value)||27.85;const lng=parseFloat(document.getElementById('gps-lng').value)||-82.52;const r=parseFloat(document.getElementById('gps-rad').value)||5;await apiPost('/api/contested/gps-denial/add',{lat:lat,lng:lng,radius_nm:r});refreshContested();}
+refreshContested(); setInterval(refreshContested,3000);
+</script>
+{% endblock %}
