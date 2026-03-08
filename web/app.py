@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from flask_socketio import SocketIO
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
@@ -29,6 +30,9 @@ from mos_core.nodes.learning_engine import LearningEngine
 
 # Phase 3
 import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+
+# Database
+from db.connection import fetchall, fetchone, execute as db_execute, to_json, from_json, check as db_check
 
 
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "platoon_config.yaml")
@@ -66,9 +70,9 @@ def add_no_cache(response):
 
 
 # ═══════════════════════════════════════════════════════════
-#  MULTI-USER SYSTEM
+#  MULTI-USER SYSTEM (DB-backed with fallback)
 # ═══════════════════════════════════════════════════════════
-USERS = {
+_FALLBACK_USERS = {
     "commander": {"password": "mavrix2026", "role": "commander",
                    "name": "CDR Mitchell", "domain": "all",
                    "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin","fusion","cognitive","contested","redforce"]},
@@ -88,6 +92,32 @@ USERS = {
                    "name": "SPC Davis", "domain": "all",
                    "access": ["c2","field","voice","cm","contested"]},
 }
+
+def _load_users_from_db():
+    """Load users from MariaDB. Falls back to hardcoded dict."""
+    try:
+        if not db_check():
+            raise Exception("DB offline")
+        rows = fetchall("SELECT * FROM users WHERE active=1")
+        if not rows:
+            raise Exception("No users in DB")
+        users = {}
+        for r in rows:
+            users[r["username"]] = {
+                "password_hash": r["password_hash"],
+                "role": r["role"], "name": r["name"],
+                "domain": r["domain"], "access": from_json(r["access"])
+            }
+        print(f"[AMOS] Loaded {len(users)} users from DB")
+        return users, True
+    except Exception as e:
+        print(f"[AMOS] DB user load failed ({e}), using fallback")
+        return _FALLBACK_USERS, False
+
+USERS, _DB_AUTH = _load_users_from_db()
+
+# Recording state
+_recording = {"active": False, "session_id": None, "frame_seq": 0, "tick_count": 0}
 def login_required(f):
     @wraps(f)
     def dec(*a, **kw):
@@ -299,6 +329,27 @@ def sim_tick():
             learning_engine.record_event("CONTINGENCY_TRIGGERED", ce)
         learning_anomalies = learning_engine.tick(sim_assets, sim_threats, dt)
 
+        # ── Recording frame capture (every ~2s) ──
+        if _recording["active"]:
+            _recording["tick_count"] += 1
+            if _recording["tick_count"] % 4 == 0:  # every 4 ticks ≈ 2s
+                _recording["frame_seq"] += 1
+                try:
+                    db_execute(
+                        "INSERT INTO recording_frames (session_id,frame_seq,clock_elapsed,asset_state,threat_state) "
+                        "VALUES(%s,%s,%s,%s,%s)",
+                        (_recording["session_id"], _recording["frame_seq"],
+                         round(sim_clock["elapsed_sec"], 1),
+                         to_json({aid: {"lat": a["position"]["lat"], "lng": a["position"]["lng"],
+                                        "alt_ft": a["position"].get("alt_ft", 0), "status": a["status"],
+                                        "heading": a["heading_deg"], "type": a["type"], "domain": a["domain"]}
+                                  for aid, a in sim_assets.items()}),
+                         to_json({tid: {"lat": t.get("lat"), "lng": t.get("lng"), "type": t["type"],
+                                        "neutralized": t.get("neutralized", False)}
+                                  for tid, t in sim_threats.items() if not t.get("neutralized")})))
+                except Exception:
+                    pass
+
         # Trim
         for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
             if len(lst) > 1000: del lst[:500]
@@ -329,9 +380,17 @@ def login():
     if request.method == "POST":
         u, p = request.form.get("username",""), request.form.get("password","")
         usr = USERS.get(u)
-        if usr and usr["password"] == p:
-            session["user"] = u
-            return redirect("/field" if usr["role"] == "field_op" else "/")
+        if usr:
+            # DB mode: password_hash; Fallback mode: plaintext password
+            ok = False
+            if _DB_AUTH and "password_hash" in usr:
+                ok = check_password_hash(usr["password_hash"], p)
+            elif "password" in usr:
+                ok = (usr["password"] == p)
+            if ok:
+                session["user"] = u
+                _audit(u, "login", "user", u)
+                return redirect("/field" if usr["role"] == "field_op" else "/")
         return render_template("login.html", error="Invalid credentials", users=USERS)
     return render_template("login.html", error=None, users=USERS)
 
@@ -475,7 +534,12 @@ def api_settings_password():
     new_pw = d.get("new", "").strip()
     if len(new_pw) < 4:
         return jsonify({"error": "Password must be at least 4 characters"}), 400
-    usr["password"] = new_pw
+    if _DB_AUTH:
+        new_hash = generate_password_hash(new_pw)
+        usr["password_hash"] = new_hash
+        db_execute("UPDATE users SET password_hash=%s WHERE username=%s", (new_hash, u))
+    else:
+        usr["password"] = new_pw
     return jsonify({"status": "ok"})
 
 @app.route("/api/settings/profile", methods=["POST"])
@@ -488,6 +552,8 @@ def api_settings_profile():
         return jsonify({"error": "User not found"}), 404
     if d.get("name"):
         usr["name"] = d["name"].strip()
+        if _DB_AUTH:
+            db_execute("UPDATE users SET name=%s WHERE username=%s", (usr["name"], u))
     return jsonify({"status": "ok", "name": usr["name"], "role": usr["role"]})
 
 @app.route("/api/settings/system")
@@ -526,7 +592,7 @@ def api_settings_assets_save():
     if not aid:
         return jsonify({"error": "Asset ID required"}), 400
     existing = sim_assets.get(aid, {})
-    sim_assets[aid] = {
+    asset = {
         "id": aid,
         "type": d.get("type", existing.get("type", "unknown")),
         "domain": d.get("domain", existing.get("domain", "ground")),
@@ -550,6 +616,23 @@ def api_settings_assets_save():
         "integration": d.get("integration", existing.get("integration", "none")),
         "bridge_addr": d.get("bridge_addr", existing.get("bridge_addr", ""))
     }
+    sim_assets[aid] = asset
+    # Write-through to DB
+    try:
+        db_execute(
+            """INSERT INTO assets (asset_id,type,domain,role,autonomy_tier,sensors,weapons,
+               endurance_hr,lat,lng,alt_ft,integration,bridge_addr)
+               VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               ON DUPLICATE KEY UPDATE type=VALUES(type),domain=VALUES(domain),role=VALUES(role),
+               autonomy_tier=VALUES(autonomy_tier),sensors=VALUES(sensors),weapons=VALUES(weapons),
+               endurance_hr=VALUES(endurance_hr),lat=VALUES(lat),lng=VALUES(lng),alt_ft=VALUES(alt_ft),
+               integration=VALUES(integration),bridge_addr=VALUES(bridge_addr)""",
+            (aid, asset["type"], asset["domain"], asset["role"], asset["autonomy_tier"],
+             to_json(asset["sensors"]), to_json(asset["weapons"]), asset["endurance_hr"],
+             asset["position"]["lat"], asset["position"]["lng"], asset["position"]["alt_ft"],
+             asset["integration"], asset["bridge_addr"]))
+    except Exception as e:
+        print(f"[AMOS] DB asset write error: {e}")
     return jsonify({"status": "ok", "id": aid})
 
 @app.route("/api/settings/assets/delete", methods=["POST"])
@@ -559,6 +642,10 @@ def api_settings_assets_delete():
     aid = request.json.get("id", "").strip().upper()
     if aid in sim_assets:
         del sim_assets[aid]
+        try:
+            db_execute("DELETE FROM assets WHERE asset_id=%s", (aid,))
+        except Exception:
+            pass
     return jsonify({"status": "ok", "id": aid})
 
 # ═══════════════════════════════════════════════════════════
@@ -1379,13 +1466,99 @@ def swarm_debug():
             info["sample_id"] = aid
     return jsonify(info)
 
+# ═══════════════════════════════════════════════════════════
+#  AUDIT TRAIL
+# ═══════════════════════════════════════════════════════════
+def _audit(user, action, target_type=None, target_id=None, detail=None):
+    """Write an audit log entry to the database."""
+    try:
+        ip = request.remote_addr if request else None
+        db_execute(
+            "INSERT INTO audit_log (user, action, target_type, target_id, detail, ip) VALUES(%s,%s,%s,%s,%s,%s)",
+            (user, action, target_type, target_id, to_json(detail) if detail else None, ip))
+    except Exception:
+        pass  # Don't crash on audit failures
+
+@app.after_request
+def audit_writes(response):
+    """Auto-audit all POST/DELETE API calls."""
+    if request.method in ("POST", "DELETE") and request.path.startswith("/api/"):
+        u = session.get("user", "anonymous")
+        _audit(u, f"{request.method} {request.path}", detail=request.get_json(silent=True))
+    return response
+
+# ═══════════════════════════════════════════════════════════
+#  AUDIT API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/audit")
+@login_required
+def api_audit():
+    c = ctx()
+    if "admin" not in c["access"]:
+        return jsonify({"error": "Admin access required"}), 403
+    limit = request.args.get("limit", 100, type=int)
+    rows = fetchall("SELECT * FROM audit_log ORDER BY id DESC LIMIT %s", (limit,))
+    return jsonify([{**r, "timestamp": str(r["timestamp"]), "detail": from_json(r.get("detail"))} for r in rows])
+
+# ═══════════════════════════════════════════════════════════
+#  MISSION RECORDING API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/recording/start", methods=["POST"])
+@login_required
+def api_recording_start():
+    if _recording["active"]:
+        return jsonify({"error": "Already recording", "session_id": _recording["session_id"]}), 409
+    sid = str(uuid.uuid4())
+    c = ctx()
+    name = request.json.get("name", f"Mission {now_iso()[:10]}")
+    db_execute(
+        "INSERT INTO recording_sessions (session_id, name, started_by) VALUES(%s,%s,%s)",
+        (sid, name, c["user"]))
+    _recording["active"] = True
+    _recording["session_id"] = sid
+    _recording["frame_seq"] = 0
+    return jsonify({"status": "ok", "session_id": sid})
+
+@app.route("/api/recording/stop", methods=["POST"])
+@login_required
+def api_recording_stop():
+    if not _recording["active"]:
+        return jsonify({"error": "Not recording"}), 400
+    sid = _recording["session_id"]
+    db_execute(
+        "UPDATE recording_sessions SET status='complete', stopped_at=NOW(), frame_count=%s WHERE session_id=%s",
+        (_recording["frame_seq"], sid))
+    _recording["active"] = False
+    _recording["session_id"] = None
+    _recording["frame_seq"] = 0
+    return jsonify({"status": "ok", "session_id": sid})
+
+@app.route("/api/recording/sessions")
+@login_required
+def api_recording_sessions():
+    rows = fetchall("SELECT * FROM recording_sessions ORDER BY started_at DESC LIMIT 50")
+    return jsonify([{**r, "started_at": str(r["started_at"]),
+                     "stopped_at": str(r["stopped_at"]) if r.get("stopped_at") else None} for r in rows])
+
+@app.route("/api/recording/<session_id>/frames")
+@login_required
+def api_recording_frames(session_id):
+    rows = fetchall(
+        "SELECT frame_seq, clock_elapsed, asset_state, threat_state, timestamp "
+        "FROM recording_frames WHERE session_id=%s ORDER BY frame_seq", (session_id,))
+    return jsonify([{"seq": r["frame_seq"], "elapsed": float(r["clock_elapsed"]),
+                     "assets": from_json(r["asset_state"]), "threats": from_json(r["threat_state"]),
+                     "ts": str(r["timestamp"])} for r in rows])
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
+    db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
     print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 10")
     print("  http://localhost:2600")
+    print(f"  Database: {db_ok}")
     print("-" * 58)
     for u, i in USERS.items():
-        print(f"  {u:12s} / {i['password']:14s} [{i['role']}]")
+        print(f"  {u:12s} [{i.get('role','')}]")
     print("=" * 58 + "\n")
     socketio.run(app, host="0.0.0.0", port=2600, allow_unsafe_werkzeug=True)

@@ -5,10 +5,44 @@
     <div class="card stat"><div class="value" id="aar-events">--</div><div class="label">AAR EVENTS</div></div>
     <div class="card stat"><button class="btn" onclick="exportAAR()" style="font-size:1.2em;padding:12px 30px">EXPORT AAR</button><div class="label" style="margin-top:8px">Download Full Report</div></div>
 </div>
+
+<!-- ═══ Mission Recording Controls ═══ -->
+<div class="card" style="margin-bottom:10px">
+    <h3>MISSION RECORDING</h3>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <input id="rec-name" class="input" placeholder="Mission name…" style="flex:1;min-width:200px">
+        <button class="btn" id="btn-rec-start" onclick="recStart()">⏺ START RECORDING</button>
+        <button class="btn" id="btn-rec-stop" onclick="recStop()" style="display:none;background:#ff4444">⏹ STOP</button>
+        <span id="rec-status" style="color:#666"></span>
+    </div>
+</div>
+
+<!-- ═══ AAR Replay ═══ -->
+<div class="card" style="margin-bottom:10px">
+    <h3>AAR REPLAY</h3>
+    <div style="margin-bottom:8px">
+        <select id="replay-sel" class="input" style="max-width:400px" onchange="loadReplay()">
+            <option value="">— Select a recording —</option>
+        </select>
+        <button class="btn" onclick="loadSessions()" style="margin-left:8px">↻ Refresh</button>
+    </div>
+    <div id="replay-controls" style="display:none">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <button class="btn" id="btn-play" onclick="replayPlay()">▶ Play</button>
+            <button class="btn" id="btn-pause" onclick="replayPause()" style="display:none">⏸ Pause</button>
+            <span id="replay-time" style="font-family:monospace;color:#00ff41">T+0s</span>
+            <span id="replay-frame" style="color:#888">Frame 0 / 0</span>
+        </div>
+        <input type="range" id="replay-scrub" min="0" max="0" value="0" style="width:100%" oninput="replayScrub(this.value)">
+        <div id="replay-info" class="scroll-box" style="max-height:300px;margin-top:8px"></div>
+    </div>
+</div>
+
 <div class="card"><h3>EVENT TIMELINE</h3><div class="scroll-box" style="max-height:600px" id="aar-timeline"></div></div>
 {% endblock %}
 {% block scripts %}
 <script>
+/* ── Live AAR Events ── */
 async function refreshAAR(){
     const events=await apiFetch('/api/aar/events');
     document.getElementById('aar-events').textContent=events.length||0;
@@ -20,5 +54,78 @@ async function refreshAAR(){
 }
 function exportAAR(){apiFetch('/api/aar/export').then(function(data){const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
 refreshAAR(); setInterval(refreshAAR,3000);
+
+/* ── Recording Controls ── */
+async function recStart(){
+    const name = document.getElementById('rec-name').value || undefined;
+    const r = await apiFetch('/api/recording/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    if(r.status==='ok'){
+        document.getElementById('btn-rec-start').style.display='none';
+        document.getElementById('btn-rec-stop').style.display='';
+        document.getElementById('rec-status').textContent='⏺ Recording: '+r.session_id.substring(0,8);
+        document.getElementById('rec-status').style.color='#ff4444';
+    } else { alert(r.error||'Failed'); }
+}
+async function recStop(){
+    const r = await apiFetch('/api/recording/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    if(r.status==='ok'){
+        document.getElementById('btn-rec-start').style.display='';
+        document.getElementById('btn-rec-stop').style.display='none';
+        document.getElementById('rec-status').textContent='✓ Saved: '+r.session_id.substring(0,8);
+        document.getElementById('rec-status').style.color='#00ff41';
+        loadSessions();
+    }
+}
+
+/* ── AAR Replay Player ── */
+let _frames=[]; let _playIdx=0; let _playTimer=null;
+async function loadSessions(){
+    const rows=await apiFetch('/api/recording/sessions');
+    const sel=document.getElementById('replay-sel');
+    sel.innerHTML='<option value="">— Select a recording —</option>';
+    (rows||[]).forEach(function(s){
+        sel.innerHTML+='<option value="'+s.session_id+'">'+s.name+' ('+s.frame_count+' frames, '+(s.status||'active')+')</option>';
+    });
+}
+async function loadReplay(){
+    const sid=document.getElementById('replay-sel').value;
+    if(!sid){document.getElementById('replay-controls').style.display='none';return;}
+    _frames=await apiFetch('/api/recording/'+sid+'/frames');
+    if(!_frames||!_frames.length){document.getElementById('replay-info').innerHTML='<em>No frames</em>';return;}
+    document.getElementById('replay-controls').style.display='';
+    document.getElementById('replay-scrub').max=_frames.length-1;
+    document.getElementById('replay-scrub').value=0;
+    _playIdx=0; renderFrame(0);
+}
+function renderFrame(idx){
+    if(idx<0||idx>=_frames.length) return;
+    const f=_frames[idx];
+    document.getElementById('replay-time').textContent='T+'+f.elapsed+'s';
+    document.getElementById('replay-frame').textContent='Frame '+(idx+1)+' / '+_frames.length;
+    document.getElementById('replay-scrub').value=idx;
+    const div=document.getElementById('replay-info'); div.innerHTML='';
+    const assets=f.assets||{}; const threats=f.threats||{};
+    let html='<div style="color:#00ff41;margin-bottom:4px">ASSETS ('+Object.keys(assets).length+')</div>';
+    for(const[id,a] of Object.entries(assets)){
+        html+='<div style="padding:2px 8px;font-size:0.85em"><span style="color:#4488ff">'+id+'</span> '+a.type+' ['+a.domain+'] '+a.lat.toFixed(4)+','+a.lng.toFixed(4)+' hdg:'+Math.round(a.heading)+'° '+a.status+'</div>';
+    }
+    html+='<div style="color:#ff4444;margin:6px 0 4px">THREATS ('+Object.keys(threats).length+')</div>';
+    for(const[id,t] of Object.entries(threats)){
+        html+='<div style="padding:2px 8px;font-size:0.85em"><span style="color:#ff4444">'+id+'</span> '+t.type+' '+(t.lat?t.lat.toFixed(4)+','+t.lng.toFixed(4):'?')+'</div>';
+    }
+    div.innerHTML=html;
+}
+function replayPlay(){
+    document.getElementById('btn-play').style.display='none';
+    document.getElementById('btn-pause').style.display='';
+    _playTimer=setInterval(function(){if(_playIdx<_frames.length-1){_playIdx++;renderFrame(_playIdx);}else{replayPause();}},500);
+}
+function replayPause(){
+    clearInterval(_playTimer);
+    document.getElementById('btn-play').style.display='';
+    document.getElementById('btn-pause').style.display='none';
+}
+function replayScrub(val){_playIdx=parseInt(val);renderFrame(_playIdx);}
+loadSessions();
 </script>
 {% endblock %}
