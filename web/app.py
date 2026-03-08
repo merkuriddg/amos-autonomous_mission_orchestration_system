@@ -27,6 +27,9 @@ from mos_core.nodes.red_force_ai import RedForceAI
 from mos_core.nodes.sensor_fusion_engine import SensorFusionEngine
 from mos_core.nodes.commander_support import CommanderSupport
 from mos_core.nodes.learning_engine import LearningEngine
+from mos_core.nodes.kill_web import KillWeb
+from mos_core.nodes.roe_engine import ROEEngine
+from mos_core.nodes.threat_predictor import ThreatPredictor
 
 # Phase 3 — Document Generators
 from mos_core.docs.opord_generator import generate_opord
@@ -70,6 +73,7 @@ except Exception as e:
 
 # Database
 from db.connection import fetchall, fetchone, execute as db_execute, to_json, from_json, check as db_check
+from db.persistence import flush_periodic as _db_flush, persist_engagement, persist_bda, persist_sitrep, persist_hal_action, load_state_from_db
 
 
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "platoon_config.yaml")
@@ -175,25 +179,28 @@ USERS, _DB_AUTH = _load_users_from_db()
 # Recording state
 _recording = {"active": False, "session_id": None, "frame_seq": 0, "tick_count": 0}
 
+# ── Persistence: Load state from DB on startup ──
+_db_state = load_state_from_db()
+
 # ── Phase 6: Threat Intel Database (in-memory) ──
-_threat_intel = {}  # {threat_type: {count, engagements, neutralized, first_seen, last_seen, positions}}
+_threat_intel = _db_state.get("threat_intel", {})  # {threat_type: {count, engagements, neutralized, first_seen, last_seen, positions}}
 
 # ── Phase 7: Rule Engine + Exercise Mode ──
 _automation_rules = {}  # {rule_id: {name, trigger_type, trigger_params, action_type, action_params, enabled, fired_count, last_fired}}
 _exercise = {"active": False, "name": "", "started_at": None, "injects": [], "score": 0, "max_score": 0,
              "events": [], "completed_injects": 0}
-_sitreps = []  # list of generated SITREPs
+_sitreps = _db_state.get("sitreps", [])  # list of generated SITREPs
 _alert_cooldowns = {}  # {alert_key: last_fired_time} — prevents toast spam
 
 # ── Phase 9: Mission Plans, Training, API Metrics, Uptime ──
-_mission_plans = {}  # {plan_id: {id, name, template, waypoints, phases, pace, assets, created_at, created_by}}
+_mission_plans = _db_state.get("mission_plans", {})  # {plan_id: {id, name, template, waypoints, phases, pace, assets, created_at, created_by}}
 _training_records = []  # [{id, operator, name, exercise_name, score, max_score, pct, passed, timestamp}]
 _api_metrics = {"requests": 0, "errors": 0, "by_endpoint": {}, "start_time": time.time()}
 _uptime_pings = []  # [{timestamp, assets, threats, cpu, memory, uptime_sec}]
 
 # ── Phase 10: Logistics, Weather, BDA, EOB ──
 _supply_history = []  # [{ts, avg_fuel, avg_ammo, total_assets}]
-_bda_reports = []  # [{id, target_id, target_type, weapon, damage, confidence, assessor, timestamp}]
+_bda_reports = _db_state.get("bda_reports", [])  # [{id, target_id, target_type, weapon, damage, confidence, assessor, timestamp}]
 _eob_units = {}  # {unit_id: {id, name, type, equipment, capability, threat_level, last_known, positions, engagements}}
 _weather = {"wind_speed_kt": 12, "wind_dir_deg": 225, "temp_c": 28, "visibility_km": 15,
             "precipitation": "none", "ceiling_ft": 25000, "sea_state": 2,
@@ -280,6 +287,9 @@ red_force_ai = RedForceAI(base_pos["lat"], base_pos["lng"])
 sensor_fusion = SensorFusionEngine()
 commander_support = CommanderSupport()
 learning_engine = LearningEngine()
+kill_web = KillWeb()
+roe_engine = ROEEngine()
+threat_predictor = ThreatPredictor()
 
 ew_active_jams, ew_intercepts = [], []
 sigint_intercepts, sigint_emitter_db = [], {}
@@ -525,6 +535,21 @@ def sim_tick():
                 if len(eu["positions"]) < 100:
                     eu["positions"].append({"lat": round(t["lat"], 4), "lng": round(t.get("lng", 0), 4), "ts": now_iso()})
 
+        # ── Threat Predictor tick ──
+        threat_predictor.tick(sim_threats, _eob_units, sim_assets, dt)
+
+        # ── Kill Web tick ──
+        kw_events = kill_web.tick(sim_threats, sigint_intercepts,
+            sensor_fusion.get_tracks(), cm_log, _bda_reports, sim_assets, dt)
+        for kwe in kw_events:
+            aar_events.append({"type": "killweb", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"], "details": kwe})
+
+        # ── Persistence flush ──
+        _db_flush(cm_log, aar_events, _bda_reports, _eob_units, sigint_intercepts,
+                  _supply_history, _weather, _threat_intel, _sitreps, _mission_plans,
+                  _automation_rules, hal_recommendations)
+
         # Trim
         for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
             if len(lst) > 1000: del lst[:500]
@@ -544,7 +569,35 @@ def sim_tick():
             "risk_level": risk.get("level", "LOW"), "risk_score": risk.get("score", 0),
             "red_force_units": red_count,
             "fused_tracks": len(sensor_fusion.get_tracks()),
-            "anomalies": len(learning_anomalies)})
+            "anomalies": len(learning_anomalies),
+            "killweb_active": kill_web.get_stats().get("active", 0),
+            "killweb_awaiting": kill_web.get_stats().get("awaiting_approval", 0),
+            "roe_posture": roe_engine.posture,
+            "predictions_count": len(threat_predictor.predictions)})
+
+        # ── Phase 15: Domain-specific WebSocket push (every ~2s) ──
+        if int(sim_clock["elapsed_sec"]) % 2 < 1:
+            # Asset state push
+            socketio.emit("asset_update", {
+                aid: {"lat": a["position"]["lat"], "lng": a["position"]["lng"],
+                      "alt_ft": a["position"].get("alt_ft", 0), "status": a["status"],
+                      "heading": a["heading_deg"], "speed": a["speed_kts"],
+                      "battery": a["health"]["battery_pct"], "comms": a["health"]["comms_strength"],
+                      "domain": a["domain"], "type": a["type"]}
+                for aid, a in sim_assets.items()})
+            # Threat state push
+            socketio.emit("threat_update", {
+                tid: {"lat": t.get("lat"), "lng": t.get("lng"), "type": t["type"],
+                      "neutralized": t.get("neutralized", False), "speed": t.get("speed_kts", 0)}
+                for tid, t in sim_threats.items() if not t.get("neutralized")})
+            # SIGINT push (last 5)
+            if sigint_intercepts:
+                socketio.emit("sigint_update", sigint_intercepts[-5:])
+            # Weather push
+            socketio.emit("weather_update", _weather)
+            # Kill Web push
+            kw_stats = kill_web.get_stats()
+            socketio.emit("killweb_update", kw_stats)
 
         # ── Phase 7: Rule Engine evaluation ──
         for rid, rule in list(_automation_rules.items()):
@@ -735,6 +788,18 @@ def redforce(): return render_template("redforce.html", **ctx())
 @app.route("/readiness")
 @login_required
 def readiness(): return render_template("readiness.html", **ctx())
+
+@app.route("/killweb")
+@login_required
+def killweb_page(): return render_template("killweb.html", **ctx())
+
+@app.route("/roe")
+@login_required
+def roe_page(): return render_template("roe.html", **ctx())
+
+@app.route("/predictions")
+@login_required
+def predictions_page(): return render_template("predictions.html", **ctx())
 
 @app.route("/automation")
 @login_required
@@ -1248,11 +1313,21 @@ def api_cyber_block():
 @login_required
 def api_cm_engage():
     d = request.json; tid = d.get("threat_id",""); ctype = d.get("type","intercept"); c = ctx()
+    # ROE compliance check
+    if tid in sim_threats:
+        roe_result = roe_engine.check_engagement(
+            sim_threats[tid], sim_assets.get(d.get("asset_id", ""), {}), c["name"], ctype)
+        if not roe_result["allowed"]:
+            aar_events.append({"type": "roe_violation", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"],
+                "details": f"ROE BLOCK: {ctype} on {tid} by {c['name']} — {roe_result['violations'][0]['detail']}"})
+            return jsonify({"error": "ROE violation", "roe": roe_result}), 403
     if tid in sim_threats:
         sim_threats[tid]["neutralized"] = True
         e = {"id":f"CM-{uuid.uuid4().hex[:8]}","threat_id":tid,"type":ctype,
              "operator":c["name"],"timestamp":now_iso(),"elapsed":sim_clock["elapsed_sec"]}
         cm_log.append(e)
+        persist_engagement(e)
         aar_events.append({"type":"countermeasure","timestamp":e["timestamp"],
             "elapsed":sim_clock["elapsed_sec"],"details":f"{ctype.upper()} {tid} by {c['name']}"})
         # Auto-generate BDA report for this engagement
@@ -1274,6 +1349,7 @@ def api_cm_engage():
             "remarks": f"Auto-BDA: {ctype} engagement on {tid}",
         }
         _bda_reports.append(bda_rpt)
+        persist_bda(bda_rpt)
         return jsonify({"status":"ok","result":"neutralized"})
     return jsonify({"error":"Not found"}),404
 
@@ -2586,6 +2662,7 @@ def api_sitrep_generate():
         "line5_command": f"Pending approvals: {sum(1 for r in hal_recommendations if r.get('status')=='pending')}. Exercise: {'ACTIVE' if _exercise['active'] else 'NONE'}",
     }
     _sitreps.append(sitrep)
+    persist_sitrep(sitrep)
     return jsonify(sitrep)
 
 @app.route("/api/sitrep/history")
@@ -3492,6 +3569,7 @@ def api_bda_report():
         "remarks": d.get("remarks", ""),
     }
     _bda_reports.append(rpt)
+    persist_bda(rpt)
     cm_log.append({"ts": now_iso(), "user": c["user"],
                    "msg": f"BDA REPORT: {rpt['target_name']} — {rpt['damage_level']}"})
     return jsonify({"status": "ok", "report": rpt})
@@ -3577,6 +3655,116 @@ def api_eob_map():
                              "status": u["status"], "confidence": u["confidence"],
                              "track_count": len(u.get("positions", []))})
     return jsonify({"features": features, "count": len(features)})
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 14: PREDICTION APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/predict/threats")
+@login_required
+def api_predict_threats():
+    return jsonify(threat_predictor.get_predictions())
+
+@app.route("/api/predict/heatmap")
+@login_required
+def api_predict_heatmap():
+    return jsonify(threat_predictor.get_heatmap())
+
+@app.route("/api/predict/intercepts")
+@login_required
+def api_predict_intercepts():
+    return jsonify(threat_predictor.get_intercepts(sim_assets, sim_threats))
+
+@app.route("/api/predict/patterns")
+@login_required
+def api_predict_patterns():
+    return jsonify(threat_predictor.get_patterns())
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 13: ROE APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/roe/status")
+@login_required
+def api_roe_status():
+    return jsonify(roe_engine.get_status())
+
+@app.route("/api/roe/set", methods=["POST"])
+@login_required
+def api_roe_set():
+    c = ctx()
+    if c["role"] != "commander":
+        return jsonify({"error": "Commander access required"}), 403
+    posture = (request.json or {}).get("posture", "")
+    result = roe_engine.set_posture(posture, c["name"])
+    if not result:
+        return jsonify({"error": "Invalid posture"}), 400
+    aar_events.append({"type": "roe_change", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"ROE changed: {result['old']} → {result['new']} by {c['name']}"})
+    return jsonify({"status": "ok", **result})
+
+@app.route("/api/roe/rules")
+@login_required
+def api_roe_rules():
+    return jsonify(roe_engine.get_rules())
+
+@app.route("/api/roe/rule", methods=["POST"])
+@login_required
+def api_roe_rule_add():
+    d = request.json or {}
+    rule = roe_engine.add_rule(
+        d.get("name", "Custom Rule"), d.get("type", "custom"),
+        d.get("params", {}), d.get("description", ""),
+        d.get("severity", "WARNING"))
+    return jsonify({"status": "ok", "rule": rule})
+
+@app.route("/api/roe/toggle", methods=["POST"])
+@login_required
+def api_roe_toggle():
+    rid = (request.json or {}).get("rule_id", "")
+    result = roe_engine.toggle_rule(rid)
+    if not result:
+        return jsonify({"error": "Rule not found"}), 404
+    return jsonify({"status": "ok", "rule": result})
+
+@app.route("/api/roe/violations")
+@login_required
+def api_roe_violations():
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(roe_engine.get_violations(limit))
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 12: KILL WEB APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/killweb/pipelines")
+@login_required
+def api_killweb_pipelines():
+    return jsonify(kill_web.get_pipelines())
+
+@app.route("/api/killweb/stats")
+@login_required
+def api_killweb_stats():
+    return jsonify(kill_web.get_stats())
+
+@app.route("/api/killweb/approve/<pipeline_id>", methods=["POST"])
+@login_required
+def api_killweb_approve(pipeline_id):
+    c = ctx()
+    result = kill_web.approve_pipeline(pipeline_id, c["name"])
+    if not result:
+        return jsonify({"error": "Pipeline not found or not awaiting approval"}), 404
+    aar_events.append({"type": "killweb", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"ENGAGE approved by {c['name']} for {result['threat_id']}"})
+    return jsonify({"status": "ok", "pipeline": result})
+
+@app.route("/api/killweb/abort/<pipeline_id>", methods=["POST"])
+@login_required
+def api_killweb_abort(pipeline_id):
+    reason = (request.json or {}).get("reason", "Manual abort")
+    result = kill_web.abort_pipeline(pipeline_id, reason)
+    if not result:
+        return jsonify({"error": "Pipeline not found"}), 404
+    return jsonify({"status": "ok", "pipeline": result})
 
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}ROE{% endblock %}
+{% block head %}
+<style>
+.roe-posture{font-size:1.6em;font-weight:bold;padding:10px;text-align:center;border-radius:4px;margin-bottom:8px}
+.roe-WEAPONS_FREE{background:#003300;color:#00ff41;border:2px solid #00ff41}
+.roe-WEAPONS_TIGHT{background:#332200;color:#ffaa00;border:2px solid #ffaa00}
+.roe-WEAPONS_HOLD{background:#330000;color:#ff4444;border:2px solid #ff4444}
+.roe-rule{border:1px solid #222;padding:6px 8px;margin:3px 0;background:#0d0d0d;border-radius:3px;font-size:.78em}
+.roe-rule-name{color:#4488ff;font-weight:bold}
+.roe-rule-desc{color:#888;font-size:.88em;margin-top:2px}
+.roe-sev-BLOCK{color:#ff4444}.roe-sev-WARNING{color:#ffaa00}
+.roe-toggle{background:transparent;border:1px solid #333;color:#888;padding:1px 8px;cursor:pointer;font-size:.75em;border-radius:2px}
+.roe-toggle.on{border-color:#00ff41;color:#00ff41}.roe-toggle.off{border-color:#ff4444;color:#ff4444}
+.viol-row{border-bottom:1px solid #111;padding:4px 0;font-size:.72em}
+.viol-sev-BLOCK{color:#ff4444}.viol-sev-WARNING{color:#ffaa00}
+.posture-btn{padding:4px 14px;border:1px solid #333;background:#111;color:#888;cursor:pointer;font-size:.8em;border-radius:3px;margin:0 2px}
+.posture-btn.active{color:#00ff41;border-color:#00ff41;background:#001a00}
+.posture-btn:hover{border-color:#fff;color:#fff}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">RULES OF ENGAGEMENT</h2>
+
+ <!-- POSTURE -->
+ <div class="card">
+  <div class="roe-posture" id="roe-posture">WEAPONS_TIGHT</div>
+  <div style="text-align:center;margin:6px 0">
+   <button class="posture-btn" onclick="setPosture('WEAPONS_HOLD')">🔴 HOLD</button>
+   <button class="posture-btn" onclick="setPosture('WEAPONS_TIGHT')">🟡 TIGHT</button>
+   <button class="posture-btn" onclick="setPosture('WEAPONS_FREE')">🟢 FREE</button>
+  </div>
+  <div style="text-align:center;font-size:.7em;color:#888" id="roe-setby"></div>
+ </div>
+
+ <!-- STATS -->
+ <div class="grid-4" style="margin:8px 0">
+  <div class="card stat"><div class="value" id="roe-total">0</div><div class="label">TOTAL RULES</div></div>
+  <div class="card stat"><div class="value" id="roe-active" style="color:#00ff41">0</div><div class="label">ACTIVE RULES</div></div>
+  <div class="card stat"><div class="value" id="roe-viols" style="color:#ff4444">0</div><div class="label">VIOLATIONS</div></div>
+  <div class="card stat"><div class="value" id="roe-posture-txt" style="color:#ffaa00">--</div><div class="label">POSTURE</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- RULES -->
+  <div class="card">
+   <h3>ROE RULES</h3>
+   <div class="scroll-box" style="max-height:350px" id="roe-rules-list"></div>
+  </div>
+
+  <!-- VIOLATIONS -->
+  <div class="card">
+   <h3>VIOLATION LOG</h3>
+   <div class="scroll-box" style="max-height:350px" id="roe-viols-list"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshROE(){
+ var status=await apiFetch('/api/roe/status');
+ var rules=await apiFetch('/api/roe/rules');
+ var viols=await apiFetch('/api/roe/violations');
+ // Posture
+ var pe=document.getElementById('roe-posture');
+ pe.textContent=status.posture;
+ pe.className='roe-posture roe-'+status.posture;
+ document.getElementById('roe-setby').textContent='Set by '+status.posture_set_by+' at '+(status.posture_set_at||'').split('T')[1]?.substr(0,8);
+ // Stats
+ document.getElementById('roe-total').textContent=status.total_rules;
+ document.getElementById('roe-active').textContent=status.active_rules;
+ document.getElementById('roe-viols').textContent=status.total_violations;
+ document.getElementById('roe-posture-txt').textContent=status.posture.replace('WEAPONS_','');
+ // Posture buttons
+ document.querySelectorAll('.posture-btn').forEach(function(b){b.classList.remove('active');});
+ // Rules
+ var h='';
+ rules.forEach(function(r){
+  var onOff=r.enabled?'on':'off';
+  h+='<div class="roe-rule">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+  h+='<span class="roe-rule-name">'+r.name+'</span>';
+  h+='<span>';
+  h+='<span class="roe-sev-'+r.severity+'" style="font-size:.7em;margin-right:6px">'+r.severity+'</span>';
+  h+='<button class="roe-toggle '+onOff+'" onclick="toggleRule(\''+r.id+'\')">'+onOff.toUpperCase()+'</button>';
+  h+='</span></div>';
+  h+='<div class="roe-rule-desc">'+r.description+'</div>';
+  h+='</div>';
+ });
+ document.getElementById('roe-rules-list').innerHTML=h||'<div style="color:#666;padding:8px">No rules</div>';
+ // Violations
+ var vh='';
+ viols.reverse().forEach(function(v){
+  vh+='<div class="viol-row">';
+  vh+='<span class="viol-sev-'+v.severity+'">'+v.severity+'</span> ';
+  vh+='<span style="color:#4488ff">'+v.rule_name+'</span> — ';
+  vh+='<span style="color:#ff4444">'+v.threat_id+'</span> by '+v.operator;
+  vh+='<div style="color:#666;font-size:.9em">'+v.detail+'</div>';
+  vh+='</div>';
+ });
+ document.getElementById('roe-viols-list').innerHTML=vh||'<div style="color:#666;padding:8px">No violations recorded</div>';
+}
+
+async function setPosture(p){
+ await apiPost('/api/roe/set',{posture:p});
+ refreshROE();
+}
+async function toggleRule(rid){
+ await apiPost('/api/roe/toggle',{rule_id:rid});
+ refreshROE();
+}
+
+refreshROE();
+setInterval(refreshROE,5000);
+</script>
+{% endblock %}

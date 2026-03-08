@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Kill Web{% endblock %}
+{% block head %}
+<style>
+.kw-stages{display:flex;gap:2px;margin-bottom:10px}
+.kw-stage{flex:1;text-align:center;padding:8px 2px;background:#111;border:1px solid #222;font-size:.7em;position:relative}
+.kw-stage.active{border-color:#00ff41;background:#001a00;color:#00ff41;font-weight:bold}
+.kw-stage.done{border-color:#333;background:#0a0a0a;color:#555}
+.kw-stage.waiting{border-color:#ffaa00;background:#221a00;color:#ffaa00;animation:pulse 1.5s infinite}
+.kw-arrow{position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:#333;font-size:1.2em;z-index:1}
+.kw-pipe{border:1px solid #222;margin:4px 0;padding:8px;background:#0d0d0d;border-radius:3px;cursor:pointer}
+.kw-pipe:hover{border-color:#333;background:#111}
+.kw-pipe-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.kw-pipe-id{color:#4488ff;font-size:.8em;font-weight:bold}
+.kw-pipe-threat{font-size:.75em;color:#ff4444}
+.kw-pipe-priority{font-size:.65em;padding:1px 6px;border-radius:2px}
+.pri-LOW{background:#1a1a1a;color:#888}.pri-MEDIUM{background:#222200;color:#ffaa00}
+.pri-HIGH{background:#331100;color:#ff6600}.pri-CRITICAL{background:#330000;color:#ff4444;animation:pulse 1s infinite}
+.kw-pipe-detail{font-size:.7em;color:#888;margin-top:4px}
+.kw-approve{background:#003300;color:#00ff41;border:1px solid #00ff41;padding:2px 10px;font-size:.72em;cursor:pointer;border-radius:2px;margin-top:4px}
+.kw-approve:hover{background:#005500}
+.kw-abort{background:#330000;color:#ff4444;border:1px solid #ff4444;padding:2px 10px;font-size:.72em;cursor:pointer;border-radius:2px;margin-top:4px;margin-left:4px}
+.kw-abort:hover{background:#550000}
+.kw-completed{opacity:.5}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">KILL WEB — F2T2EA PIPELINE</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="kw-active">0</div><div class="label">ACTIVE PIPELINES</div></div>
+  <div class="card stat"><div class="value" id="kw-await" style="color:#ffaa00">0</div><div class="label">AWAITING APPROVAL</div></div>
+  <div class="card stat"><div class="value" id="kw-complete" style="color:#00ff41">0</div><div class="label">COMPLETED</div></div>
+  <div class="card stat"><div class="value" id="kw-avg" style="color:#4488ff">--</div><div class="label">AVG CYCLE (s)</div></div>
+ </div>
+
+ <!-- STAGE FLOW HEADER -->
+ <div class="card" style="margin-bottom:8px">
+  <div class="kw-stages">
+   <div class="kw-stage" id="kws-FIND">FIND<br><span id="kwc-FIND" style="font-size:1.4em">0</span><span class="kw-arrow">▸</span></div>
+   <div class="kw-stage" id="kws-FIX">FIX<br><span id="kwc-FIX" style="font-size:1.4em">0</span><span class="kw-arrow">▸</span></div>
+   <div class="kw-stage" id="kws-TRACK">TRACK<br><span id="kwc-TRACK" style="font-size:1.4em">0</span><span class="kw-arrow">▸</span></div>
+   <div class="kw-stage" id="kws-TARGET">TARGET<br><span id="kwc-TARGET" style="font-size:1.4em">0</span><span class="kw-arrow">▸</span></div>
+   <div class="kw-stage" id="kws-ENGAGE">ENGAGE<br><span id="kwc-ENGAGE" style="font-size:1.4em">0</span><span class="kw-arrow">▸</span></div>
+   <div class="kw-stage" id="kws-ASSESS">ASSESS<br><span id="kwc-ASSESS" style="font-size:1.4em">0</span></div>
+  </div>
+ </div>
+
+ <div class="grid-2">
+  <!-- ACTIVE PIPELINES -->
+  <div class="card">
+   <h3>ACTIVE KILL CHAINS</h3>
+   <div class="scroll-box" style="max-height:400px" id="kw-active-list"></div>
+  </div>
+
+  <!-- COMPLETED / ABORTED -->
+  <div class="card">
+   <h3>COMPLETED / ABORTED</h3>
+   <div class="scroll-box" style="max-height:400px" id="kw-history-list"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var kwStages=['FIND','FIX','TRACK','TARGET','ENGAGE','ASSESS'];
+
+function stageBar(pipe){
+ var idx=pipe.stage_index;
+ var h='<div class="kw-stages" style="margin:0">';
+ kwStages.forEach(function(s,i){
+  var cls='kw-stage';
+  if(pipe.completed || pipe.aborted){cls+=' done';}
+  else if(i<idx){cls+=' done';}
+  else if(i===idx && pipe.awaiting_approval){cls+=' waiting';}
+  else if(i===idx){cls+=' active';}
+  h+='<div class="'+cls+'" style="padding:3px 1px;font-size:.6em">'+s;
+  if(i<5) h+='<span class="kw-arrow">▸</span>';
+  h+='</div>';
+ });
+ h+='</div>';
+ return h;
+}
+
+function renderPipe(p){
+ var h='<div class="kw-pipe'+(p.completed||p.aborted?' kw-completed':'')+'">';
+ h+='<div class="kw-pipe-hdr">';
+ h+='<span class="kw-pipe-id">'+p.id+'</span>';
+ h+='<span class="kw-pipe-priority pri-'+p.priority+'">'+p.priority+'</span>';
+ h+='</div>';
+ h+='<span class="kw-pipe-threat">'+p.threat_id+' ('+p.threat_type+')</span>';
+ h+=stageBar(p);
+ if(p.aborted) h+='<div style="color:#ff4444;font-size:.7em;margin-top:2px">ABORTED: '+p.abort_reason+'</div>';
+ if(p.completed) h+='<div style="color:#00ff41;font-size:.7em;margin-top:2px">COMPLETE</div>';
+ if(!p.completed && !p.aborted){
+  h+='<div class="kw-pipe-detail">Stage: '+p.stage+' — '+p.elapsed_in_stage_sec.toFixed(0)+'s';
+  if(p.assigned_assets[p.stage]) h+=' | Asset: '+p.assigned_assets[p.stage];
+  h+='</div>';
+  if(p.awaiting_approval){
+   h+='<div style="margin-top:4px">';
+   h+='<button class="kw-approve" onclick="approveKW(\''+p.id+'\')">✓ APPROVE ENGAGE</button>';
+   h+='<button class="kw-abort" onclick="abortKW(\''+p.id+'\')">✗ ABORT</button>';
+   h+='</div>';
+  } else {
+   h+='<button class="kw-abort" onclick="abortKW(\''+p.id+'\')" style="margin-top:4px">✗ ABORT</button>';
+  }
+ }
+ h+='</div>';
+ return h;
+}
+
+async function refreshKW(){
+ var pipes=await apiFetch('/api/killweb/pipelines');
+ var stats=await apiFetch('/api/killweb/stats');
+ // Stats
+ document.getElementById('kw-active').textContent=stats.active||0;
+ document.getElementById('kw-await').textContent=stats.awaiting_approval||0;
+ document.getElementById('kw-complete').textContent=stats.completed||0;
+ document.getElementById('kw-avg').textContent=stats.avg_completion_sec||'--';
+ // Stage counts
+ kwStages.forEach(function(s){
+  document.getElementById('kwc-'+s).textContent=stats.by_stage[s]||0;
+  var el=document.getElementById('kws-'+s);
+  el.className='kw-stage'+((stats.by_stage[s]||0)>0?' active':'');
+ });
+ // Split active vs completed
+ var activeH='',histH='';
+ pipes.forEach(function(p){
+  if(p.completed||p.aborted) histH+=renderPipe(p);
+  else activeH+=renderPipe(p);
+ });
+ document.getElementById('kw-active-list').innerHTML=activeH||'<div style="color:#666;padding:8px;font-size:.8em">No active kill chains — pipelines auto-create from SIGINT detections</div>';
+ document.getElementById('kw-history-list').innerHTML=histH||'<div style="color:#666;padding:8px;font-size:.8em">No completed pipelines yet</div>';
+}
+
+async function approveKW(pid){
+ await apiPost('/api/killweb/approve/'+pid,{});
+ refreshKW();
+}
+async function abortKW(pid){
+ await apiPost('/api/killweb/abort/'+pid,{});
+ refreshKW();
+}
+
+refreshKW();
+setInterval(refreshKW,4000);
+</script>
+{% endblock %}

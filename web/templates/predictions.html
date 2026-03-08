@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Predictions{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+#pred-map{height:400px;background:#0a0a0a;border:1px solid #222;margin-bottom:8px}
+.pred-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #111;font-size:.75em}
+.pred-row:hover{background:#111}
+.pat-STATIC{color:#888}.pat-CIRCLING{color:#ffaa00}.pat-LINEAR_APPROACH{color:#ff4444}.pat-EVASIVE{color:#ff66ff}.pat-UNKNOWN{color:#666}
+.feas-HIGH{color:#00ff41}.feas-MEDIUM{color:#ffaa00}.feas-LOW{color:#ff4444}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">THREAT PREDICTION & HEATMAP</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="pr-tracked">0</div><div class="label">THREATS TRACKED</div></div>
+  <div class="card stat"><div class="value" id="pr-patterns" style="color:#ffaa00">0</div><div class="label">PATTERNS DETECTED</div></div>
+  <div class="card stat"><div class="value" id="pr-intercepts" style="color:#00ff41">0</div><div class="label">INTERCEPT WINDOWS</div></div>
+  <div class="card stat"><div class="value" id="pr-heatpts" style="color:#ff4444">0</div><div class="label">HEATMAP POINTS</div></div>
+ </div>
+
+ <div id="pred-map"></div>
+
+ <div class="grid-3">
+  <!-- PREDICTIONS -->
+  <div class="card">
+   <h3>PREDICTED POSITIONS</h3>
+   <div class="scroll-box" style="max-height:300px" id="pr-list"></div>
+  </div>
+  <!-- PATTERNS -->
+  <div class="card">
+   <h3>MOVEMENT PATTERNS</h3>
+   <div class="scroll-box" style="max-height:300px" id="pr-patterns-list"></div>
+  </div>
+  <!-- INTERCEPTS -->
+  <div class="card">
+   <h3>INTERCEPT WINDOWS</h3>
+   <div class="scroll-box" style="max-height:300px" id="pr-intercepts-list"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var predMap=L.map('pred-map',{zoomControl:true}).setView([35.68,51.39],11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(predMap);
+var heatLayer=L.layerGroup().addTo(predMap);
+var predLayer=L.layerGroup().addTo(predMap);
+
+async function refreshPred(){
+ var preds=await apiFetch('/api/predict/threats');
+ var heatmap=await apiFetch('/api/predict/heatmap');
+ var patterns=await apiFetch('/api/predict/patterns');
+ var intercepts=await apiFetch('/api/predict/intercepts');
+ // Stats
+ document.getElementById('pr-tracked').textContent=preds.length;
+ document.getElementById('pr-patterns').textContent=patterns.length;
+ document.getElementById('pr-intercepts').textContent=intercepts.length;
+ document.getElementById('pr-heatpts').textContent=heatmap.length;
+ // Map — heatmap points
+ heatLayer.clearLayers();
+ predLayer.clearLayers();
+ heatmap.forEach(function(p){
+  var opacity=Math.max(0.15,p.probability*0.6);
+  var radius=Math.max(3,p.probability*12);
+  var color=p.source==='current'?'#ff4444':p.source==='uncertainty'?'#ffaa00':'#ff6600';
+  L.circleMarker([p.lat,p.lng],{radius:radius,color:color,fillColor:color,fillOpacity:opacity,weight:0}).addTo(heatLayer);
+ });
+ // Map — prediction arrows
+ preds.forEach(function(p){
+  if(!p.current) return;
+  L.circleMarker([p.current.lat,p.current.lng],{radius:5,color:'#ff4444',fillColor:'#ff4444',fillOpacity:0.8,weight:1}).bindPopup(p.threat_id+' ('+p.threat_type+')').addTo(predLayer);
+  (p.predicted_positions||[]).forEach(function(pp){
+   L.polyline([[p.current.lat,p.current.lng],[pp.lat,pp.lng]],{color:'#ff660088',weight:1,dashArray:'4 4'}).addTo(predLayer);
+   L.circleMarker([pp.lat,pp.lng],{radius:3,color:'#ff6600',fillColor:'#ff6600',fillOpacity:0.5,weight:0}).bindPopup('T+'+pp.t_minutes+'min ('+Math.round(pp.confidence*100)+'%)').addTo(predLayer);
+  });
+ });
+ // Predictions list
+ var h='';
+ preds.forEach(function(p){
+  h+='<div class="pred-row">';
+  h+='<span style="width:80px;color:#ff4444;font-weight:bold">'+p.threat_id+'</span>';
+  h+='<span style="width:60px;color:#888">'+p.threat_type+'</span>';
+  h+='<span style="width:50px;color:#4488ff">'+p.heading_deg+'°</span>';
+  h+='<span style="flex:1;color:#00ff41">'+p.speed_est_kmh+' km/h</span>';
+  h+='<span style="color:#888">'+p.history_points+' pts</span>';
+  h+='</div>';
+ });
+ document.getElementById('pr-list').innerHTML=h||'<div style="color:#666;padding:8px;font-size:.8em">Waiting for threat position history...</div>';
+ // Patterns list
+ var ph='';
+ patterns.forEach(function(p){
+  ph+='<div class="pred-row">';
+  ph+='<span style="width:80px;color:#ff4444">'+p.threat_id+'</span>';
+  ph+='<span class="pat-'+p.pattern+'" style="flex:1;font-weight:bold">'+p.pattern+'</span>';
+  ph+='<span style="color:#888">conf: '+Math.round(p.confidence*100)+'%</span>';
+  ph+='</div>';
+ });
+ document.getElementById('pr-patterns-list').innerHTML=ph||'<div style="color:#666;padding:8px;font-size:.8em">Analyzing patterns...</div>';
+ // Intercepts list
+ var ih='';
+ intercepts.forEach(function(x){
+  ih+='<div class="pred-row">';
+  ih+='<span style="width:70px;color:#4488ff">'+x.asset_id+'</span>';
+  ih+='<span style="width:10px">→</span>';
+  ih+='<span style="width:70px;color:#ff4444">'+x.threat_id+'</span>';
+  ih+='<span style="flex:1">'+x.time_to_intercept_min+' min</span>';
+  ih+='<span class="feas-'+x.feasibility+'">'+x.feasibility+'</span>';
+  ih+='</div>';
+ });
+ document.getElementById('pr-intercepts-list').innerHTML=ih||'<div style="color:#666;padding:8px;font-size:.8em">Calculating intercept windows...</div>';
+}
+
+refreshPred();
+setInterval(refreshPred,5000);
+</script>
+{% endblock %}

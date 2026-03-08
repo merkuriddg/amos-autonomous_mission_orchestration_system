@@ -127,6 +127,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <a href="/commsnet" class="amos-menu-item{% if request.path=='/commsnet' %} active{% endif %}">Comms Network</a>
       <a href="/eob" class="amos-menu-item{% if request.path=='/eob' %} active{% endif %}">EOB Intel</a>
       <a href="/weather" class="amos-menu-item{% if request.path=='/weather' %} active{% endif %}">Weather</a>
+      <a href="/predictions" class="amos-menu-item{% if request.path=='/predictions' %} active{% endif %}">Predictions</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">COMBAT</div>
@@ -135,6 +136,8 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'contested' in access %}<a href="/contested" class="amos-menu-item{% if request.path=='/contested' %} active{% endif %}">Contested Ops</a>{% endif %}
       {% if 'redforce' in access %}<a href="/redforce" class="amos-menu-item{% if request.path=='/redforce' %} active{% endif %}">Red Force</a>{% endif %}
       <a href="/bda" class="amos-menu-item{% if request.path=='/bda' %} active{% endif %}">BDA</a>
+      <a href="/killweb" class="amos-menu-item{% if request.path=='/killweb' %} active{% endif %}">Kill Web</a>
+      <a href="/roe" class="amos-menu-item{% if request.path=='/roe' %} active{% endif %}">ROE</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">ANALYTICS</div>
@@ -207,6 +210,13 @@ socket.on('amos_alerts',function(alerts){
 });
 function apiFetch(u,o){return fetch(u,o).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
+// ── Phase 15: Real-time data cache ──
+window._amosData={assets:null,threats:null,sigint:[],weather:null,killweb:null};
+socket.on('asset_update',function(d){window._amosData.assets=d;if(window.onAssetUpdate)window.onAssetUpdate(d);});
+socket.on('threat_update',function(d){window._amosData.threats=d;if(window.onThreatUpdate)window.onThreatUpdate(d);});
+socket.on('sigint_update',function(d){window._amosData.sigint=d;if(window.onSigintUpdate)window.onSigintUpdate(d);});
+socket.on('weather_update',function(d){window._amosData.weather=d;if(window.onWeatherUpdate)window.onWeatherUpdate(d);});
+socket.on('killweb_update',function(d){window._amosData.killweb=d;if(window.onKillwebUpdate)window.onKillwebUpdate(d);});
 // Theater selector
 function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
 function switchTheater(key){apiPost('/api/theater/switch',{key:key});}
