@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}EOB{% endblock %}
+{% block head %}
+<style>
+#eob-map{height:420px;border:1px solid #222}
+.eob-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #111;font-size:.78em;cursor:pointer}
+.eob-row:hover{background:#111}
+.eob-active{color:#ff4444}.eob-inactive{color:#666}.eob-unknown{color:#888}
+.eob-detail{background:#0a0a0a;border:1px solid #222;padding:8px;font-size:.78em;display:none}
+.eob-hostile{color:#ff4444}.eob-neutral{color:#ffaa00}.eob-friendly{color:#00ff41}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">ELECTRONIC ORDER OF BATTLE</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="eob-total">--</div><div class="label">TRACKED UNITS</div></div>
+  <div class="card stat"><div class="value" id="eob-active" style="color:#ff4444">--</div><div class="label">ACTIVE EMITTERS</div></div>
+  <div class="card stat"><div class="value" id="eob-hostile" style="color:#ff6600">--</div><div class="label">HOSTILE</div></div>
+  <div class="card stat"><div class="value" id="eob-tracks" style="color:#4488ff">--</div><div class="label">TOTAL TRACKS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- MAP -->
+  <div class="card">
+   <h3>INTEL MAP — EOB POSITIONS</h3>
+   <div id="eob-map"></div>
+   <div style="display:flex;gap:12px;margin-top:4px;font-size:.7em">
+    <span><span style="color:#ff4444">◆</span> Hostile</span>
+    <span><span style="color:#ffaa00">◆</span> Neutral</span>
+    <span><span style="color:#00ff41">◆</span> Friendly</span>
+    <span><span style="color:#888">○</span> Inactive</span>
+   </div>
+  </div>
+
+  <!-- UNIT LIST + DETAIL -->
+  <div>
+   <div class="card">
+    <h3>UNIT LIST</h3>
+    <div class="scroll-box" style="max-height:260px" id="eob-list"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>THREAT DOSSIER</h3>
+    <div id="eob-detail" class="eob-detail" style="display:block">
+     <div style="color:#666;padding:6px">Select a unit from the list or map to view its dossier</div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var eobMap, eobMarkers={}, eobTrackLines=[];
+
+function initMap(){
+ eobMap=L.map('eob-map',{zoomControl:true}).setView([35.689,51.312],9);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(eobMap);
+ setTimeout(function(){eobMap.invalidateSize();},300);
+}
+
+function affCol(a){return a==='hostile'?'#ff4444':a==='neutral'?'#ffaa00':'#00ff41';}
+
+async function refreshList(){
+ var units=await apiFetch('/api/eob/units');
+ document.getElementById('eob-total').textContent=units.length;
+ var actCount=units.filter(function(u){return u.status==='active';}).length;
+ var hosCount=units.filter(function(u){return u.affiliation==='hostile';}).length;
+ var trkCount=units.reduce(function(s,u){return s+(u.positions?u.positions.length:0);},0);
+ document.getElementById('eob-active').textContent=actCount;
+ document.getElementById('eob-hostile').textContent=hosCount;
+ document.getElementById('eob-tracks').textContent=trkCount;
+ var h='';
+ units.forEach(function(u){
+  var ac=u.status==='active'?'eob-active':'eob-inactive';
+  var hc='eob-'+u.affiliation;
+  h+='<div class="eob-row" onclick="showDossier(\''+u.id+'\')">';
+  h+='<span class="'+ac+'" style="width:12px">●</span>';
+  h+='<span style="width:80px;font-weight:bold" class="'+hc+'">'+u.id+'</span>';
+  h+='<span style="flex:1;color:#ccc">'+u.name+'</span>';
+  h+='<span style="width:55px;color:#888;font-size:.7em">'+u.type+'</span>';
+  h+='<span style="width:50px;color:#888;font-size:.7em">'+(u.emitter_type||'--')+'</span>';
+  h+='<span style="width:45px;color:#888;font-size:.7em">'+(u.freq_mhz?u.freq_mhz+'MHz':'--')+'</span>';
+  h+='<span style="width:50px;color:#888;font-size:.7em">'+(u.confidence||'--')+'</span>';
+  h+='</div>';
+ });
+ document.getElementById('eob-list').innerHTML=h||'<div style="color:#666;padding:8px">No EOB units tracked</div>';
+}
+
+async function refreshMap(){
+ eobTrackLines.forEach(function(l){eobMap.removeLayer(l);});eobTrackLines=[];
+ for(var k in eobMarkers){eobMap.removeLayer(eobMarkers[k]);}eobMarkers={};
+ var mapData=await apiFetch('/api/eob/map');
+ mapData.features.forEach(function(f){
+  var col=affCol(f.affiliation);
+  var op=f.status==='active'?0.9:0.4;
+  var m=L.circleMarker([f.lat,f.lng],{radius:7,color:col,fillColor:col,fillOpacity:op,weight:2}).addTo(eobMap);
+  m.bindTooltip('<b>'+f.name+'</b><br>'+f.type+' | '+f.affiliation.toUpperCase()+'<br>Tracks: '+f.track_count+' | '+f.confidence+' conf',{direction:'top'});
+  m.on('click',function(){showDossier(f.id);});
+  eobMarkers[f.id]=m;
+ });
+ // Also draw track lines for selected unit (if any)
+}
+
+async function showDossier(uid){
+ var u=await apiFetch('/api/eob/unit/'+uid);
+ if(u.error){document.getElementById('eob-detail').innerHTML='<div style="color:#ff4444">'+u.error+'</div>';return;}
+ var hc='eob-'+u.affiliation;
+ var h='<div style="margin-bottom:6px"><span class="'+hc+'" style="font-weight:bold;font-size:1.1em">'+u.name+'</span> <span style="color:#888">('+u.id+')</span></div>';
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
+ var fields=[
+  {l:'Type',v:u.type},{l:'Affiliation',v:u.affiliation},{l:'Emitter',v:u.emitter_type||'--'},
+  {l:'Freq',v:u.freq_mhz?u.freq_mhz+' MHz':'--'},{l:'Status',v:u.status},{l:'Confidence',v:u.confidence},
+  {l:'First Seen',v:u.first_seen?u.first_seen.split('T')[0]:'--'},{l:'Track Points',v:u.positions?u.positions.length:0}
+ ];
+ fields.forEach(function(f){
+  h+='<div><span style="color:#888;font-size:.68em">'+f.l+':</span> <span style="color:#ccc">'+f.v+'</span></div>';
+ });
+ h+='</div>';
+ if(u.last_known && u.last_known.lat){
+  h+='<div style="margin-top:4px;color:#00ff41;font-size:.75em">Last Known: '+u.last_known.lat+', '+u.last_known.lng+'</div>';
+ }
+ if(u.notes){h+='<div style="margin-top:4px;color:#888;font-size:.72em;border-top:1px solid #222;padding-top:4px">'+u.notes+'</div>';}
+ // Draw track history on map
+ if(u.positions && u.positions.length>1){
+  var latlngs=u.positions.map(function(p){return[p.lat,p.lng];});
+  var trackLine=L.polyline(latlngs,{color:affCol(u.affiliation),weight:2,opacity:0.5,dashArray:'4,4'}).addTo(eobMap);
+  eobTrackLines.push(trackLine);
+  h+='<div style="margin-top:4px;color:#4488ff;font-size:.72em">Track history drawn on map ('+u.positions.length+' points)</div>';
+ }
+ document.getElementById('eob-detail').style.display='block';
+ document.getElementById('eob-detail').innerHTML=h;
+}
+
+initMap();refreshList();refreshMap();
+setInterval(function(){refreshList();refreshMap();},6000);
+</script>
+{% endblock %}

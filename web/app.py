@@ -191,6 +191,14 @@ _training_records = []  # [{id, operator, name, exercise_name, score, max_score,
 _api_metrics = {"requests": 0, "errors": 0, "by_endpoint": {}, "start_time": time.time()}
 _uptime_pings = []  # [{timestamp, assets, threats, cpu, memory, uptime_sec}]
 
+# ── Phase 10: Logistics, Weather, BDA, EOB ──
+_supply_history = []  # [{ts, avg_fuel, avg_ammo, total_assets}]
+_bda_reports = []  # [{id, target_id, target_type, weapon, damage, confidence, assessor, timestamp}]
+_eob_units = {}  # {unit_id: {id, name, type, equipment, capability, threat_level, last_known, positions, engagements}}
+_weather = {"wind_speed_kt": 12, "wind_dir_deg": 225, "temp_c": 28, "visibility_km": 15,
+            "precipitation": "none", "ceiling_ft": 25000, "sea_state": 2,
+            "conditions": "Clear", "last_update": None}
+
 # Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
 _online_ops = {}
 _asset_locks = {}  # {asset_id: {locked_by, locked_at, expires_at}}
@@ -235,6 +243,8 @@ for a in config.get("assets", []):
                     "cpu_temp_c": random.randint(35,55), "gps_fix": True},
         "speed_kts": random.randint(80,200) if is_air else random.randint(5,30),
         "heading_deg": random.randint(0,359),
+        "supplies": {"fuel_pct": random.randint(70, 100), "ammo_rounds": random.randint(50, 200) if a.get("weapons") else 0,
+                     "water_hr": random.randint(8, 48), "rations_hr": random.randint(12, 72)},
     }
 print(f"[AMOS] Loaded {len(sim_assets)} assets")
 
@@ -242,6 +252,14 @@ sim_threats = {}
 for t in config.get("threats", []):
     sim_threats[t["id"]] = {**t, "neutralized": False, "detected_by": [], "first_detected": None}
 print(f"[AMOS] Loaded {len(sim_threats)} threats")
+
+# Phase 10: Auto-populate EOB from threats
+for tid, t in sim_threats.items():
+    _eob_units[tid] = {"id": tid, "name": t.get("id", tid), "type": t.get("type", "unknown"),
+        "equipment": [t.get("type", "unknown")], "capability": "offensive",
+        "threat_level": random.choice(["low", "medium", "high", "critical"]),
+        "last_known": {"lat": t.get("lat", 0), "lng": t.get("lng", 0)},
+        "positions": [], "engagements": 0, "first_seen": None, "notes": ""}
 
 # ── Subsystems ──
 waypoint_nav = WaypointNav()
@@ -457,6 +475,51 @@ def sim_tick():
             _threat_intel[ttype]["count"] = sum(1 for t in sim_threats.values() if t.get("type") == ttype)
             _threat_intel[ttype]["engagements"] = sum(1 for c in cm_log if
                 sim_threats.get(c.get("threat_id", ""), {}).get("type") == ttype)
+
+        # ── Phase 10: Supply burn ──
+        for a in sim_assets.values():
+            sup = a.get("supplies", {})
+            if sup:
+                sup["fuel_pct"] = max(0, sup.get("fuel_pct", 100) - random.uniform(0.005, 0.02) * dt)
+                if sup.get("ammo_rounds", 0) > 0 and random.random() < 0.01 * dt:
+                    sup["ammo_rounds"] = max(0, sup["ammo_rounds"] - random.randint(0, 2))
+                sup["water_hr"] = max(0, sup.get("water_hr", 48) - 0.001 * dt)
+                sup["rations_hr"] = max(0, sup.get("rations_hr", 72) - 0.0008 * dt)
+
+        # Supply history snapshot (every ~10s)
+        if int(sim_clock["elapsed_sec"]) % 10 < 1:
+            fuels = [a["supplies"]["fuel_pct"] for a in sim_assets.values() if "supplies" in a]
+            ammos = [a["supplies"]["ammo_rounds"] for a in sim_assets.values() if "supplies" in a and a["supplies"]["ammo_rounds"] > 0]
+            _supply_history.append({"ts": now_iso(),
+                "avg_fuel": round(sum(fuels) / max(1, len(fuels)), 1),
+                "avg_ammo": round(sum(ammos) / max(1, len(ammos)), 1) if ammos else 0})
+            if len(_supply_history) > 120:
+                del _supply_history[:1]
+
+        # ── Phase 10: Weather drift ──
+        if random.random() < 0.05 * dt:
+            _weather["wind_speed_kt"] = max(0, min(60, _weather["wind_speed_kt"] + random.uniform(-3, 3)))
+            _weather["wind_dir_deg"] = (_weather["wind_dir_deg"] + random.uniform(-15, 15)) % 360
+            _weather["temp_c"] = max(-10, min(50, _weather["temp_c"] + random.uniform(-1, 1)))
+            _weather["visibility_km"] = max(0.5, min(30, _weather["visibility_km"] + random.uniform(-2, 2)))
+            _weather["ceiling_ft"] = max(500, min(40000, _weather["ceiling_ft"] + random.uniform(-2000, 2000)))
+            _weather["sea_state"] = max(0, min(9, _weather["sea_state"] + random.choice([-1, 0, 0, 0, 1])))
+            precip_opts = ["none", "none", "none", "light_rain", "rain", "heavy_rain", "dust", "fog", "snow"]
+            _weather["precipitation"] = random.choice(precip_opts)
+            cond_map = {"none": "Clear", "light_rain": "Light Rain", "rain": "Rain", "heavy_rain": "Heavy Rain",
+                        "dust": "Dust Storm", "fog": "Fog", "snow": "Snow"}
+            _weather["conditions"] = cond_map.get(_weather["precipitation"], "Clear")
+            _weather["last_update"] = now_iso()
+
+        # ── Phase 10: EOB position tracking ──
+        for tid, t in sim_threats.items():
+            if tid in _eob_units and t.get("lat"):
+                eu = _eob_units[tid]
+                eu["last_known"] = {"lat": round(t["lat"], 4), "lng": round(t.get("lng", 0), 4)}
+                if not eu["first_seen"]:
+                    eu["first_seen"] = now_iso()
+                if len(eu["positions"]) < 100:
+                    eu["positions"].append({"lat": round(t["lat"], 4), "lng": round(t.get("lng", 0), 4), "ts": now_iso()})
 
         # Trim
         for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
@@ -3196,11 +3259,251 @@ def api_commsnet_heatmap():
                                "intensity": round(intensity * 0.6, 2)})
     return jsonify({"points": points, "count": len(points)})
 
+# ═══════════════════════════════════════════════════════════
+#  PHASE 10: LOGISTICS & SUPPLY CHAIN
+# ═══════════════════════════════════════════════════════════
+@app.route("/logistics")
+@login_required
+def page_logistics():
+    return render_template("logistics.html", **ctx())
+
+@app.route("/api/logistics/status")
+@login_required
+def api_logistics_status():
+    """Per-asset supply snapshot."""
+    rows = []
+    for aid, a in sim_assets.items():
+        sup = a.get("supplies", {})
+        if not sup:
+            continue
+        fuel = sup.get("fuel_pct", 100)
+        ammo = sup.get("ammo_rounds", 0)
+        water = sup.get("water_hr", 0)
+        rations = sup.get("rations_hr", 0)
+        status = "GREEN" if fuel > 50 and ammo > 50 else "AMBER" if fuel > 20 and ammo > 10 else "RED"
+        rows.append({"asset_id": aid, "callsign": a.get("callsign", aid), "type": a["type"],
+                     "domain": a["domain"], "fuel_pct": round(fuel, 1), "ammo_rounds": ammo,
+                     "water_hr": round(water, 1), "rations_hr": round(rations, 1), "status": status})
+    return jsonify(rows)
+
+@app.route("/api/logistics/history")
+@login_required
+def api_logistics_history():
+    """Supply consumption timeline."""
+    return jsonify(_supply_history)
+
+@app.route("/api/logistics/resupply", methods=["POST"])
+@login_required
+def api_logistics_resupply():
+    """Resupply an asset."""
+    d = request.json or {}
+    aid = d.get("asset_id")
+    if aid not in sim_assets:
+        return jsonify({"error": "Unknown asset"}), 404
+    a = sim_assets[aid]
+    sup = a.get("supplies")
+    if not sup:
+        return jsonify({"error": "Asset has no supply tracking"}), 400
+    sup["fuel_pct"] = min(100, sup.get("fuel_pct", 0) + float(d.get("fuel", 0)))
+    sup["ammo_rounds"] = min(500, sup.get("ammo_rounds", 0) + int(d.get("ammo", 0)))
+    sup["water_hr"] = min(96, sup.get("water_hr", 0) + float(d.get("water", 0)))
+    sup["rations_hr"] = min(144, sup.get("rations_hr", 0) + float(d.get("rations", 0)))
+    c = ctx()
+    cm_log.append({"ts": now_iso(), "user": c["user"], "msg": f"RESUPPLY → {a.get('callsign', aid)}",
+                   "fuel": d.get("fuel", 0), "ammo": d.get("ammo", 0)})
+    return jsonify({"status": "ok", "asset_id": aid, "supplies": sup})
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 10: WEATHER & ENVIRONMENT
+# ═══════════════════════════════════════════════════════════
+@app.route("/weather")
+@login_required
+def page_weather():
+    return render_template("weather.html", **ctx())
+
+@app.route("/api/weather/current")
+@login_required
+def api_weather_current():
+    """Live weather conditions."""
+    return jsonify(_weather)
+
+@app.route("/api/weather/overlay")
+@login_required
+def api_weather_overlay():
+    """Generate Leaflet-compatible weather overlay data."""
+    center_lat = AO_CENTER["lat"]
+    center_lng = AO_CENTER["lng"]
+    points = []
+    ws = _weather["wind_speed_kt"]
+    wd = _weather["wind_dir_deg"]
+    vis = _weather["visibility_km"]
+    for i in range(30):
+        lat = center_lat + random.uniform(-0.15, 0.15)
+        lng = center_lng + random.uniform(-0.15, 0.15)
+        local_ws = max(0, ws + random.uniform(-5, 5))
+        local_wd = (wd + random.uniform(-20, 20)) % 360
+        local_vis = max(0.5, vis + random.uniform(-3, 3))
+        points.append({"lat": round(lat, 4), "lng": round(lng, 4),
+                       "wind_speed": round(local_ws, 1), "wind_dir": round(local_wd),
+                       "visibility": round(local_vis, 1),
+                       "precip": _weather["precipitation"]})
+    return jsonify({"points": points, "timestamp": now_iso()})
+
+@app.route("/api/weather/impact")
+@login_required
+def api_weather_impact():
+    """Mission impact scores by domain."""
+    ws = _weather["wind_speed_kt"]
+    vis = _weather["visibility_km"]
+    ceil = _weather["ceiling_ft"]
+    ss = _weather["sea_state"]
+    precip = _weather["precipitation"]
+    # Air impact
+    air_wx = min(100, (ws / 60) * 30 + (1 - vis / 30) * 25 + (1 - ceil / 40000) * 25
+              + (20 if precip in ["heavy_rain", "snow"] else 5 if precip != "none" else 0))
+    # Ground impact
+    gnd_wx = min(100, (ws / 60) * 15 + (1 - vis / 30) * 35
+              + (25 if precip in ["heavy_rain", "snow", "dust"] else 10 if precip != "none" else 0))
+    # Maritime impact
+    sea_wx = min(100, (ss / 9) * 40 + (ws / 60) * 25 + (1 - vis / 30) * 20
+              + (15 if precip in ["heavy_rain", "fog"] else 0))
+    # Cyber / space — minimal impact
+    cyber_wx = min(100, (10 if precip == "heavy_rain" else 0) + random.uniform(0, 5))
+    return jsonify({"air": round(air_wx, 1), "ground": round(gnd_wx, 1),
+                    "maritime": round(sea_wx, 1), "cyber": round(cyber_wx, 1),
+                    "overall": round((air_wx + gnd_wx + sea_wx + cyber_wx) / 4, 1),
+                    "recommendation": "HOLD" if max(air_wx, gnd_wx, sea_wx) > 70
+                    else "CAUTION" if max(air_wx, gnd_wx, sea_wx) > 40 else "GO",
+                    "timestamp": now_iso()})
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 10: BATTLE DAMAGE ASSESSMENT (BDA)
+# ═══════════════════════════════════════════════════════════
+@app.route("/bda")
+@login_required
+def page_bda():
+    return render_template("bda.html", **ctx())
+
+@app.route("/api/bda/list")
+@login_required
+def api_bda_list():
+    """All BDA reports."""
+    return jsonify(_bda_reports)
+
+@app.route("/api/bda/report", methods=["POST"])
+@login_required
+def api_bda_report():
+    """Submit a BDA report."""
+    d = request.json or {}
+    c = ctx()
+    rpt = {
+        "id": f"BDA-{uuid.uuid4().hex[:8]}",
+        "timestamp": now_iso(),
+        "reporter": c["user"],
+        "target_id": d.get("target_id", "UNK"),
+        "target_name": d.get("target_name", "Unknown Target"),
+        "lat": float(d.get("lat", 0)),
+        "lng": float(d.get("lng", 0)),
+        "weapon_used": d.get("weapon_used", "N/A"),
+        "munitions_expended": int(d.get("munitions_expended", 1)),
+        "damage_level": d.get("damage_level", "moderate"),  # destroyed/severe/moderate/light/miss
+        "functional_kill": d.get("functional_kill", False),
+        "assessment_conf": d.get("assessment_conf", "medium"),  # high/medium/low
+        "imagery_available": d.get("imagery_available", False),
+        "remarks": d.get("remarks", ""),
+    }
+    _bda_reports.append(rpt)
+    cm_log.append({"ts": now_iso(), "user": c["user"],
+                   "msg": f"BDA REPORT: {rpt['target_name']} — {rpt['damage_level']}"})
+    return jsonify({"status": "ok", "report": rpt})
+
+@app.route("/api/bda/analytics")
+@login_required
+def api_bda_analytics():
+    """BDA effectiveness analytics."""
+    total = len(_bda_reports)
+    if total == 0:
+        return jsonify({"total": 0, "by_damage": {}, "by_weapon": {}, "fk_rate": 0, "conf_dist": {}})
+    by_dmg = {}
+    by_wpn = {}
+    fk_count = 0
+    conf_dist = {"high": 0, "medium": 0, "low": 0}
+    for r in _bda_reports:
+        dl = r.get("damage_level", "unknown")
+        by_dmg[dl] = by_dmg.get(dl, 0) + 1
+        wp = r.get("weapon_used", "N/A")
+        by_wpn[wp] = by_wpn.get(wp, 0) + 1
+        if r.get("functional_kill"):
+            fk_count += 1
+        conf_dist[r.get("assessment_conf", "medium")] = conf_dist.get(r.get("assessment_conf", "medium"), 0) + 1
+    return jsonify({"total": total, "by_damage": by_dmg, "by_weapon": by_wpn,
+                    "fk_rate": round(fk_count / total * 100, 1),
+                    "conf_dist": conf_dist})
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 10: ELECTRONIC ORDER OF BATTLE (EOB)
+# ═══════════════════════════════════════════════════════════
+@app.route("/eob")
+@login_required
+def page_eob():
+    return render_template("eob.html", **ctx())
+
+@app.route("/api/eob/units")
+@login_required
+def api_eob_units():
+    """All tracked EOB units."""
+    return jsonify(list(_eob_units.values()))
+
+@app.route("/api/eob/unit/<uid>")
+@login_required
+def api_eob_unit(uid):
+    """Single EOB unit detail."""
+    u = _eob_units.get(uid)
+    if not u:
+        return jsonify({"error": "Unit not found"}), 404
+    return jsonify(u)
+
+@app.route("/api/eob/unit", methods=["POST"])
+@login_required
+def api_eob_unit_add():
+    """Manually add / update an EOB entry."""
+    d = request.json or {}
+    uid = d.get("id", f"EOB-{uuid.uuid4().hex[:6]}")
+    _eob_units[uid] = {
+        "id": uid,
+        "name": d.get("name", "Unknown Emitter"),
+        "type": d.get("type", "unknown"),
+        "affiliation": d.get("affiliation", "hostile"),
+        "emitter_type": d.get("emitter_type", "radar"),
+        "freq_mhz": d.get("freq_mhz", 0),
+        "first_seen": d.get("first_seen", now_iso()),
+        "last_known": d.get("last_known", {"lat": 0, "lng": 0}),
+        "positions": d.get("positions", []),
+        "status": d.get("status", "active"),
+        "confidence": d.get("confidence", "medium"),
+        "notes": d.get("notes", ""),
+    }
+    return jsonify({"status": "ok", "unit": _eob_units[uid]})
+
+@app.route("/api/eob/map")
+@login_required
+def api_eob_map():
+    """EOB map layer data (positions + track history)."""
+    features = []
+    for u in _eob_units.values():
+        lk = u.get("last_known", {})
+        if lk.get("lat"):
+            features.append({"id": u["id"], "name": u["name"], "type": u["type"],
+                             "affiliation": u["affiliation"], "lat": lk["lat"], "lng": lk["lng"],
+                             "status": u["status"], "confidence": u["confidence"],
+                             "track_count": len(u.get("positions", []))})
+    return jsonify({"features": features, "count": len(features)})
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 9")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 10")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)

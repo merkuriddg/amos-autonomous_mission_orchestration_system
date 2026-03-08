@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Logistics{% endblock %}
+{% block head %}
+<style>
+.sup-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #111;font-size:.78em}
+.sup-bar-wrap{flex:1;background:#1a1a1a;height:14px;border-radius:3px;overflow:hidden}
+.sup-bar{height:100%;border-radius:3px;transition:width .5s ease}
+.stat-GREEN{color:#00ff41}.stat-AMBER{color:#ffaa00}.stat-RED{color:#ff4444}
+.resup-btn{background:#005500;color:#0f0;border:1px solid #0f0;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:.72em}
+.resup-btn:hover{background:#007700}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">LOGISTICS &amp; SUPPLY CHAIN</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="lg-assets">--</div><div class="label">TRACKED ASSETS</div></div>
+  <div class="card stat"><div class="value" id="lg-fuel" style="color:#00ff41">--</div><div class="label">AVG FUEL %</div></div>
+  <div class="card stat"><div class="value" id="lg-ammo" style="color:#ffaa00">--</div><div class="label">AVG AMMO RDS</div></div>
+  <div class="card stat"><div class="value" id="lg-red" style="color:#ff4444">--</div><div class="label">RED STATUS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- SUPPLY GRID -->
+  <div class="card">
+   <h3>SUPPLY STATUS PER ASSET</h3>
+   <div class="scroll-box" style="max-height:420px" id="lg-grid"></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div>
+   <div class="card">
+    <h3>CONSUMPTION TIMELINE</h3>
+    <canvas id="lg-chart" height="200"></canvas>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>QUICK RESUPPLY</h3>
+    <div style="font-size:.78em;display:flex;flex-wrap:wrap;gap:6px;align-items:center" id="lg-resup">
+     <select id="rs-asset" style="background:#111;color:#0f0;border:1px solid #333;padding:3px;font-size:.85em"></select>
+     <label>Fuel:<input id="rs-fuel" type="number" value="25" min="0" max="100" style="width:50px;background:#111;color:#0f0;border:1px solid #333;padding:2px"></label>
+     <label>Ammo:<input id="rs-ammo" type="number" value="100" min="0" max="500" style="width:50px;background:#111;color:#0f0;border:1px solid #333;padding:2px"></label>
+     <label>Water(hr):<input id="rs-water" type="number" value="12" min="0" max="96" style="width:50px;background:#111;color:#0f0;border:1px solid #333;padding:2px"></label>
+     <label>Rations(hr):<input id="rs-rations" type="number" value="24" min="0" max="144" style="width:55px;background:#111;color:#0f0;border:1px solid #333;padding:2px"></label>
+     <button class="resup-btn" onclick="doResupply()">SEND RESUPPLY</button>
+    </div>
+    <div id="rs-msg" style="font-size:.72em;color:#888;margin-top:4px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var lgChart=null;
+
+function barCol(pct){return pct>50?'#00ff41':pct>20?'#ffaa00':'#ff4444';}
+
+async function refreshGrid(){
+ var rows=await apiFetch('/api/logistics/status');
+ document.getElementById('lg-assets').textContent=rows.length;
+ var totalFuel=0,totalAmmo=0,redCount=0;
+ var sel=document.getElementById('rs-asset');
+ var curVal=sel.value;
+ sel.innerHTML='';
+ var h='';
+ rows.forEach(function(r){
+  totalFuel+=r.fuel_pct; totalAmmo+=r.ammo_rounds;
+  if(r.status==='RED') redCount++;
+  var fc=barCol(r.fuel_pct);
+  h+='<div class="sup-row">';
+  h+='<span style="width:100px;font-weight:bold;color:#4488ff">'+r.callsign+'</span>';
+  h+='<span style="width:50px;font-size:.7em;color:#888">'+r.type+'</span>';
+  h+='<span class="stat-'+r.status+'" style="width:40px;font-weight:bold">'+r.status+'</span>';
+  h+='<span style="width:35px;color:'+fc+'">'+r.fuel_pct+'%</span>';
+  h+='<div class="sup-bar-wrap"><div class="sup-bar" style="width:'+r.fuel_pct+'%;background:'+fc+'"></div></div>';
+  h+='<span style="width:55px;text-align:right;color:#ffaa00">'+r.ammo_rounds+' rds</span>';
+  h+='<span style="width:50px;text-align:right;color:#888;font-size:.7em">W:'+r.water_hr+'h</span>';
+  h+='<span style="width:50px;text-align:right;color:#888;font-size:.7em">R:'+r.rations_hr+'h</span>';
+  h+='</div>';
+  var opt=document.createElement('option');opt.value=r.asset_id;opt.textContent=r.callsign;sel.appendChild(opt);
+ });
+ document.getElementById('lg-grid').innerHTML=h||'<div style="color:#666;padding:8px">No supply data</div>';
+ document.getElementById('lg-fuel').textContent=rows.length?Math.round(totalFuel/rows.length)+'%':'--';
+ document.getElementById('lg-ammo').textContent=rows.length?Math.round(totalAmmo/rows.length):'--';
+ document.getElementById('lg-red').textContent=redCount;
+ if(curVal) sel.value=curVal;
+}
+
+async function refreshChart(){
+ var hist=await apiFetch('/api/logistics/history');
+ if(!hist.length) return;
+ var labels=hist.map(function(h){return h.ts.split('T')[1].substr(0,8);});
+ var fuels=hist.map(function(h){return h.avg_fuel;});
+ var ammos=hist.map(function(h){return h.avg_ammo;});
+ if(lgChart) lgChart.destroy();
+ lgChart=new Chart(document.getElementById('lg-chart'),{
+  type:'line',
+  data:{labels:labels,datasets:[
+   {label:'Avg Fuel %',data:fuels,borderColor:'#00ff41',backgroundColor:'rgba(0,255,65,.1)',fill:true,tension:.3,pointRadius:0},
+   {label:'Avg Ammo',data:ammos,borderColor:'#ffaa00',backgroundColor:'rgba(255,170,0,.1)',fill:true,tension:.3,pointRadius:0}
+  ]},
+  options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:10}}}},
+   scales:{x:{ticks:{color:'#666',maxTicksLimit:8,font:{size:9}},grid:{color:'#222'}},
+           y:{ticks:{color:'#666',font:{size:9}},grid:{color:'#222'}}}}
+ });
+}
+
+async function doResupply(){
+ var aid=document.getElementById('rs-asset').value;
+ if(!aid){document.getElementById('rs-msg').textContent='Select an asset';return;}
+ var res=await apiFetch('/api/logistics/resupply',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({asset_id:aid,fuel:parseFloat(document.getElementById('rs-fuel').value),
+   ammo:parseInt(document.getElementById('rs-ammo').value),
+   water:parseFloat(document.getElementById('rs-water').value),
+   rations:parseFloat(document.getElementById('rs-rations').value)})});
+ document.getElementById('rs-msg').textContent=res.status==='ok'?'RESUPPLY SENT ✓':'Error: '+(res.error||'failed');
+ refreshGrid();
+}
+
+refreshGrid();refreshChart();
+setInterval(function(){refreshGrid();refreshChart();},5000);
+</script>
+{% endblock %}

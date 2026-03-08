@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Weather{% endblock %}
+{% block head %}
+<style>
+#wx-map{height:420px;border:1px solid #222}
+.wx-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #111;font-size:.78em}
+.wx-val{font-size:1.3em;font-weight:bold}
+.wx-label{font-size:.68em;color:#888;text-transform:uppercase}
+.impact-bar-wrap{flex:1;background:#1a1a1a;height:16px;border-radius:3px;overflow:hidden}
+.impact-bar{height:100%;border-radius:3px;transition:width .6s ease}
+.metar-box{background:#0a0a0a;border:1px solid #222;padding:8px;font-family:monospace;font-size:.78em;color:#00ff41;word-break:break-all}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">WEATHER &amp; ENVIRONMENT</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="wx-cond" style="color:#4488ff">--</div><div class="label">CONDITIONS</div></div>
+  <div class="card stat"><div class="value" id="wx-wind" style="color:#00ff41">--</div><div class="label">WIND (kt)</div></div>
+  <div class="card stat"><div class="value" id="wx-vis" style="color:#ffaa00">--</div><div class="label">VISIBILITY (km)</div></div>
+  <div class="card stat"><div class="value" id="wx-rec" style="color:#ff4444">--</div><div class="label">MISSION CALL</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- MAP -->
+  <div class="card">
+   <h3>WEATHER OVERLAY</h3>
+   <div id="wx-map"></div>
+   <div style="display:flex;gap:6px;margin-top:6px">
+    <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="wx-show-wind" checked onchange="refreshMap()"> Wind</label>
+    <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="wx-show-vis" checked onchange="refreshMap()"> Visibility</label>
+   </div>
+  </div>
+
+  <!-- DATA PANEL -->
+  <div>
+   <div class="card">
+    <h3>CURRENT CONDITIONS</h3>
+    <div id="wx-data" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+    <h3 style="margin-top:10px">METAR (SIMULATED)</h3>
+    <div class="metar-box" id="wx-metar">Loading...</div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>MISSION IMPACT BY DOMAIN</h3>
+    <div id="wx-impact"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var wxMap, wxMarkers=[];
+
+function initMap(){
+ wxMap=L.map('wx-map',{zoomControl:true}).setView([35.689,51.312],9);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(wxMap);
+ setTimeout(function(){wxMap.invalidateSize();},300);
+}
+
+function windArrow(dir){
+ var arrows={'N':'↓','NE':'↙','E':'←','SE':'↖','S':'↑','SW':'↗','W':'→','NW':'↘'};
+ var sectors=['N','NE','E','SE','S','SW','W','NW'];
+ return arrows[sectors[Math.round(dir/45)%8]]||'•';
+}
+
+async function refreshData(){
+ var wx=await apiFetch('/api/weather/current');
+ document.getElementById('wx-cond').textContent=wx.conditions||'--';
+ document.getElementById('wx-wind').textContent=Math.round(wx.wind_speed_kt)+' '+windArrow(wx.wind_dir_deg);
+ document.getElementById('wx-vis').textContent=wx.visibility_km.toFixed(1);
+ // Data grid
+ var items=[
+  {l:'Wind Speed',v:wx.wind_speed_kt.toFixed(1)+' kt',c:'#00ff41'},
+  {l:'Wind Dir',v:Math.round(wx.wind_dir_deg)+'°',c:'#00ff41'},
+  {l:'Temp',v:wx.temp_c.toFixed(1)+'°C',c:'#4488ff'},
+  {l:'Visibility',v:wx.visibility_km.toFixed(1)+' km',c:'#ffaa00'},
+  {l:'Ceiling',v:Math.round(wx.ceiling_ft)+' ft',c:'#ffaa00'},
+  {l:'Sea State',v:wx.sea_state,c:'#ff44ff'},
+  {l:'Precipitation',v:wx.precipitation,c:'#4488ff'},
+  {l:'Updated',v:wx.last_update?wx.last_update.split('T')[1].substr(0,8):'--',c:'#888'}
+ ];
+ var h='';
+ items.forEach(function(i){
+  h+='<div style="padding:4px 0"><div class="wx-label">'+i.l+'</div><div style="color:'+i.c+';font-weight:bold;font-size:.95em">'+i.v+'</div></div>';
+ });
+ document.getElementById('wx-data').innerHTML=h;
+ // METAR
+ var dStr=('000'+Math.round(wx.wind_dir_deg)).slice(-3);
+ var sStr=('00'+Math.round(wx.wind_speed_kt)).slice(-2);
+ var vStr=wx.visibility_km>=10?'9999':('0000'+Math.round(wx.visibility_km*1000)).slice(-4);
+ var precCode=wx.precipitation==='none'?'':wx.precipitation==='light_rain'?'-RA':wx.precipitation==='rain'?'RA':wx.precipitation==='heavy_rain'?'+RA':wx.precipitation==='snow'?'SN':wx.precipitation==='fog'?'FG':wx.precipitation==='dust'?'DU':'';
+ document.getElementById('wx-metar').textContent='METAR OIIE '+new Date().toISOString().substr(8,2)+new Date().toISOString().substr(11,4).replace(':','')+'Z '+dStr+sStr+'KT '+vStr+' '+precCode+' SCT'+('000'+Math.round(wx.ceiling_ft/100)).slice(-3)+' '+Math.round(wx.temp_c)+'/'+(Math.round(wx.temp_c)-4)+' Q1013';
+}
+
+async function refreshImpact(){
+ var imp=await apiFetch('/api/weather/impact');
+ document.getElementById('wx-rec').textContent=imp.recommendation;
+ document.getElementById('wx-rec').style.color=imp.recommendation==='GO'?'#00ff41':imp.recommendation==='CAUTION'?'#ffaa00':'#ff4444';
+ var domains=[
+  {l:'AIR',v:imp.air},{l:'GROUND',v:imp.ground},{l:'MARITIME',v:imp.maritime},{l:'CYBER',v:imp.cyber}
+ ];
+ var h='';
+ domains.forEach(function(d){
+  var c=d.v<30?'#00ff41':d.v<60?'#ffaa00':'#ff4444';
+  h+='<div class="wx-row"><span style="width:70px;font-weight:bold">'+d.l+'</span>';
+  h+='<div class="impact-bar-wrap"><div class="impact-bar" style="width:'+Math.min(100,d.v)+'%;background:'+c+'"></div></div>';
+  h+='<span style="width:40px;text-align:right;color:'+c+'">'+d.v.toFixed(1)+'%</span></div>';
+ });
+ h+='<div style="font-size:.72em;color:#888;margin-top:4px">Overall: '+imp.overall.toFixed(1)+'% | Call: <b style="color:'+(imp.recommendation==='GO'?'#00ff41':imp.recommendation==='CAUTION'?'#ffaa00':'#ff4444')+'">'+imp.recommendation+'</b></div>';
+ document.getElementById('wx-impact').innerHTML=h;
+}
+
+async function refreshMap(){
+ wxMarkers.forEach(function(m){wxMap.removeLayer(m);});wxMarkers=[];
+ var overlay=await apiFetch('/api/weather/overlay');
+ var showWind=document.getElementById('wx-show-wind').checked;
+ var showVis=document.getElementById('wx-show-vis').checked;
+ overlay.points.forEach(function(p){
+  if(showWind){
+   var ic=L.divIcon({className:'',html:'<div style="font-size:14px;color:rgba(0,255,65,.6);transform:rotate('+p.wind_dir+'deg)">↑</div>',iconSize:[16,16]});
+   var m=L.marker([p.lat,p.lng],{icon:ic}).addTo(wxMap);
+   m.bindTooltip('Wind: '+p.wind_speed+'kt @ '+p.wind_dir+'°<br>Vis: '+p.visibility+'km',{direction:'top'});
+   wxMarkers.push(m);
+  }
+  if(showVis && p.visibility<10){
+   var op=Math.max(0.1,(10-p.visibility)/10*0.5);
+   var c=L.circle([p.lat,p.lng],{radius:3000,color:'#ffaa00',fillColor:'#ffaa00',fillOpacity:op,weight:0}).addTo(wxMap);
+   wxMarkers.push(c);
+  }
+ });
+}
+
+initMap();refreshData();refreshImpact();refreshMap();
+setInterval(function(){refreshData();refreshImpact();refreshMap();},5000);
+</script>
+{% endblock %}

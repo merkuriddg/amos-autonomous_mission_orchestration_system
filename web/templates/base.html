@@ -113,6 +113,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'twin' in access %}<a href="/dashboard" class="amos-menu-item{% if request.path=='/dashboard' %} active{% endif %}">Digital Twin</a>{% endif %}
       {% if 'plan' in access %}<a href="/planner" class="amos-menu-item{% if request.path=='/planner' %} active{% endif %}">Swarm Planner</a>{% endif %}
       <a href="/missionplan" class="amos-menu-item{% if request.path=='/missionplan' %} active{% endif %}">Mission Planning</a>
+      <a href="/logistics" class="amos-menu-item{% if request.path=='/logistics' %} active{% endif %}">Logistics</a>
       {% if 'field' in access %}<a href="/field" class="amos-menu-item{% if request.path=='/field' %} active{% endif %}">Field 3D View</a>{% endif %}
       <a href="/tactical" class="amos-menu-item{% if request.path=='/tactical' %} active{% endif %}">Tactical</a>
      </div>
@@ -124,6 +125,8 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'awacs' in access %}<a href="/awacs" class="amos-menu-item{% if request.path=='/awacs' %} active{% endif %}">AWACS</a>{% endif %}
       {% if 'fusion' in access %}<a href="/fusion" class="amos-menu-item{% if request.path=='/fusion' %} active{% endif %}">Sensor Fusion</a>{% endif %}
       <a href="/commsnet" class="amos-menu-item{% if request.path=='/commsnet' %} active{% endif %}">Comms Network</a>
+      <a href="/eob" class="amos-menu-item{% if request.path=='/eob' %} active{% endif %}">EOB Intel</a>
+      <a href="/weather" class="amos-menu-item{% if request.path=='/weather' %} active{% endif %}">Weather</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">COMBAT</div>
@@ -131,6 +134,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'hal' in access %}<a href="/hal" class="amos-menu-item{% if request.path=='/hal' %} active{% endif %}">HAL Autonomy</a>{% endif %}
       {% if 'contested' in access %}<a href="/contested" class="amos-menu-item{% if request.path=='/contested' %} active{% endif %}">Contested Ops</a>{% endif %}
       {% if 'redforce' in access %}<a href="/redforce" class="amos-menu-item{% if request.path=='/redforce' %} active{% endif %}">Red Force</a>{% endif %}
+      <a href="/bda" class="amos-menu-item{% if request.path=='/bda' %} active{% endif %}">BDA</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">ANALYTICS</div>

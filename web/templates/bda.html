@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}BDA{% endblock %}
+{% block head %}
+<style>
+.bda-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #111;font-size:.78em;cursor:pointer}
+.bda-row:hover{background:#111}
+.dmg-destroyed{color:#ff4444;font-weight:bold}.dmg-severe{color:#ff6600}.dmg-moderate{color:#ffaa00}.dmg-light{color:#00ff41}.dmg-miss{color:#888}
+.bda-form label{display:block;margin:4px 0 2px;font-size:.72em;color:#888}
+.bda-form input,.bda-form select,.bda-form textarea{width:100%;background:#111;color:#0f0;border:1px solid #333;padding:3px;font-size:.85em;box-sizing:border-box}
+.bda-form textarea{height:50px;resize:vertical}
+.bda-submit{background:#550000;color:#ff4444;border:1px solid #ff4444;padding:4px 14px;border-radius:3px;cursor:pointer;font-size:.78em;margin-top:6px}
+.bda-submit:hover{background:#770000}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">BATTLE DAMAGE ASSESSMENT</h2>
+
+ <!-- TOP STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="bd-total">0</div><div class="label">TOTAL REPORTS</div></div>
+  <div class="card stat"><div class="value" id="bd-fk" style="color:#ff4444">0%</div><div class="label">FUNC. KILL RATE</div></div>
+  <div class="card stat"><div class="value" id="bd-dest" style="color:#ff6600">0</div><div class="label">DESTROYED</div></div>
+  <div class="card stat"><div class="value" id="bd-conf" style="color:#00ff41">--</div><div class="label">HIGH CONF %</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- STRIKE TIMELINE -->
+  <div>
+   <div class="card">
+    <h3>STRIKE TIMELINE</h3>
+    <div class="scroll-box" style="max-height:280px" id="bd-timeline"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>EFFECTIVENESS ANALYTICS</h3>
+    <div style="display:flex;gap:8px">
+     <canvas id="bd-chart-dmg" height="160" style="flex:1"></canvas>
+     <canvas id="bd-chart-wpn" height="160" style="flex:1"></canvas>
+    </div>
+   </div>
+  </div>
+
+  <!-- REPORT FORM -->
+  <div class="card">
+   <h3>NEW BDA REPORT</h3>
+   <div class="bda-form">
+    <label>Target ID</label><input id="bf-tid" placeholder="e.g. TGT-001">
+    <label>Target Name</label><input id="bf-tname" placeholder="e.g. SA-15 Battery">
+    <div style="display:flex;gap:6px">
+     <div style="flex:1"><label>Lat</label><input id="bf-lat" type="number" step="0.0001" value="35.68"></div>
+     <div style="flex:1"><label>Lng</label><input id="bf-lng" type="number" step="0.0001" value="51.31"></div>
+    </div>
+    <label>Weapon Used</label><input id="bf-wpn" placeholder="e.g. JDAM, Hellfire, 155mm">
+    <label>Munitions Expended</label><input id="bf-mun" type="number" value="1" min="1">
+    <label>Damage Level</label>
+    <select id="bf-dmg">
+     <option value="destroyed">Destroyed</option>
+     <option value="severe">Severe</option>
+     <option value="moderate" selected>Moderate</option>
+     <option value="light">Light</option>
+     <option value="miss">Miss</option>
+    </select>
+    <label>Assessment Confidence</label>
+    <select id="bf-conf">
+     <option value="high">High</option>
+     <option value="medium" selected>Medium</option>
+     <option value="low">Low</option>
+    </select>
+    <div style="display:flex;gap:8px;margin-top:4px">
+     <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="bf-fk"> Functional Kill</label>
+     <label style="font-size:.72em;display:flex;align-items:center;gap:3px"><input type="checkbox" id="bf-img"> Imagery Available</label>
+    </div>
+    <label>Remarks</label><textarea id="bf-rem" placeholder="Additional details..."></textarea>
+    <button class="bda-submit" onclick="submitBDA()">SUBMIT BDA REPORT</button>
+    <div id="bf-msg" style="font-size:.72em;color:#888;margin-top:4px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var bdChartDmg=null,bdChartWpn=null;
+
+function dmgClass(d){return 'dmg-'+(d||'moderate');}
+function dmgIcon(d){return d==='destroyed'?'💥':d==='severe'?'🔥':d==='moderate'?'⚠️':d==='light'?'✓':'○';}
+
+async function refreshTimeline(){
+ var list=await apiFetch('/api/bda/list');
+ list.sort(function(a,b){return b.timestamp.localeCompare(a.timestamp);});
+ var h='';
+ list.forEach(function(r){
+  h+='<div class="bda-row">';
+  h+='<span style="width:55px;color:#888;font-size:.7em">'+r.timestamp.split('T')[1].substr(0,8)+'</span>';
+  h+='<span style="width:75px">'+r.id+'</span>';
+  h+='<span style="flex:1;color:#4488ff">'+r.target_name+'</span>';
+  h+='<span style="width:50px" class="'+dmgClass(r.damage_level)+'">'+r.damage_level.toUpperCase()+'</span>';
+  h+='<span style="width:55px;color:#888">'+r.weapon_used+'</span>';
+  h+='<span style="width:35px;text-align:center">'+(r.functional_kill?'<span style="color:#ff4444">FK</span>':'')+'</span>';
+  h+='</div>';
+ });
+ document.getElementById('bd-timeline').innerHTML=h||'<div style="color:#666;padding:8px">No BDA reports yet — submit one →</div>';
+}
+
+async function refreshAnalytics(){
+ var a=await apiFetch('/api/bda/analytics');
+ document.getElementById('bd-total').textContent=a.total;
+ document.getElementById('bd-fk').textContent=a.fk_rate+'%';
+ document.getElementById('bd-dest').textContent=a.by_damage.destroyed||0;
+ var hPct=a.total?Math.round((a.conf_dist.high||0)/a.total*100):0;
+ document.getElementById('bd-conf').textContent=hPct+'%';
+ // Damage chart
+ if(bdChartDmg) bdChartDmg.destroy();
+ var dLabels=Object.keys(a.by_damage);
+ var dVals=Object.values(a.by_damage);
+ var dCols=dLabels.map(function(l){return l==='destroyed'?'#ff4444':l==='severe'?'#ff6600':l==='moderate'?'#ffaa00':l==='light'?'#00ff41':'#888';});
+ if(dLabels.length){
+  bdChartDmg=new Chart(document.getElementById('bd-chart-dmg'),{
+   type:'doughnut',data:{labels:dLabels,datasets:[{data:dVals,backgroundColor:dCols}]},
+   options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:9}}},title:{display:true,text:'By Damage Level',color:'#888',font:{size:10}}}}
+  });
+ }
+ // Weapon chart
+ if(bdChartWpn) bdChartWpn.destroy();
+ var wLabels=Object.keys(a.by_weapon);
+ var wVals=Object.values(a.by_weapon);
+ if(wLabels.length){
+  bdChartWpn=new Chart(document.getElementById('bd-chart-wpn'),{
+   type:'bar',data:{labels:wLabels,datasets:[{label:'Strikes',data:wVals,backgroundColor:'#4488ff'}]},
+   options:{responsive:true,plugins:{legend:{display:false},title:{display:true,text:'By Weapon',color:'#888',font:{size:10}}},
+    scales:{x:{ticks:{color:'#666',font:{size:8}},grid:{color:'#222'}},y:{ticks:{color:'#666',font:{size:8}},grid:{color:'#222'}}}}
+  });
+ }
+}
+
+async function submitBDA(){
+ var body={
+  target_id:document.getElementById('bf-tid').value,
+  target_name:document.getElementById('bf-tname').value,
+  lat:document.getElementById('bf-lat').value,
+  lng:document.getElementById('bf-lng').value,
+  weapon_used:document.getElementById('bf-wpn').value,
+  munitions_expended:document.getElementById('bf-mun').value,
+  damage_level:document.getElementById('bf-dmg').value,
+  assessment_conf:document.getElementById('bf-conf').value,
+  functional_kill:document.getElementById('bf-fk').checked,
+  imagery_available:document.getElementById('bf-img').checked,
+  remarks:document.getElementById('bf-rem').value
+ };
+ var res=await apiFetch('/api/bda/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ document.getElementById('bf-msg').textContent=res.status==='ok'?'BDA Report Submitted: '+res.report.id:'Error';
+ refreshTimeline();refreshAnalytics();
+}
+
+refreshTimeline();refreshAnalytics();
+setInterval(function(){refreshTimeline();refreshAnalytics();},8000);
+</script>
+{% endblock %}
