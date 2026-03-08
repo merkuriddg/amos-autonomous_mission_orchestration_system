@@ -102,7 +102,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       {% if 'twin' in access %}<a href="/dashboard" class="amos-menu-item{% if request.path=='/dashboard' %} active{% endif %}">Digital Twin</a>{% endif %}
       {% if 'plan' in access %}<a href="/planner" class="amos-menu-item{% if request.path=='/planner' %} active{% endif %}">Mission Planner</a>{% endif %}
       {% if 'field' in access %}<a href="/field" class="amos-menu-item{% if request.path=='/field' %} active{% endif %}">Field 3D View</a>{% endif %}
-      <a href="/tactical" class="amos-menu-item{% if request.path=='/tactical' %} active{% endif %}">📱 Tactical</a>
+      <a href="/tactical" class="amos-menu-item{% if request.path=='/tactical' %} active{% endif %}">Tactical</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">INTELLIGENCE</div>
@@ -123,11 +123,11 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <div class="amos-menu-hdr">ANALYTICS</div>
       {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
       {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
-      <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">📊 Analytics</a>
-      <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">📋 Documents</a>
+      <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">Analytics</a>
+      <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">Documents</a>
       <div class="amos-menu-hdr" style="margin-top:10px">SYSTEM</div>
-      <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">🔌 Integrations</a>
-      <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">⚙ Settings</a>
+      <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">Integrations</a>
+      <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">Settings</a>
      </div>
     </div>
    </div>
