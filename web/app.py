@@ -28,8 +28,9 @@ from mos_core.nodes.sensor_fusion_engine import SensorFusionEngine
 from mos_core.nodes.commander_support import CommanderSupport
 from mos_core.nodes.learning_engine import LearningEngine
 
-# Phase 3
-import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+# Phase 3 — Document Generators
+from mos_core.docs.opord_generator import generate_opord
+from mos_core.docs.conop_generator import generate_conop
 
 # PX4 Bridge (Phase 2)
 try:
@@ -492,6 +493,10 @@ def settings_page(): return render_template("settings.html", **ctx())
 @login_required
 def tactical(): return render_template("tactical.html", **ctx())
 
+@app.route("/docs")
+@login_required
+def docs_page(): return render_template("docs.html", **ctx())
+
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS API
 # ═══════════════════════════════════════════════════════════
@@ -816,12 +821,47 @@ def api_cm_log(): return jsonify(cm_log)
 # ═══════════════════════════════════════════════════════════
 @app.route("/api/hal/recommendations")
 @login_required
-def api_hal_recs(): return jsonify(hal_recommendations[-50:])
+def api_hal_recs():
+    # Merge random HAL recs with cognitive engine recommendations
+    cog_recs = cognitive_engine.get_recommendations(30)
+    merged = []
+    for r in cog_recs:
+        merged.append({
+            "id": r["id"], "type": r["coa"]["coa_name"] if r.get("coa") else "UNKNOWN",
+            "asset": ", ".join(r.get("recommended_assets", [])[:3]),
+            "target": r.get("threat_id", ""),
+            "confidence": r["coa"]["p_success"] if r.get("coa") else 0.5,
+            "reasoning": " → ".join(r.get("reasoning_chain", [])),
+            "status": r.get("status", "pending"),
+            "tier": 2, "timestamp": r.get("timestamp", ""),
+            "risk": r["coa"].get("risk", "MEDIUM") if r.get("coa") else "MEDIUM",
+            "score": r["coa"].get("composite_score", 0) if r.get("coa") else 0,
+            "all_coas": r.get("all_coas", []),
+        })
+    # Include legacy random recs too
+    for r in hal_recommendations[-20:]:
+        merged.append(r)
+    return jsonify(merged)
 
 @app.route("/api/hal/action", methods=["POST"])
 @login_required
 def api_hal_action():
     d = request.json; rid = d.get("id",""); act = d.get("action",""); c = ctx()
+    # Try cognitive engine first
+    result = cognitive_engine.action_recommendation(rid, act, c["name"])
+    if result:
+        if act == "approve":
+            aar_events.append({"type":"coa_approved","timestamp":now_iso(),
+                "elapsed":sim_clock["elapsed_sec"],
+                "details":f"COA {result['coa']['coa_name']}: threat {result['threat_id']} by {c['name']}"})
+            try:
+                db_execute("INSERT INTO mission_events (mission_id, event_type, details) VALUES(1,%s,%s)",
+                    ("coa_approved", to_json({"rec_id": rid, "coa": result["coa"]["coa_name"],
+                     "threat": result["threat_id"], "operator": c["name"]})))
+            except Exception:
+                pass
+        return jsonify({"status":"ok", "source": "cognitive"})
+    # Fallback to legacy HAL
     for r in hal_recommendations:
         if r["id"]==rid:
             r["status"]=act; r["actioned_by"]=c["name"]; r["actioned_at"]=now_iso()
@@ -835,16 +875,91 @@ def api_hal_action():
 @app.route("/api/coa/generate", methods=["POST"])
 @login_required
 def api_coa():
+    """Return real COA analysis from the cognitive engine."""
+    all_coas = cognitive_engine.get_coas()
+    results = []
+    for tid, coas in all_coas.items():
+        for c in coas[:3]:  # top 3 per threat
+            results.append({
+                "rank": c.get("rank", 0), "name": c["coa_name"],
+                "score": c["composite_score"], "risk": c["risk"],
+                "description": c["description"],
+                "p_success": c["p_success"], "p_friendly_loss": c["p_friendly_loss"],
+                "avg_time_min": c["avg_time_min"], "threat_id": tid
+            })
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return jsonify(results[:12])
+
+@app.route("/api/coa/current")
+@login_required
+def api_coa_current():
+    """All active COA recommendations from the cognitive engine."""
+    recs = cognitive_engine.get_recommendations(20)
+    pending = [r for r in recs if r.get("status") == "pending"]
+    return jsonify(pending)
+
+@app.route("/api/coa/history")
+@login_required
+def api_coa_history():
+    """Past COA decisions (approved/rejected)."""
+    recs = cognitive_engine.get_recommendations(100)
+    actioned = [r for r in recs if r.get("status") in ("approve", "reject", "approved", "rejected")]
+    return jsonify(actioned)
+
+# ═══════════════════════════════════════════════════════════
+#  DOCUMENT GENERATION API (Phase 3)
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/docs/opord", methods=["POST"])
+@login_required
+def api_docs_opord():
+    """Generate a 5-paragraph OPORD from current mission state."""
+    d = request.json or {}
+    coa_data = cognitive_engine.get_coas()
+    opord = generate_opord(
+        platoon_config=platoon, assets=sim_assets, threats=sim_threats,
+        coa_data=coa_data, mission_name=d.get("mission_name"),
+        classification=d.get("classification", "UNCLASSIFIED"))
+    return jsonify(opord)
+
+@app.route("/api/docs/conop", methods=["POST"])
+@login_required
+def api_docs_conop():
+    """Generate a CONOP summary from current mission state."""
+    d = request.json or {}
+    coa_data = cognitive_engine.get_coas()
+    conop = generate_conop(
+        platoon_config=platoon, assets=sim_assets, threats=sim_threats,
+        coa_data=coa_data, aar_events=aar_events,
+        classification=d.get("classification", "UNCLASSIFIED"))
+    return jsonify(conop)
+
+@app.route("/api/docs/briefing", methods=["POST"])
+@login_required
+def api_docs_briefing():
+    """Quick mission briefing — combines key data from OPORD + CONOP."""
+    coa_data = cognitive_engine.get_coas()
     at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
-    return jsonify([
-        {"rank":1,"name":"OVERWHELMING FORCE","score":round(random.uniform(.75,.95),2),
-         "risk":"LOW","description":f"All assets engage {at} threats simultaneously. Max ISR + EW."},
-        {"rank":2,"name":"SEQUENTIAL ENGAGE","score":round(random.uniform(.65,.85),2),
-         "risk":"MEDIUM","description":"Priority targeting. GHOST recon, TALON engage, REAPER overwatch."},
-        {"rank":3,"name":"CYBER-EW FIRST","score":round(random.uniform(.55,.80),2),
-         "risk":"MEDIUM","description":"Degrade C2 via cyber/EW before kinetic. Blind then strike."},
-        {"rank":4,"name":"DEFENSIVE HOLD","score":round(random.uniform(.50,.70),2),
-         "risk":"LOW","description":"Consolidate at FOB Tehran. Sensor perimeter. Engage on approach only."}])
+    nt = sum(1 for t in sim_threats.values() if t.get("neutralized"))
+    risk = commander_support.get_risk()
+    # Top COAs
+    top_coas = []
+    for tid, coas in coa_data.items():
+        if coas:
+            top_coas.append({"threat": tid, "coa": coas[0]["coa_name"],
+                            "score": coas[0]["composite_score"], "risk": coas[0]["risk"]})
+    return jsonify({
+        "mission": platoon.get("name", "UNNAMED"),
+        "callsign": platoon.get("callsign", "UNKNOWN"),
+        "dtg": datetime.now(timezone.utc).strftime("%d%H%MZ %b %Y").upper(),
+        "assets": len(sim_assets),
+        "active_threats": at, "neutralized_threats": nt,
+        "risk_level": risk.get("level", "LOW"), "risk_score": risk.get("score", 0),
+        "elapsed_sec": round(sim_clock["elapsed_sec"], 1),
+        "top_coas": top_coas[:5],
+        "pending_hal": sum(1 for r in hal_recommendations if r.get("status") == "pending"),
+        "recent_events": [{"type": e.get("type"), "details": e.get("details", "")[:100]}
+                          for e in aar_events[-10:]],
+    })
 
 # ═══════════════════════════════════════════════════════════
 #  SWARM API

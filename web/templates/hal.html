@@ -1,31 +1,145 @@
 {% extends "base.html" %}
 {% block title %}HAL Engine{% endblock %}
+{% block head %}
+<style>
+.coa-card{background:#0d0d0d;border:1px solid #333;padding:14px;margin:8px 0;border-radius:4px;transition:border-color .2s}
+.coa-card:hover{border-color:#ffaa00}
+.coa-card .coa-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.coa-card .coa-name{font-weight:bold;font-size:1em}
+.coa-card .coa-rank{color:#ffaa00;font-size:.8em;border:1px solid #ffaa00;padding:1px 8px}
+.coa-bar-wrap{background:#1a1a1a;height:8px;border-radius:4px;overflow:hidden;margin:3px 0}
+.coa-bar{height:100%;border-radius:4px;transition:width .5s ease}
+.coa-bar-success{background:linear-gradient(90deg,#00ff41,#00cc33)}
+.coa-bar-risk{background:linear-gradient(90deg,#ffaa00,#ff4444)}
+.coa-bar-time{background:linear-gradient(90deg,#4488ff,#2255aa)}
+.coa-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0;font-size:.78em}
+.coa-metric-label{color:#666;font-size:.75em;text-transform:uppercase;letter-spacing:1px}
+.coa-metric-val{color:#00ff41;font-size:1.1em}
+.risk-badge{padding:2px 10px;border-radius:3px;font-size:.75em;font-weight:bold;display:inline-block}
+.risk-LOW{background:#00ff4122;color:#00ff41;border:1px solid #00ff41}
+.risk-MEDIUM{background:#ffaa0022;color:#ffaa00;border:1px solid #ffaa00}
+.risk-HIGH{background:#ff444422;color:#ff4444;border:1px solid #ff4444}
+.risk-CRITICAL{background:#ff000033;color:#ff0000;border:1px solid #ff0000}
+.rec-card{background:#0d0d0d;border:1px solid #4488ff;padding:12px;margin:6px 0;border-radius:4px}
+.rec-card .reasoning-chain{color:#888;font-size:.8em;margin:6px 0;padding:6px;background:#0a0a0a;border-left:2px solid #4488ff}
+.coa-expand{color:#4488ff;font-size:.78em;cursor:pointer;margin-top:6px;display:inline-block}
+.coa-alts{display:none;margin-top:8px;padding-top:8px;border-top:1px solid #222}
+.coa-alts.open{display:block}
+.history-entry{padding:8px;margin:4px 0;font-size:.8em;border-left:3px solid}
+.history-entry.approved{border-color:#00ff41;background:#00ff4108}
+.history-entry.rejected{border-color:#ff4444;background:#ff444408}
+</style>
+{% endblock %}
 {% block content %}
-<div class="card"><h3>HAL AUTONOMY ENGINE — AI Recommendations
-    <button class="btn" onclick="genCOA()" style="margin-left:15px">GENERATE COAs</button></h3>
-    <div id="coa-results" style="margin-top:10px"></div>
+<div class="grid-2">
+  <div class="card"><div class="stat"><div class="value" id="hal-coa-count">0</div><div class="label">ACTIVE COAs</div></div></div>
+  <div class="card"><div class="stat"><div class="value" id="hal-pending-count">0</div><div class="label">PENDING APPROVALS</div></div></div>
 </div>
-<div class="card"><h3>PENDING RECOMMENDATIONS</h3><div class="scroll-box" style="max-height:400px" id="hal-pending"></div></div>
+<div class="card"><h3>COA ANALYSIS — AI-SCORED COURSES OF ACTION
+    <button class="btn" onclick="genCOA()" style="margin-left:15px">GENERATE COAs</button>
+    <button class="btn btn-yellow" onclick="loadHistory()" style="margin-left:8px">HISTORY</button></h3>
+    <div id="coa-results" style="margin-top:10px"><div style="color:#666;padding:10px">Click GENERATE to run cognitive COA analysis</div></div>
+</div>
+<div class="card"><h3>COGNITIVE RECOMMENDATIONS — PENDING APPROVAL</h3>
+    <div class="scroll-box" style="max-height:500px" id="hal-pending"></div>
+</div>
+<div class="card" id="history-section" style="display:none"><h3>COA DECISION HISTORY</h3>
+    <div class="scroll-box" style="max-height:300px" id="hal-history"></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
+function riskColor(r){return r==='LOW'?'#00ff41':r==='HIGH'||r==='CRITICAL'?'#ff4444':'#ffaa00';}
+function barHTML(label,pct,cls){
+    return '<div class="coa-metric-label">'+label+'</div>'+
+        '<div class="coa-bar-wrap"><div class="coa-bar '+cls+'" style="width:'+Math.round(pct)+'%"></div></div>'+
+        '<div style="color:#888;font-size:.7em;text-align:right">'+pct.toFixed(1)+'%</div>';
+}
 async function refreshHAL(){
     const recs=await apiFetch('/api/hal/recommendations');
     const div=document.getElementById('hal-pending'); div.innerHTML='';
-    const pending=(Array.isArray(recs)?recs:[]).filter(function(r){return r.status==='pending';});
-    if(pending.length===0)div.innerHTML='<div style="color:#666;padding:10px">No pending recommendations</div>';
+    const all=Array.isArray(recs)?recs:[];
+    const pending=all.filter(function(r){return r.status==='pending';});
+    document.getElementById('hal-pending-count').textContent=pending.length;
+    if(pending.length===0){div.innerHTML='<div style="color:#666;padding:10px">No pending recommendations — simulation generating...</div>';return;}
     pending.forEach(function(r){
-        div.innerHTML+='<div style="border:1px solid #4488ff;padding:10px;margin:6px 0"><div><strong style="color:#4488ff">'+r.type+'</strong> — '+r.asset+' -> '+r.target+' ('+(r.confidence*100).toFixed(0)+'%)</div><div style="color:#888;font-size:0.85em;margin:4px 0">'+r.reasoning+'</div><div style="margin-top:6px"><button class="btn" onclick="halAct(\''+r.id+'\',\'approve\')">APPROVE</button> <button class="btn btn-red" onclick="halAct(\''+r.id+'\',\'deny\')">DENY</button></div></div>';
+        var conf=(r.confidence||0)*100;
+        var risk=r.risk||'MEDIUM';
+        var score=r.score||0;
+        var html='<div class="rec-card">';
+        html+='<div style="display:flex;justify-content:space-between;align-items:center">';
+        html+='<div><strong style="color:#4488ff;font-size:1em">'+r.type+'</strong>';
+        html+=' <span class="risk-badge risk-'+risk+'">'+risk+'</span></div>';
+        html+='<div style="color:#ffaa00">Score: '+(score*100).toFixed(0)+'</div></div>';
+        html+='<div style="margin:6px 0;font-size:.85em"><span style="color:#888">Assets:</span> <span style="color:#00ff41">'+(r.asset||'—')+'</span>';
+        html+=' <span style="color:#888">→ Target:</span> <span style="color:#ff4444">'+(r.target||'—')+'</span></div>';
+        html+='<div class="coa-metrics">';
+        html+='<div>'+barHTML('Success',conf,'coa-bar-success')+'</div>';
+        html+='<div>'+barHTML('Risk',(risk==='LOW'?20:risk==='MEDIUM'?50:80),'coa-bar-risk')+'</div>';
+        html+='<div>'+barHTML('Confidence',conf,'coa-bar-time')+'</div>';
+        html+='</div>';
+        if(r.reasoning){html+='<div class="reasoning-chain">🧠 '+r.reasoning+'</div>';}
+        // Show alternative COAs if available
+        var alts=r.all_coas||[];
+        if(alts.length>1){
+            var altId='alt-'+r.id;
+            html+='<span class="coa-expand" onclick="document.getElementById(\''+altId+'\').classList.toggle(\'open\')">▸ '+alts.length+' alternative COAs</span>';
+            html+='<div class="coa-alts" id="'+altId+'">';
+            alts.forEach(function(ac,i){
+                html+='<div style="padding:4px 0;border-bottom:1px solid #1a1a1a;font-size:.8em">';
+                html+='<span style="color:#ffaa00">#'+(i+1)+' '+ac.coa_name+'</span> ';
+                html+='Score: '+(ac.composite_score*100).toFixed(0)+' | P(success): '+(ac.p_success*100).toFixed(0)+'%';
+                html+=' | <span style="color:'+riskColor(ac.risk)+'">'+ac.risk+'</span>';
+                html+='</div>';
+            });
+            html+='</div>';
+        }
+        html+='<div style="margin-top:8px;display:flex;gap:8px">';
+        html+='<button class="btn" onclick="halAct(\''+r.id+'\',\'approve\')">✓ APPROVE</button>';
+        html+='<button class="btn btn-red" onclick="halAct(\''+r.id+'\',\'deny\')">✗ REJECT</button></div>';
+        html+='</div>';
+        div.innerHTML+=html;
     });
 }
 async function halAct(id,action){await apiPost('/api/hal/action',{id:id,action:action});refreshHAL();}
 async function genCOA(){
     const coas=await apiPost('/api/coa/generate',{});
     const div=document.getElementById('coa-results');
-    div.innerHTML=(Array.isArray(coas)?coas:[]).map(function(c){
-        return '<div style="border:1px solid #ffaa00;padding:10px;margin:6px 0"><strong style="color:#ffaa00">#'+c.rank+' '+c.name+'</strong> (Score: '+c.score+') Risk: '+c.risk+'<div style="color:#888;font-size:0.85em">'+c.description+'</div></div>';
+    const arr=Array.isArray(coas)?coas:[];
+    document.getElementById('hal-coa-count').textContent=arr.length;
+    if(arr.length===0){div.innerHTML='<div style="color:#666;padding:10px">No active threats — no COAs generated</div>';return;}
+    div.innerHTML=arr.map(function(c,i){
+        var succPct=(c.p_success||0)*100;
+        var lossPct=(c.p_friendly_loss||0)*100;
+        var timeMins=c.avg_time_min||0;
+        return '<div class="coa-card">'+
+            '<div class="coa-header">'+
+            '<div class="coa-name" style="color:'+riskColor(c.risk)+'">'+c.name+'</div>'+
+            '<div><span class="coa-rank">#'+(i+1)+'</span> <span class="risk-badge risk-'+c.risk+'">'+c.risk+'</span></div></div>'+
+            '<div style="color:#888;font-size:.85em;margin-bottom:8px">'+c.description+'</div>'+
+            '<div style="font-size:.75em;color:#555;margin-bottom:6px">Threat: '+c.threat_id+'</div>'+
+            '<div class="coa-metrics">'+
+            '<div>'+barHTML('P(Success)',succPct,'coa-bar-success')+'</div>'+
+            '<div>'+barHTML('P(Friendly Loss)',lossPct,'coa-bar-risk')+'</div>'+
+            '<div>'+barHTML('Time ('+timeMins.toFixed(1)+' min)',Math.min(100,timeMins*2),'coa-bar-time')+'</div>'+
+            '</div>'+
+            '<div style="text-align:right;margin-top:6px">'+
+            '<strong style="color:#ffaa00;font-size:1.2em">SCORE: '+(c.score*100).toFixed(0)+'</strong></div></div>';
     }).join('');
 }
-refreshHAL(); setInterval(refreshHAL,3000);
+async function loadHistory(){
+    document.getElementById('history-section').style.display='block';
+    const hist=await apiFetch('/api/coa/history');
+    const div=document.getElementById('hal-history');
+    const arr=Array.isArray(hist)?hist:[];
+    if(arr.length===0){div.innerHTML='<div style="color:#666;padding:10px">No COA decisions yet</div>';return;}
+    div.innerHTML=arr.map(function(h){
+        var cls=h.status.includes('approve')?'approved':'rejected';
+        return '<div class="history-entry '+cls+'">'+
+            '<strong>'+((h.coa||{}).coa_name||h.status)+'</strong> — '+h.threat_id+
+            ' <span style="color:#888">'+(h.actioned_by||'')+'</span></div>';
+    }).join('');
+}
+refreshHAL(); setInterval(refreshHAL,4000);
 </script>
 {% endblock %}

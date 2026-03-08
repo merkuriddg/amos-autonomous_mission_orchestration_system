@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block head %}
+<style>
+.doc-btn{padding:12px 20px;border:2px solid #333;background:#0d0d0d;color:#00ff41;font-family:inherit;
+  cursor:pointer;font-size:.9em;text-align:left;width:100%;transition:all .2s;border-radius:4px}
+.doc-btn:hover{border-color:#00ff41;background:#00ff4110}
+.doc-btn .doc-icon{font-size:1.8em;margin-bottom:6px}
+.doc-btn .doc-title{font-weight:bold;font-size:1em;display:block}
+.doc-btn .doc-desc{color:#888;font-size:.8em;margin-top:4px}
+.doc-preview{background:#0a0a0a;border:1px solid #333;padding:16px;font-family:'Courier New',monospace;
+  font-size:.78em;line-height:1.5;white-space:pre-wrap;max-height:600px;overflow-y:auto;color:#00ff41}
+.doc-preview .cls-line{color:#ff4444;font-weight:bold}
+.doc-preview .hdr-line{color:#ffaa00;font-weight:bold}
+.doc-meta{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.doc-meta .meta-item{font-size:.8em;color:#888}
+.doc-meta .meta-item span{color:#00ff41}
+.doc-actions{display:flex;gap:8px;margin:10px 0}
+.cls-select{background:#0a0a0a;color:#ff4444;border:1px solid #ff4444;padding:4px 8px;font-family:inherit;font-size:.8em}
+.briefing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.brief-stat{background:#0d0d0d;border:1px solid #222;padding:10px;text-align:center;border-radius:4px}
+.brief-stat .bval{font-size:1.4em;color:#00ff41;font-weight:bold}
+.brief-stat .blbl{font-size:.7em;color:#666;margin-top:2px;text-transform:uppercase}
+.brief-coa{background:#0d0d0d;border:1px solid #333;padding:8px;margin:4px 0;font-size:.85em}
+.brief-event{padding:4px 0;font-size:.8em;border-bottom:1px solid #111}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card"><h3>DOCUMENT GENERATION CENTER — Phase 3</h3>
+  <div class="grid-3" style="margin-top:10px">
+    <button class="doc-btn" onclick="genDoc('opord')">
+      <div class="doc-icon">📄</div>
+      <span class="doc-title">5-PARAGRAPH OPORD</span>
+      <div class="doc-desc">Full Operations Order from live mission state.<br>Situation, Mission, Execution, Sustainment, C2.</div>
+    </button>
+    <button class="doc-btn" onclick="genDoc('conop')">
+      <div class="doc-icon">📋</div>
+      <span class="doc-title">CONOP SUMMARY</span>
+      <div class="doc-desc">Concept of Operations brief.<br>Force summary, threat assessment, COA analysis, risk.</div>
+    </button>
+    <button class="doc-btn" onclick="genDoc('briefing')">
+      <div class="doc-icon">📊</div>
+      <span class="doc-title">MISSION BRIEFING</span>
+      <div class="doc-desc">Quick-look mission status.<br>Key stats, top COAs, recent events.</div>
+    </button>
+  </div>
+  <div style="margin-top:8px;display:flex;gap:12px;align-items:center">
+    <label style="color:#888;font-size:.8em">Classification:</label>
+    <select class="cls-select" id="cls-select">
+      <option value="UNCLASSIFIED">UNCLASSIFIED</option>
+      <option value="CUI">CUI</option>
+      <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+      <option value="SECRET">SECRET</option>
+      <option value="TOP SECRET">TOP SECRET</option>
+    </select>
+    <label style="color:#888;font-size:.8em;margin-left:12px">Mission Name:</label>
+    <input type="text" id="mission-name" placeholder="(auto from config)" style="width:200px">
+  </div>
+</div>
+
+<div class="card" id="doc-output" style="display:none">
+  <h3 id="doc-output-title">DOCUMENT</h3>
+  <div class="doc-meta" id="doc-meta"></div>
+  <div class="doc-actions">
+    <button class="btn" onclick="downloadDoc('txt')">DOWNLOAD .TXT</button>
+    <button class="btn btn-yellow" onclick="downloadDoc('json')">DOWNLOAD .JSON</button>
+    <button class="btn" onclick="copyDoc()">COPY TO CLIPBOARD</button>
+  </div>
+  <div class="doc-preview" id="doc-preview"></div>
+</div>
+
+<div class="card" id="briefing-output" style="display:none">
+  <h3>MISSION BRIEFING — QUICK LOOK</h3>
+  <div class="briefing-grid" id="briefing-stats"></div>
+  <div id="briefing-coas"></div>
+  <div id="briefing-events"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _lastDoc=null, _lastType='';
+
+async function genDoc(type){
+    _lastType=type;
+    const cls=document.getElementById('cls-select').value;
+    const name=document.getElementById('mission-name').value.trim();
+    const body={classification:cls};
+    if(name) body.mission_name=name;
+
+    if(type==='briefing'){
+        document.getElementById('doc-output').style.display='none';
+        document.getElementById('briefing-output').style.display='block';
+        const brief=await apiPost('/api/docs/briefing',body);
+        renderBriefing(brief);
+        _lastDoc=brief;
+        return;
+    }
+
+    document.getElementById('briefing-output').style.display='none';
+    document.getElementById('doc-output').style.display='block';
+    const doc=await apiPost('/api/docs/'+type,body);
+    _lastDoc=doc;
+
+    // Title
+    document.getElementById('doc-output-title').textContent=
+        type==='opord'?'OPERATIONS ORDER':'CONCEPT OF OPERATIONS';
+
+    // Meta
+    var meta=document.getElementById('doc-meta');
+    meta.innerHTML='<div class="meta-item">ID: <span>'+doc.id+'</span></div>'+
+        '<div class="meta-item">DTG: <span>'+doc.dtg+'</span></div>'+
+        '<div class="meta-item">Classification: <span style="color:#ff4444">'+doc.classification+'</span></div>'+
+        '<div class="meta-item">Callsign: <span>'+doc.callsign+'</span></div>';
+
+    // Preview — formatted text
+    var text=doc.text||JSON.stringify(doc,null,2);
+    // Colorize classification and headers
+    text=text.replace(/^(={2,}.*)/gm,'<span class="cls-line">$1</span>');
+    text=text.replace(/^(\d+\.\s+[A-Z ]+)/gm,'<span class="hdr-line">$1</span>');
+    text=text.replace(/(UNCLASSIFIED|CUI|CONFIDENTIAL|SECRET|TOP SECRET)/g,'<span class="cls-line">$1</span>');
+    document.getElementById('doc-preview').innerHTML=text;
+}
+
+function renderBriefing(b){
+    // Stats grid
+    var stats=document.getElementById('briefing-stats');
+    stats.innerHTML='<div class="brief-stat"><div class="bval">'+b.assets+'</div><div class="blbl">Assets</div></div>'+
+        '<div class="brief-stat"><div class="bval" style="color:#ff4444">'+b.active_threats+'</div><div class="blbl">Active Threats</div></div>'+
+        '<div class="brief-stat"><div class="bval" style="color:#00ff41">'+b.neutralized_threats+'</div><div class="blbl">Neutralized</div></div>'+
+        '<div class="brief-stat"><div class="bval" style="color:'+(b.risk_level==='HIGH'?'#ff4444':b.risk_level==='MEDIUM'?'#ffaa00':'#00ff41')+'">'+b.risk_level+'</div><div class="blbl">Risk Level</div></div>';
+
+    // COAs
+    var coas=document.getElementById('briefing-coas');
+    if(b.top_coas&&b.top_coas.length){
+        coas.innerHTML='<h4 style="color:#ffaa00;margin:10px 0 6px">TOP COAs</h4>'+
+            b.top_coas.map(function(c){
+                return '<div class="brief-coa"><strong style="color:#ffaa00">'+c.coa+'</strong> vs '+c.threat+
+                    ' — Score: '+(c.score*100).toFixed(0)+' | Risk: '+c.risk+'</div>';
+            }).join('');
+    }else{coas.innerHTML='';}
+
+    // Events
+    var evts=document.getElementById('briefing-events');
+    if(b.recent_events&&b.recent_events.length){
+        evts.innerHTML='<h4 style="color:#4488ff;margin:10px 0 6px">RECENT EVENTS</h4>'+
+            b.recent_events.map(function(e){
+                return '<div class="brief-event"><span style="color:#4488ff">['+e.type+']</span> '+e.details+'</div>';
+            }).join('');
+    }else{evts.innerHTML='';}
+}
+
+function downloadDoc(fmt){
+    if(!_lastDoc) return;
+    var content, filename, mime;
+    if(fmt==='json'){
+        content=JSON.stringify(_lastDoc,null,2);
+        filename=(_lastDoc.id||_lastType)+'.json';
+        mime='application/json';
+    }else{
+        content=_lastDoc.text||JSON.stringify(_lastDoc,null,2);
+        filename=(_lastDoc.id||_lastType)+'.txt';
+        mime='text/plain';
+    }
+    var blob=new Blob([content],{type:mime});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function copyDoc(){
+    if(!_lastDoc) return;
+    var text=_lastDoc.text||JSON.stringify(_lastDoc,null,2);
+    navigator.clipboard.writeText(text).then(function(){
+        alert('Document copied to clipboard');
+    });
+}
+</script>
+{% endblock %}
