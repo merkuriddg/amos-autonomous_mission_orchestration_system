@@ -4,6 +4,7 @@
 <title>AMOS — {% block title %}C2{% endblock %}</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -150,6 +151,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
   {% if 'voice' in access %}<button id="voice-btn" onclick="toggleVoice()" title="Voice Command (Chrome)">🎤</button>{% endif %}
   <button id="chat-btn" onclick="toggleChat()" title="Team Chat">💬<span class="chat-unread" id="chat-unread">0</span></button>
   <span class="live-dot"></span>LIVE
+  | <select id="theater-sel" onchange="switchTheater(this.value)" style="background:#0a0a0a;color:#ffaa00;border:1px solid #ffaa00;padding:1px 4px;font-size:.8em;font-family:inherit;border-radius:3px;cursor:pointer" title="Switch Theater"></select>
   | <a href="/settings" style="color:#00ff41;text-decoration:none;margin-left:0">{{ name }}</a> ({{ role }})
   | <a href="/logout">LOGOUT</a>
  </div>
@@ -197,6 +199,11 @@ socket.on('amos_alerts',function(alerts){
 });
 function apiFetch(u){return fetch(u).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
+// Theater selector
+function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
+function switchTheater(key){apiPost('/api/theater/switch',{key:key});}
+loadTheaters();
+socket.on('theater_changed',function(d){var s=document.getElementById('theater-sel');if(s)s.value=d.key;});
 // Menu
 function toggleAmosMenu(){document.getElementById('amos-menu').classList.toggle('open');}
 document.getElementById('topbar-page').textContent=document.title.replace(/^AMOS\s*[—–-]\s*/,'');

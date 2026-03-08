@@ -1,21 +1,57 @@
 {
-  "active": "tehran",
+  "active": "tampa",
   "locations": {
     "tehran": {
       "name": "FOB Tehran",
       "lat": 35.689,
       "lng": 51.312,
-      "ao": {"north": 36.9, "south": 35.3, "east": 52.0, "west": 50.8},
+      "ao": {
+        "north": 36.9,
+        "south": 35.3,
+        "east": 52.0,
+        "west": 50.8
+      },
       "zoom": 10,
-      "description": "Tehran theater — ground ops south Tehran, maritime Caspian Sea"
+      "description": "Tehran theater \u2014 ground ops south Tehran, maritime Caspian Sea"
     },
     "tampa": {
       "name": "MacDill AFB",
       "lat": 27.849,
       "lng": -82.521,
-      "ao": {"north": 28.2, "south": 27.4, "east": -82.1, "west": -82.9},
+      "ao": {
+        "north": 28.2,
+        "south": 27.4,
+        "east": -82.1,
+        "west": -82.9
+      },
       "zoom": 11,
-      "description": "Tampa Bay AO — original AMOS scenario"
+      "description": "Tampa Bay AO \u2014 original AMOS scenario"
+    },
+    "south_china_sea": {
+      "name": "South China Sea",
+      "lat": 15.5,
+      "lng": 114.0,
+      "ao": {
+        "north": 20.0,
+        "south": 10.0,
+        "east": 118.0,
+        "west": 110.0
+      },
+      "zoom": 6,
+      "description": "Indo-Pacific theater \u2014 maritime patrol, FONOPS, multi-carrier ops"
+    },
+    "eastern_europe": {
+      "name": "Eastern Europe",
+      "lat": 50.45,
+      "lng": 30.52,
+      "ao": {
+        "north": 52.0,
+        "south": 48.0,
+        "east": 34.0,
+        "west": 27.0
+      },
+      "zoom": 7,
+      "description": "NATO Eastern Flank \u2014 combined arms, air defense, ISR corridor"
     }
   }
 }

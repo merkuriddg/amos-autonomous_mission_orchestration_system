@@ -27,14 +27,19 @@
         <button class="btn" onclick="loadSessions()" style="margin-left:8px">↻ Refresh</button>
     </div>
     <div id="replay-controls" style="display:none">
+        <div id="replay-map" style="height:400px;margin-bottom:8px;border:1px solid #222"></div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
             <button class="btn" id="btn-play" onclick="replayPlay()">▶ Play</button>
             <button class="btn" id="btn-pause" onclick="replayPause()" style="display:none">⏸ Pause</button>
+            <button class="btn" onclick="setReplaySpeed(0.5)" style="padding:3px 6px;font-size:.7em">0.5x</button>
+            <button class="btn" onclick="setReplaySpeed(1)" style="padding:3px 6px;font-size:.7em">1x</button>
+            <button class="btn" onclick="setReplaySpeed(2)" style="padding:3px 6px;font-size:.7em">2x</button>
+            <button class="btn" onclick="setReplaySpeed(4)" style="padding:3px 6px;font-size:.7em">4x</button>
             <span id="replay-time" style="font-family:monospace;color:#00ff41">T+0s</span>
             <span id="replay-frame" style="color:#888">Frame 0 / 0</span>
         </div>
         <input type="range" id="replay-scrub" min="0" max="0" value="0" style="width:100%" oninput="replayScrub(this.value)">
-        <div id="replay-info" class="scroll-box" style="max-height:300px;margin-top:8px"></div>
+        <div id="replay-info" class="scroll-box" style="max-height:200px;margin-top:8px"></div>
     </div>
 </div>
 
@@ -124,8 +129,16 @@ async function recStop(){
     }
 }
 
-/* ── AAR Replay Player ── */
-let _frames=[]; let _playIdx=0; let _playTimer=null;
+/* ── AAR Replay Player (Phase 8: map-based) ── */
+let _frames=[]; let _playIdx=0; let _playTimer=null; let _replaySpeed=1;
+let _rMap=null; let _rAssetMarkers={}; let _rThreatMarkers={};
+const _rDC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+function _rIcon(c,s){s=s||7;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 6px '+c+'"></div>',iconSize:[s,s],className:''});}
+function initReplayMap(){
+    if(_rMap)return;
+    _rMap=L.map('replay-map',{zoomControl:true}).setView([35.689,51.312],10);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(_rMap);
+}
 async function loadSessions(){
     const rows=await apiFetch('/api/recording/sessions');
     const sel=document.getElementById('replay-sel');
@@ -142,7 +155,18 @@ async function loadReplay(){
     document.getElementById('replay-controls').style.display='';
     document.getElementById('replay-scrub').max=_frames.length-1;
     document.getElementById('replay-scrub').value=0;
+    initReplayMap();
+    setTimeout(function(){_rMap.invalidateSize();},200);
+    // Clear old markers
+    for(var k in _rAssetMarkers){_rMap.removeLayer(_rAssetMarkers[k]);} _rAssetMarkers={};
+    for(var k in _rThreatMarkers){_rMap.removeLayer(_rThreatMarkers[k]);} _rThreatMarkers={};
     _playIdx=0; renderFrame(0);
+    // Auto-fit bounds to first frame
+    var f=_frames[0]; var pts=[];
+    for(var id in (f.assets||{})){var a=f.assets[id];if(a.lat)pts.push([a.lat,a.lng]);}
+    for(var id in (f.threats||{})){var t=f.threats[id];if(t.lat)pts.push([t.lat,t.lng]);}
+    if(pts.length>1)_rMap.fitBounds(pts,{padding:[30,30]});
+    else if(pts.length===1)_rMap.setView(pts[0],10);
 }
 function renderFrame(idx){
     if(idx<0||idx>=_frames.length) return;
@@ -150,25 +174,41 @@ function renderFrame(idx){
     document.getElementById('replay-time').textContent='T+'+f.elapsed+'s';
     document.getElementById('replay-frame').textContent='Frame '+(idx+1)+' / '+_frames.length;
     document.getElementById('replay-scrub').value=idx;
-    const div=document.getElementById('replay-info'); div.innerHTML='';
+    // Update map markers
     const assets=f.assets||{}; const threats=f.threats||{};
-    let html='<div style="color:#00ff41;margin-bottom:4px">ASSETS ('+Object.keys(assets).length+')</div>';
-    for(const[id,a] of Object.entries(assets)){
-        html+='<div style="padding:2px 8px;font-size:0.85em"><span style="color:#4488ff">'+id+'</span> '+a.type+' ['+a.domain+'] '+a.lat.toFixed(4)+','+a.lng.toFixed(4)+' hdg:'+Math.round(a.heading)+'° '+a.status+'</div>';
+    if(_rMap){
+        // Assets
+        var seenA={};
+        for(const[id,a] of Object.entries(assets)){
+            seenA[id]=true;
+            var c=_rDC[a.domain]||'#888';
+            if(_rAssetMarkers[id])_rAssetMarkers[id].setLatLng([a.lat,a.lng]);
+            else _rAssetMarkers[id]=L.marker([a.lat,a.lng],{icon:_rIcon(c)}).bindTooltip(id).addTo(_rMap);
+        }
+        for(var k in _rAssetMarkers){if(!seenA[k]){_rMap.removeLayer(_rAssetMarkers[k]);delete _rAssetMarkers[k];}}
+        // Threats
+        var seenT={};
+        for(const[id,t] of Object.entries(threats)){
+            seenT[id]=true;
+            if(t.lat){if(_rThreatMarkers[id])_rThreatMarkers[id].setLatLng([t.lat,t.lng]);
+            else _rThreatMarkers[id]=L.marker([t.lat,t.lng],{icon:_rIcon('#ff4444',9)}).bindTooltip(id).addTo(_rMap);}
+        }
+        for(var k in _rThreatMarkers){if(!seenT[k]){_rMap.removeLayer(_rThreatMarkers[k]);delete _rThreatMarkers[k];}}
     }
-    html+='<div style="color:#ff4444;margin:6px 0 4px">THREATS ('+Object.keys(threats).length+')</div>';
-    for(const[id,t] of Object.entries(threats)){
-        html+='<div style="padding:2px 8px;font-size:0.85em"><span style="color:#ff4444">'+id+'</span> '+t.type+' '+(t.lat?t.lat.toFixed(4)+','+t.lng.toFixed(4):'?')+'</div>';
-    }
+    // Text info
+    const div=document.getElementById('replay-info'); div.innerHTML='';
+    let html='<span style="color:#00ff41">ASSETS: '+Object.keys(assets).length+'</span> | <span style="color:#ff4444">THREATS: '+Object.keys(threats).length+'</span>';
     div.innerHTML=html;
 }
+function setReplaySpeed(s){_replaySpeed=s;if(_playTimer){replayPause();replayPlay();}}
 function replayPlay(){
     document.getElementById('btn-play').style.display='none';
     document.getElementById('btn-pause').style.display='';
-    _playTimer=setInterval(function(){if(_playIdx<_frames.length-1){_playIdx++;renderFrame(_playIdx);}else{replayPause();}},500);
+    var interval=Math.max(50,500/_replaySpeed);
+    _playTimer=setInterval(function(){if(_playIdx<_frames.length-1){_playIdx++;renderFrame(_playIdx);}else{replayPause();}},interval);
 }
 function replayPause(){
-    clearInterval(_playTimer);
+    clearInterval(_playTimer); _playTimer=null;
     document.getElementById('btn-play').style.display='';
     document.getElementById('btn-pause').style.display='none';
 }

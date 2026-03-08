@@ -7,14 +7,108 @@
     <div class="card stat"><div class="value" id="cy-blocked" style="color:#00ff41">--</div><div class="label">BLOCKED</div></div>
     <div class="card stat"><div class="value" id="cy-ips" style="color:#ffaa00">--</div><div class="label">BLOCKED IPs</div></div>
 </div>
-<div class="card"><h3>BLOCK IP <input id="block-ip" placeholder="10.x.x.x" style="background:#0a0a0a;color:#ff4444;border:1px solid #333;padding:4px;margin:0 8px;font-family:inherit">
+<div class="grid-2">
+ <!-- Network Topology -->
+ <div class="card">
+  <h3>NETWORK TOPOLOGY <span class="badge badge-red" id="topo-attacks">0</span></h3>
+  <canvas id="topo-canvas" width="460" height="320" style="width:100%;background:#0a0a0a;border:1px solid #222"></canvas>
+ </div>
+ <!-- Kill Chain -->
+ <div class="card">
+  <h3>INTRUSION KILL CHAIN</h3>
+  <div id="killchain" style="display:flex;gap:2px;margin-bottom:10px"></div>
+  <h3>THREAT BREAKDOWN</h3>
+  <div id="severity-bars"></div>
+ </div>
+</div>
+<div class="card" style="margin-top:8px"><h3>BLOCK IP <input id="block-ip" placeholder="10.x.x.x" style="background:#0a0a0a;color:#ff4444;border:1px solid #333;padding:4px;margin:0 8px;font-family:inherit">
     <button class="btn btn-red" onclick="blockIP()">BLOCK</button></h3></div>
-<div class="card"><h3>EVENT FEED</h3><div class="scroll-box" style="max-height:500px">
+<div class="card"><h3>EVENT FEED</h3><div class="scroll-box" style="max-height:350px">
     <table><thead><tr><th>TIME</th><th>TYPE</th><th>SOURCE</th><th>TARGET</th><th>SEV</th><th>STATUS</th><th>ACT</th></tr></thead>
     <tbody id="cy-tbody"></tbody></table></div></div>
 {% endblock %}
 {% block scripts %}
 <script>
+var _topoNodes={}, _topoLinks=[];
+// ═══ Network Topology Canvas ═══
+var _nodePositions={
+    hq:{x:230,y:40}, mesh1:{x:120,y:120}, mesh2:{x:340,y:120}, sat:{x:380,y:40},
+    gnd:{x:60,y:220}, air:{x:170,y:220}, ew:{x:290,y:220}, sig:{x:400,y:220},
+    sea:{x:230,y:280}, ext:{x:60,y:40}
+};
+var _statusColors={secure:'#00ff41',warning:'#ffaa00',under_attack:'#ff4444',compromised:'#ff0000'};
+function drawTopology(data){
+    var c=document.getElementById('topo-canvas'); if(!c)return;
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+    // Draw links
+    (data.links||[]).forEach(function(lnk){
+        var f=_nodePositions[lnk.from], t=_nodePositions[lnk.to];
+        if(!f||!t)return;
+        ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(t.x,t.y);
+        ctx.strokeStyle=lnk.attack?'#ff4444':'#333'; ctx.lineWidth=lnk.attack?2:1;
+        if(lnk.attack){ctx.setLineDash([4,4]);}else{ctx.setLineDash([]);}
+        ctx.stroke(); ctx.setLineDash([]);
+        // Animated pulse on attack links
+        if(lnk.attack){
+            var mx=(f.x+t.x)/2, my=(f.y+t.y)/2;
+            ctx.beginPath(); ctx.arc(mx,my,4,0,Math.PI*2);
+            ctx.fillStyle='#ff4444'; ctx.fill();
+        }
+    });
+    // Draw nodes
+    (data.nodes||[]).forEach(function(n){
+        var p=_nodePositions[n.id]; if(!p)return;
+        var col=_statusColors[n.status]||'#888';
+        // Glow for attacked nodes
+        if(n.status==='under_attack'||n.status==='compromised'){
+            ctx.beginPath(); ctx.arc(p.x,p.y,22,0,Math.PI*2);
+            ctx.fillStyle=col+'33'; ctx.fill();
+        }
+        // Node circle
+        ctx.beginPath(); ctx.arc(p.x,p.y,14,0,Math.PI*2);
+        ctx.fillStyle='#111'; ctx.fill();
+        ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+        // Label
+        ctx.fillStyle=col; ctx.font='9px Courier New'; ctx.textAlign='center';
+        ctx.fillText(n.name,p.x,p.y+4);
+        // Type label below
+        ctx.fillStyle='#555'; ctx.font='7px Courier New';
+        ctx.fillText(n.type,p.x,p.y+26);
+    });
+    document.getElementById('topo-attacks').textContent=data.active_attacks||0;
+}
+// ═══ Kill Chain ═══
+function drawKillchain(stages){
+    var div=document.getElementById('killchain'); div.innerHTML='';
+    var maxC=Math.max.apply(null,stages.map(function(s){return s.count;}).concat([1]));
+    var kcColors=['#4488ff','#00ccff','#ffaa00','#ff8800','#ff4444','#ff0000'];
+    stages.forEach(function(s,i){
+        var pct=Math.round(s.count/maxC*100);
+        var col=kcColors[i]||'#888';
+        div.innerHTML+='<div style="flex:1;text-align:center;padding:4px;background:#111;border:1px solid '+col+'44;border-radius:3px">' +
+            '<div style="font-size:.6em;color:'+col+';letter-spacing:1px">'+s.name+'</div>' +
+            '<div style="font-size:1.4em;color:'+col+';font-weight:bold">'+s.count+'</div>' +
+            '<div style="height:4px;background:#222;margin-top:4px;border-radius:2px">' +
+            '<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:2px"></div></div></div>';
+    });
+}
+// ═══ Severity Breakdown ═══
+function drawSeverity(events){
+    var counts={critical:0,high:0,medium:0,low:0};
+    (Array.isArray(events)?events:[]).forEach(function(e){if(!e.blocked&&counts.hasOwnProperty(e.severity))counts[e.severity]++;});
+    var total=Math.max(1,counts.critical+counts.high+counts.medium+counts.low);
+    var cols={critical:'#ff4444',high:'#ff8800',medium:'#ffaa00',low:'#888'};
+    var div=document.getElementById('severity-bars'); div.innerHTML='';
+    for(var sev in counts){
+        var pct=Math.round(counts[sev]/total*100);
+        div.innerHTML+='<div style="display:flex;align-items:center;gap:6px;margin:3px 0;font-size:.75em">' +
+            '<span style="width:60px;color:'+cols[sev]+'">'+sev.toUpperCase()+'</span>' +
+            '<div style="flex:1;height:12px;background:#1a1a1a;border-radius:2px">' +
+            '<div style="height:100%;width:'+pct+'%;background:'+cols[sev]+';border-radius:2px;transition:width .5s"></div></div>' +
+            '<span style="color:#888;width:30px;text-align:right">'+counts[sev]+'</span></div>';
+    }
+}
+// ═══ Main Refresh ═══
 async function refreshCyber(){
     const s=await apiFetch('/api/cyber/summary');
     document.getElementById('cy-total').textContent=s.total_events||0;
@@ -22,11 +116,15 @@ async function refreshCyber(){
     document.getElementById('cy-blocked').textContent=s.blocked||0;
     document.getElementById('cy-ips').textContent=s.blocked_ips||0;
     const events=await apiFetch('/api/cyber/events');
+    drawSeverity(events);
     const tbody=document.getElementById('cy-tbody'); tbody.innerHTML='';
     (Array.isArray(events)?events:[]).reverse().forEach(function(e){
         const sc={critical:'#ff4444',high:'#ff8800',medium:'#ffaa00',low:'#888'}[e.severity]||'#666';
         tbody.innerHTML+='<tr style="'+(e.blocked?'opacity:0.4':'')+'"><td>'+(e.timestamp||'').substring(11,19)+'</td><td>'+e.type+'</td><td style="color:#ff4444">'+e.source_ip+'</td><td>'+e.target+'</td><td style="color:'+sc+'">'+e.severity.toUpperCase()+'</td><td>'+(e.blocked?'<span class="badge badge-green">BLOCKED</span>':'<span class="badge badge-red">ACTIVE</span>')+'</td><td>'+(e.blocked?'':'<button class="btn btn-red" style="padding:2px 6px" onclick="blockEvt(\''+e.id+'\')">BLOCK</button>')+'</td></tr>';
     });
+    // Topology + Kill Chain
+    apiFetch('/api/cyber/topology').then(drawTopology).catch(function(){});
+    apiFetch('/api/cyber/killchain').then(drawKillchain).catch(function(){});
 }
 async function blockIP(){const ip=document.getElementById('block-ip').value;if(ip){await apiPost('/api/cyber/block',{ip:ip});refreshCyber();}}
 async function blockEvt(id){await apiPost('/api/cyber/block',{event_id:id});refreshCyber();}

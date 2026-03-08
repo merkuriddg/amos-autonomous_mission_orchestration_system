@@ -44,6 +44,14 @@
    <button class="btn" onclick="setSpd(10)">10x</button>
    <span id="sim-clk" style="margin-left:10px;color:#888">T+0s</span>
   </div>
+  <div class="card"><h3>MAP OVERLAYS</h3>
+   <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.75em">
+    <label style="color:#ff4444;cursor:pointer"><input type="checkbox" id="ov-heat" onchange="toggleOverlay('heat')"> Threat Heatmap</label>
+    <label style="color:#ffaa00;cursor:pointer"><input type="checkbox" id="ov-engage" onchange="toggleOverlay('engage')"> Engagement Zones</label>
+    <label style="color:#00ffff;cursor:pointer"><input type="checkbox" id="ov-sensor" onchange="toggleOverlay('sensor')"> Sensor Coverage</label>
+    <label style="color:#00ff41;cursor:pointer"><input type="checkbox" id="ov-sector" onchange="toggleOverlay('sector')"> Domain Sectors</label>
+   </div>
+  </div>
  </div>
  <div class="right-col">
   <div class="cpanel">
@@ -212,6 +220,60 @@ window.onSimUpdate=function(d){
 };
 function setSpd(s){apiPost('/api/sim/speed',{speed:s});}
 refresh();setInterval(refresh,2500);
+
+// ═══ Phase 8: Map Overlays ═══
+var _ovLayers={heat:[],engage:[],sensor:[],sector:[]};
+var _ovActive={heat:false,engage:false,sensor:false,sector:false};
+var _heatLayer=null;
+function toggleOverlay(key){_ovActive[key]=document.getElementById('ov-'+key).checked;if(_ovActive[key])refreshOverlay(key);else clearOvLayer(key);}
+function clearOvLayer(key){
+ if(key==='heat'&&_heatLayer){map.removeLayer(_heatLayer);_heatLayer=null;return;}
+ _ovLayers[key].forEach(function(l){map.removeLayer(l);});_ovLayers[key]=[];
+}
+async function refreshOverlay(key){
+ clearOvLayer(key);
+ if(!_ovActive[key])return;
+ if(key==='heat'){
+  var d=await apiFetch('/api/overlays/heatmap');
+  if(d.points&&d.points.length&&typeof L.heatLayer==='function'){
+   var pts=d.points.map(function(p){return[p.lat,p.lng,p.intensity||0.5];});
+   _heatLayer=L.heatLayer(pts,{radius:25,blur:20,maxZoom:14,gradient:{0.2:'blue',0.4:'cyan',0.6:'yellow',0.8:'orange',1.0:'red'}}).addTo(map);
+  }
+ } else if(key==='engage'){
+  var zones=await apiFetch('/api/overlays/engagement-zones');
+  var dc={air:'#ff444466',ground:'#00ff4166',maritime:'#ff44ff66'};
+  zones.forEach(function(z){
+   var c=L.circle([z.center.lat,z.center.lng],{radius:z.radius_deg*111000,color:dc[z.domain]||'#ff444466',fillOpacity:0.08,weight:1,dashArray:'4,4'}).bindTooltip(z.asset_id+' — '+z.weapons.join(', ')).addTo(map);
+   _ovLayers.engage.push(c);
+  });
+ } else if(key==='sensor'){
+  var arcs=await apiFetch('/api/overlays/sensor-coverage');
+  arcs.forEach(function(a){
+   var pts=[];
+   var lat=a.center.lat,lng=a.center.lng,r=a.range_deg,arc=a.arc_deg,brg=a.bearing;
+   if(arc>=360){var c=L.circle([lat,lng],{radius:r*111000,color:a.color,fillOpacity:0.05,weight:1}).bindTooltip(a.asset_id+' '+a.sensor).addTo(map);_ovLayers.sensor.push(c);return;}
+   pts.push([lat,lng]);
+   var start=brg-arc/2,step=arc/12;
+   for(var i=0;i<=12;i++){var ang=(start+step*i)*Math.PI/180;pts.push([lat+r*Math.cos(ang),lng+r*Math.sin(ang)]);}
+   pts.push([lat,lng]);
+   var poly=L.polygon(pts,{color:a.color,fillOpacity:0.06,weight:1}).bindTooltip(a.asset_id+' '+a.sensor).addTo(map);
+   _ovLayers.sensor.push(poly);
+  });
+ } else if(key==='sector'){
+  var secs=await apiFetch('/api/overlays/sectors');
+  var dc2={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+  secs.forEach(function(s){
+   var rect=L.rectangle([[s.bounds.south,s.bounds.west],[s.bounds.north,s.bounds.east]],{color:dc2[s.domain]||'#888',fillOpacity:0.04,weight:1,dashArray:'6,4'}).bindTooltip(s.domain.toUpperCase()+' sector ('+s.asset_count+' assets)').addTo(map);
+   _ovLayers.sector.push(rect);
+  });
+ }
+}
+setInterval(function(){for(var k in _ovActive){if(_ovActive[k])refreshOverlay(k);}},5000);
+
+// ═══ Phase 8: Theater switching ═══
+socket.on('theater_changed',function(d){
+ map.flyTo([d.lat,d.lng],d.zoom||10,{duration:2});
+});
 
   // Expose map for AMOS Phase 3
   (function(){

@@ -2390,6 +2390,39 @@ def api_overlays_engagement_zones():
             "radius_deg": rng, "weapons": a["weapons"]})
     return jsonify(zones)
 
+# ── Sensor Coverage Overlay ──
+@app.route("/api/overlays/sensor-coverage")
+@login_required
+def api_overlays_sensor_coverage():
+    """Sensor coverage arcs per asset."""
+    _SENSOR_PROFILES = {
+        "AESA_RADAR": {"range_deg": 0.04, "arc_deg": 120, "color": "#00ffff"},
+        "AEW_RADAR": {"range_deg": 0.06, "arc_deg": 360, "color": "#00ccff"},
+        "EO/IR": {"range_deg": 0.015, "arc_deg": 60, "color": "#ffaa00"},
+        "EW_JAMMER": {"range_deg": 0.03, "arc_deg": 360, "color": "#ff00ff"},
+        "SIGINT": {"range_deg": 0.035, "arc_deg": 360, "color": "#ff66ff"},
+        "ELINT": {"range_deg": 0.03, "arc_deg": 360, "color": "#cc66ff"},
+        "COMINT": {"range_deg": 0.025, "arc_deg": 360, "color": "#9966ff"},
+        "LIDAR": {"range_deg": 0.01, "arc_deg": 90, "color": "#00ff88"},
+        "SONAR": {"range_deg": 0.02, "arc_deg": 360, "color": "#4488ff"},
+        "CAMERA": {"range_deg": 0.008, "arc_deg": 45, "color": "#ffcc00"},
+        "GPS": {"range_deg": 0, "arc_deg": 0, "color": "#888"},
+        "IMU": {"range_deg": 0, "arc_deg": 0, "color": "#888"},
+    }
+    arcs = []
+    for a in sim_assets.values():
+        for sensor in a.get("sensors", []):
+            prof = _SENSOR_PROFILES.get(sensor)
+            if not prof or prof["range_deg"] == 0:
+                continue
+            arcs.append({
+                "asset_id": a["id"], "sensor": sensor, "domain": a["domain"],
+                "center": {"lat": a["position"]["lat"], "lng": a["position"]["lng"]},
+                "bearing": a["heading_deg"], "range_deg": prof["range_deg"],
+                "arc_deg": prof["arc_deg"], "color": prof["color"]
+            })
+    return jsonify(arcs)
+
 # ── SITREP Generator ──
 @app.route("/api/sitrep/generate", methods=["POST"])
 @login_required
@@ -2720,11 +2753,132 @@ def api_chat_history():
 def api_asset_locks():
     return jsonify(_asset_locks)
 
+# ═══════════════════════════════════════════════════════════
+#  PHASE 8: CYBER OPS CENTER + MULTI-THEATER
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/cyber/topology")
+@login_required
+def api_cyber_topology():
+    """Network topology graph for cyber ops visualization."""
+    # Build nodes from actual system components
+    nodes = [
+        {"id": "hq", "name": "HQ-NET", "type": "command", "status": "secure"},
+        {"id": "mesh1", "name": "MESH-1", "type": "mesh", "status": "secure"},
+        {"id": "mesh2", "name": "MESH-2", "type": "mesh", "status": "secure"},
+        {"id": "sat", "name": "SAT-COM", "type": "comms", "status": "secure"},
+        {"id": "gnd", "name": "GND-CTRL", "type": "control", "status": "secure"},
+        {"id": "air", "name": "AIR-NET", "type": "control", "status": "secure"},
+        {"id": "ew", "name": "EW-NODE", "type": "sensor", "status": "secure"},
+        {"id": "sig", "name": "SIGINT", "type": "sensor", "status": "secure"},
+        {"id": "sea", "name": "MAR-NET", "type": "control", "status": "secure"},
+        {"id": "ext", "name": "EXTERN", "type": "external", "status": "warning"},
+    ]
+    links = [
+        {"from": "hq", "to": "mesh1", "active": True},
+        {"from": "hq", "to": "mesh2", "active": True},
+        {"from": "hq", "to": "sat", "active": True},
+        {"from": "mesh1", "to": "gnd", "active": True},
+        {"from": "mesh1", "to": "air", "active": True},
+        {"from": "mesh2", "to": "ew", "active": True},
+        {"from": "mesh2", "to": "sig", "active": True},
+        {"from": "mesh2", "to": "sea", "active": True},
+        {"from": "sat", "to": "air", "active": True},
+        {"from": "ext", "to": "hq", "active": True, "attack": False},
+    ]
+    # Mark nodes under attack based on recent cyber events
+    recent = cyber_events[-50:]
+    attacked_targets = set()
+    for e in recent:
+        if not e.get("blocked") and e.get("severity") in ("high", "critical"):
+            attacked_targets.add(e.get("target", ""))
+    # Map asset targets to network nodes
+    for n in nodes:
+        if n["id"] == "ext":
+            has_active = any(not e.get("blocked") for e in recent)
+            n["status"] = "compromised" if has_active else "warning"
+        elif n["id"] in ("gnd", "air", "sea"):
+            domain_assets = {a["id"] for a in sim_assets.values()
+                            if a["domain"] == {"gnd": "ground", "air": "air", "sea": "maritime"}.get(n["id"], "")}
+            if domain_assets & attacked_targets:
+                n["status"] = "under_attack"
+    # Mark attack links
+    for lnk in links:
+        if lnk["from"] == "ext":
+            lnk["attack"] = any(not e.get("blocked") for e in recent)
+    return jsonify({"nodes": nodes, "links": links, "active_attacks": len(attacked_targets)})
+
+@app.route("/api/cyber/killchain")
+@login_required
+def api_cyber_killchain():
+    """Map cyber events to intrusion kill chain stages."""
+    stages = [
+        {"id": "recon", "name": "RECON", "types": ["port_scan", "dns_exfil"], "events": [], "count": 0},
+        {"id": "weaponize", "name": "WEAPONIZE", "types": [], "events": [], "count": 0},
+        {"id": "deliver", "name": "DELIVER", "types": ["brute_force", "c2_beacon"], "events": [], "count": 0},
+        {"id": "exploit", "name": "EXPLOIT", "types": ["lateral_move"], "events": [], "count": 0},
+        {"id": "control", "name": "C2", "types": ["c2_beacon"], "events": [], "count": 0},
+        {"id": "execute", "name": "EXECUTE", "types": ["dns_exfil", "lateral_move"], "events": [], "count": 0},
+    ]
+    stage_map = {}
+    for s in stages:
+        for t in s["types"]:
+            stage_map.setdefault(t, []).append(s)
+    for e in cyber_events[-100:]:
+        etype = e.get("type", "")
+        for s in stage_map.get(etype, []):
+            s["count"] += 1
+            if len(s["events"]) < 5:
+                s["events"].append({"id": e["id"], "type": etype,
+                    "severity": e.get("severity"), "blocked": e.get("blocked", False)})
+    return jsonify(stages)
+
+# ── Theater Operations ──
+@app.route("/api/theater/list")
+@login_required
+def api_theater_list():
+    """List all available theaters."""
+    data = _load_locations()
+    theaters = []
+    for key, loc in data.get("locations", {}).items():
+        theaters.append({"key": key, "name": loc.get("name", key),
+            "lat": loc.get("lat", 0), "lng": loc.get("lng", 0),
+            "zoom": loc.get("zoom", 10), "description": loc.get("description", ""),
+            "active": key == data.get("active", "")})
+    return jsonify(theaters)
+
+@app.route("/api/theater/switch", methods=["POST"])
+@login_required
+def api_theater_switch():
+    """Switch active theater — updates map center for all clients."""
+    d = request.json or {}
+    key = d.get("key", "")
+    data = _load_locations()
+    if key not in data.get("locations", {}):
+        return jsonify({"error": "Theater not found"}), 404
+    loc = data["locations"][key]
+    data["active"] = key
+    _save_locations(data)
+    # Update in-memory base position
+    base_pos["lat"] = loc["lat"]
+    base_pos["lng"] = loc["lng"]
+    base_pos["name"] = loc.get("name", key)
+    # Broadcast to all clients
+    socketio.emit("theater_changed", {
+        "key": key, "name": loc.get("name", key),
+        "lat": loc["lat"], "lng": loc["lng"],
+        "zoom": loc.get("zoom", 10)
+    })
+    c = ctx()
+    aar_events.append({"type": "theater_switch", "timestamp": now_iso(),
+        "elapsed": sim_clock["elapsed_sec"],
+        "details": f"Theater switched to {loc.get('name', key)} by {c['name']}"})
+    return jsonify({"status": "ok", "theater": key, "name": loc.get("name", key)})
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 7")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 8")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)
