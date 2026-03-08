@@ -1,26 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Countermeasures{% endblock %}
 {% block content %}
-<div class="card"><h3>COUNTERMEASURES — Engage Hostile Contacts</h3></div>
-<div class="grid-2">
-    <div class="card"><h3>THREAT LIST</h3><div class="scroll-box" style="max-height:500px" id="cm-threats"></div></div>
-    <div class="card"><h3>ENGAGEMENT LOG</h3><div class="scroll-box" style="max-height:500px" id="cm-log"></div></div>
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">COUNTERMEASURES — Engage Hostile Contacts</h2>
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="cm-total">--</div><div class="label">TOTAL THREATS</div></div>
+  <div class="card stat"><div class="value" id="cm-active" style="color:#ff4444">--</div><div class="label">ACTIVE</div></div>
+  <div class="card stat"><div class="value" id="cm-neutralized" style="color:#00ff41">--</div><div class="label">NEUTRALIZED</div></div>
+  <div class="card stat"><div class="value" id="cm-engagements" style="color:#ffaa00">--</div><div class="label">ENGAGEMENTS</div></div>
+ </div>
+ <div class="grid-2">
+  <div class="card"><h3>THREAT LIST</h3><div class="scroll-box" style="max-height:500px" id="cm-threats"></div></div>
+  <div class="card"><h3>ENGAGEMENT LOG</h3><div class="scroll-box" style="max-height:500px" id="cm-log"></div></div>
+ </div>
+ <div class="card" style="margin-top:8px"><h3>ENGAGEMENT ANALYTICS</h3>
+  <div class="grid-3" id="cm-analytics"></div>
+ </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 async function refreshCM(){
-    const threats=await apiFetch('/api/threats');
-    const div=document.getElementById('cm-threats'); div.innerHTML='';
-    for(const[id,t]of Object.entries(threats)){
-        const n=t.neutralized;
+    var threats=await apiFetch('/api/threats');
+    var entries=Object.entries(threats);
+    var active=0,neut=0;
+    entries.forEach(function(e){if(e[1].neutralized)neut++;else active++;});
+    document.getElementById('cm-total').textContent=entries.length;
+    document.getElementById('cm-active').textContent=active;
+    document.getElementById('cm-neutralized').textContent=neut;
+    var div=document.getElementById('cm-threats'); div.innerHTML='';
+    for(var[id,t]of entries){
+        var n=t.neutralized;
         div.innerHTML+='<div style="border:1px solid '+(n?'#333':'#ff4444')+';padding:10px;margin:4px 0;'+(n?'opacity:0.4':'')+'"><strong style="color:'+(n?'#666':'#ff4444')+'">'+id+'</strong> — '+t.type+(n?' [NEUTRALIZED]':'')+(!n?'<div style="margin-top:6px"><button class="btn btn-yellow" onclick="engage(\''+id+'\',\'jam\')">JAM</button> <button class="btn btn-red" onclick="engage(\''+id+'\',\'intercept\')">INTERCEPT</button> <button class="btn" onclick="engage(\''+id+'\',\'cyber_block\')">CYBER BLOCK</button></div>':'')+'</div>';
     }
-    const log=await apiFetch('/api/cm/log');
-    const logDiv=document.getElementById('cm-log'); logDiv.innerHTML='';
-    (Array.isArray(log)?log:[]).reverse().forEach(function(l){
+    var log=await apiFetch('/api/cm/log');
+    var arr=Array.isArray(log)?log:[];
+    document.getElementById('cm-engagements').textContent=arr.length;
+    var logDiv=document.getElementById('cm-log'); logDiv.innerHTML='';
+    arr.slice().reverse().forEach(function(l){
         logDiv.innerHTML+='<div style="border-left:3px solid #00ff41;padding:6px 10px;margin:4px 0"><strong>'+l.type.toUpperCase()+'</strong> -> '+l.threat_id+' by '+l.operator+' @ '+(l.timestamp||'').substring(11,19)+'</div>';
     });
+    var byType={};
+    arr.forEach(function(l){var t=l.type||'unknown';byType[t]=(byType[t]||0)+1;});
+    var aDiv=document.getElementById('cm-analytics');
+    var aH='';
+    for(var tp in byType){
+        var pct=entries.length?Math.round(byType[tp]/Math.max(1,arr.length)*100):0;
+        aH+='<div style="text-align:center;padding:8px"><div style="font-size:1.6em;font-weight:bold;color:#ffaa00">'+byType[tp]+'</div><div style="color:#888;font-size:.72em">'+tp.toUpperCase()+'</div><div style="color:#555;font-size:.65em">'+pct+'% of engagements</div></div>';
+    }
+    if(entries.length){
+        var neutPct=Math.round(neut/entries.length*100);
+        aH+='<div style="text-align:center;padding:8px"><div style="font-size:1.6em;font-weight:bold;color:'+(neutPct>60?'#00ff41':'#ffaa00')+'">'+neutPct+'%</div><div style="color:#888;font-size:.72em">NEUTRALIZATION RATE</div></div>';
+    }
+    aDiv.innerHTML=aH||'<div style="color:#555;padding:12px">No engagements yet</div>';
 }
 async function engage(tid,type){await apiPost('/api/cm/engage',{threat_id:tid,type:type});refreshCM();}
 refreshCM(); setInterval(refreshCM,3000);

@@ -57,7 +57,13 @@ async function refreshContested(){
         return '<div style="padding:3px 0;border-bottom:1px solid #222;color:#ff00ff">'+e.asset_id+' | Tier '+e.from_tier+'→'+e.to_tier+' | '+e.reason+' | '+(e.timestamp||'').substring(11,19)+'</div>';
     }).join('')||'<div style="color:#00ff41">No escalations</div>';
 }
-async function addGPS(){const lat=parseFloat(document.getElementById('gps-lat').value)||35.689;const lng=parseFloat(document.getElementById('gps-lng').value)||51.312;
+async function addGPS(){
+ const lat=parseFloat(document.getElementById('gps-lat').value)||35.689;
+ const lng=parseFloat(document.getElementById('gps-lng').value)||51.312;
+ const rad=parseFloat(document.getElementById('gps-rad').value)||5;
+ await apiPost('/api/contested/gps-zone',{lat:lat,lng:lng,radius_nm:rad});
+ refreshContested();
+}
 refreshContested(); setInterval(refreshContested,3000);
 </script>
 {% endblock %}

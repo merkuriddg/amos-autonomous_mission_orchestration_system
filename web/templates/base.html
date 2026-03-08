@@ -205,7 +205,7 @@ socket.on('amos_alerts',function(alerts){
  });
  while(c.children.length>5) c.removeChild(c.firstChild);
 });
-function apiFetch(u){return fetch(u).then(r=>r.json());}
+function apiFetch(u,o){return fetch(u,o).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
 // Theater selector
 function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
@@ -304,8 +304,8 @@ function toggleVoice(){
  _sr.start();_recording=true;btn.classList.add('recording');
 }
 </script>
-{% block scripts %}{% endblock %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block scripts %}{% endblock %}
 
 <!-- AMOS Phase 3 UI -->
 <div id="amos-modal-overlay" onclick="AMOS.modal.close()">

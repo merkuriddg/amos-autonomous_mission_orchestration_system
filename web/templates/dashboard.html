@@ -1,31 +1,73 @@
 {% extends "base.html" %}
 {% block title %}Digital Twin{% endblock %}
+{% block head %}<style>
+.twin-row{display:flex;align-items:center;gap:0;padding:4px 0;border-bottom:1px solid #111;font-size:.78em}
+.twin-row span{padding:0 4px}
+</style>{% endblock %}
 {% block content %}
-<div class="card"><h3>PLATOON DIGITAL TWIN</h3></div>
-<div class="grid-3" style="margin-bottom:10px">
-    <div class="card stat"><div class="value" id="d-air" style="color:#00aaff">--</div><div class="label">AIR</div></div>
-    <div class="card stat"><div class="value" id="d-gnd" style="color:#00ff41">--</div><div class="label">GROUND</div></div>
-    <div class="card stat"><div class="value" id="d-sea" style="color:#ff44ff">--</div><div class="label">MARITIME</div></div>
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">PLATOON DIGITAL TWIN</h2>
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="d-total">--</div><div class="label">TOTAL ASSETS</div></div>
+  <div class="card stat"><div class="value" id="d-air" style="color:#00aaff">--</div><div class="label">AIR</div></div>
+  <div class="card stat"><div class="value" id="d-gnd" style="color:#00ff41">--</div><div class="label">GROUND</div></div>
+  <div class="card stat"><div class="value" id="d-sea" style="color:#ff44ff">--</div><div class="label">MARITIME</div></div>
+ </div>
+ <div class="grid-2">
+  <div class="card"><h3>DOMAIN BREAKDOWN</h3><canvas id="domain-chart" height="180"></canvas></div>
+  <div class="card"><h3>FLEET SUPPLY OVERVIEW</h3><div id="fleet-supply"></div></div>
+ </div>
+ <div class="card" style="margin-top:8px"><h3>ASSET ROSTER</h3>
+  <div class="scroll-box" style="max-height:500px">
+   <div style="display:flex;padding:3px 0;border-bottom:1px solid #333;font-size:.7em;color:#666">
+    <span style="width:110px;padding:0 4px">CALLSIGN</span><span style="width:80px;padding:0 4px">TYPE</span><span style="width:60px;padding:0 4px">DOM</span>
+    <span style="width:55px;padding:0 4px">ROLE</span><span style="width:35px;padding:0 4px">T</span><span style="width:55px;padding:0 4px">BATT</span>
+    <span style="width:55px;padding:0 4px">COMMS</span><span style="width:55px;padding:0 4px">FUEL</span><span style="width:50px;padding:0 4px">AMMO</span>
+    <span style="width:55px;padding:0 4px">SPD</span><span style="flex:1;padding:0 4px">STATUS</span>
+   </div>
+   <div id="twin-tbody"></div>
+  </div>
+ </div>
 </div>
-<div class="card"><div class="scroll-box" style="max-height:600px">
-    <table><thead><tr><th>CALLSIGN</th><th>TYPE</th><th>DOMAIN</th><th>ROLE</th><th>TIER</th><th>LAT</th><th>LNG</th><th>SPD</th><th>BATT</th><th>COMMS</th><th>STATUS</th></tr></thead>
-    <tbody id="twin-tbody"></tbody></table>
-</div></div>
 {% endblock %}
 {% block scripts %}
 <script>
+var domChart=null;
 async function refreshTwin(){
-    const assets=await apiFetch('/api/assets');
-    const summary=await apiFetch('/api/assets/summary');
-    document.getElementById('d-air').textContent=summary.by_domain.air||0;
-    document.getElementById('d-gnd').textContent=summary.by_domain.ground||0;
-    document.getElementById('d-sea').textContent=summary.by_domain.maritime||0;
-    const tbody=document.getElementById('twin-tbody'); tbody.innerHTML='';
-    const c={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
-    for(const[id,a]of Object.entries(assets)){
-        tbody.innerHTML+='<tr><td style="color:'+c[a.domain]+'">'+id+'</td><td>'+a.type+'</td><td>'+a.domain+'</td><td>'+a.role+'</td><td>T'+a.autonomy_tier+'</td><td>'+a.position.lat.toFixed(4)+'</td><td>'+a.position.lng.toFixed(4)+'</td><td>'+a.speed_kts+' kts</td><td>'+a.health.battery_pct+'%</td><td>'+a.health.comms_strength+'%</td><td><span class="badge badge-green">'+a.status+'</span></td></tr>';
-    }
+ var assets=await apiFetch('/api/assets');
+ var summary=await apiFetch('/api/assets/summary');
+ var entries=Object.entries(assets);
+ document.getElementById('d-total').textContent=entries.length;
+ document.getElementById('d-air').textContent=summary.by_domain.air||0;
+ document.getElementById('d-gnd').textContent=summary.by_domain.ground||0;
+ document.getElementById('d-sea').textContent=summary.by_domain.maritime||0;
+ if(domChart) domChart.destroy();
+ var dL=Object.keys(summary.by_domain),dV=Object.values(summary.by_domain);
+ var dC=dL.map(function(d){return d==='air'?'#00aaff':d==='ground'?'#00ff41':d==='maritime'?'#ff44ff':'#888';});
+ domChart=new Chart(document.getElementById('domain-chart'),{type:'doughnut',data:{labels:dL,datasets:[{data:dV,backgroundColor:dC}]},
+  options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:10}}}}}});
+ var tF=0,tA=0,lF=0,n=0;
+ entries.forEach(function(e){var s=e[1].supplies||{};if(s.fuel_pct!=null){tF+=s.fuel_pct;tA+=s.ammo_rounds||0;n++;if(s.fuel_pct<25)lF++;}});
+ var aF=n?Math.round(tF/n):0,aA=n?Math.round(tA/n):0;
+ var fc=aF>50?'#00ff41':aF>20?'#ffaa00':'#ff4444';
+ document.getElementById('fleet-supply').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">'+
+  '<div style="text-align:center"><div style="font-size:2em;font-weight:bold;color:'+fc+'">'+aF+'%</div><div style="color:#888;font-size:.72em">AVG FUEL</div></div>'+
+  '<div style="text-align:center"><div style="font-size:2em;font-weight:bold;color:#ffaa00">'+aA+'</div><div style="color:#888;font-size:.72em">AVG AMMO</div></div>'+
+  '</div><div style="font-size:.78em;color:#888;margin-top:8px;text-align:center">Low Fuel (&lt;25%): <span style="color:#ff4444">'+lF+'</span> | Tracked: '+n+'</div>';
+ var c={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};var h='';
+ entries.forEach(function(e){var id=e[0],a=e[1],sup=a.supplies||{};
+  var fP=sup.fuel_pct!=null?sup.fuel_pct.toFixed(0)+'%':'--';
+  var fC=sup.fuel_pct>50?'#00ff41':sup.fuel_pct>20?'#ffaa00':'#ff4444';
+  h+='<div class="twin-row"><span style="width:110px;color:'+(c[a.domain]||'#888')+';font-weight:bold">'+id+'</span>'+
+   '<span style="width:80px;color:#888">'+a.type+'</span><span style="width:60px">'+a.domain+'</span>'+
+   '<span style="width:55px;color:#888">'+a.role+'</span><span style="width:35px;color:#4488ff">T'+a.autonomy_tier+'</span>'+
+   '<span style="width:55px;color:'+(a.health.battery_pct>50?'#00ff41':'#ffaa00')+'">'+Math.round(a.health.battery_pct)+'%</span>'+
+   '<span style="width:55px;color:'+(a.health.comms_strength>50?'#00ff41':'#ffaa00')+'">'+Math.round(a.health.comms_strength)+'%</span>'+
+   '<span style="width:55px;color:'+fC+'">'+fP+'</span><span style="width:50px;color:#ffaa00">'+(sup.ammo_rounds||0)+'</span>'+
+   '<span style="width:55px;color:#888">'+a.speed_kts+'kt</span><span style="flex:1"><span class="badge badge-green">'+a.status+'</span></span></div>';
+ });
+ document.getElementById('twin-tbody').innerHTML=h;
 }
-refreshTwin(); setInterval(refreshTwin,3000);
+refreshTwin();setInterval(refreshTwin,3000);
 </script>
 {% endblock %}

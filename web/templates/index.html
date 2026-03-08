@@ -50,6 +50,7 @@
     <label style="color:#ffaa00;cursor:pointer"><input type="checkbox" id="ov-engage" onchange="toggleOverlay('engage')"> Engagement Zones</label>
     <label style="color:#00ffff;cursor:pointer"><input type="checkbox" id="ov-sensor" onchange="toggleOverlay('sensor')"> Sensor Coverage</label>
     <label style="color:#00ff41;cursor:pointer"><input type="checkbox" id="ov-sector" onchange="toggleOverlay('sector')"> Domain Sectors</label>
+    <label style="color:#66ccff;cursor:pointer"><input type="checkbox" id="ov-weather" onchange="toggleOverlay('weather')"> Weather</label>
    </div>
   </div>
  </div>
@@ -160,7 +161,11 @@ async function refresh(){
   const c=DC[a.domain]||'#888';
   tb.innerHTML+='<tr><td style="color:'+c+'">'+id+'</td><td>'+a.domain+'</td><td><span class="badge badge-green">'+a.status+'</span></td><td>'+Math.round(a.health.battery_pct)+'%</td><td>'+Math.round(a.health.comms_strength)+'%</td></tr>';
   const p=[a.position.lat,a.position.lng];
-  if(aM[id])aM[id].setLatLng(p);else aM[id]=L.marker(p,{icon:mkI(c)}).bindTooltip(id).addTo(map);
+  var sup=a.supplies||{};
+  var fPct=sup.fuel_pct!=null?Math.round(sup.fuel_pct):'-';
+  var fCol=sup.fuel_pct>50?'#0f0':sup.fuel_pct>20?'#fa0':'#f44';
+  var tip=id+' <span style="color:'+fCol+'">F:'+fPct+'%</span> A:'+((sup.ammo_rounds||0));
+  if(aM[id]){aM[id].setLatLng(p);aM[id].setTooltipContent(tip);}else aM[id]=L.marker(p,{icon:mkI(c)}).bindTooltip(tip).addTo(map);
  }
  document.getElementById('asset-count-badge').textContent=Object.keys(assets).length;
  const threats=await apiFetch('/api/threats');
@@ -222,8 +227,8 @@ function setSpd(s){apiPost('/api/sim/speed',{speed:s});}
 refresh();setInterval(refresh,2500);
 
 // ═══ Phase 8: Map Overlays ═══
-var _ovLayers={heat:[],engage:[],sensor:[],sector:[]};
-var _ovActive={heat:false,engage:false,sensor:false,sector:false};
+var _ovLayers={heat:[],engage:[],sensor:[],sector:[],weather:[]};
+var _ovActive={heat:false,engage:false,sensor:false,sector:false,weather:false};
 var _heatLayer=null;
 function toggleOverlay(key){_ovActive[key]=document.getElementById('ov-'+key).checked;if(_ovActive[key])refreshOverlay(key);else clearOvLayer(key);}
 function clearOvLayer(key){
@@ -265,6 +270,14 @@ async function refreshOverlay(key){
   secs.forEach(function(s){
    var rect=L.rectangle([[s.bounds.south,s.bounds.west],[s.bounds.north,s.bounds.east]],{color:dc2[s.domain]||'#888',fillOpacity:0.04,weight:1,dashArray:'6,4'}).bindTooltip(s.domain.toUpperCase()+' sector ('+s.asset_count+' assets)').addTo(map);
    _ovLayers.sector.push(rect);
+  });
+ } else if(key==='weather'){
+  var ov=await apiFetch('/api/weather/overlay');
+  (ov.points||[]).forEach(function(p){
+   var ic=L.divIcon({className:'',html:'<div style="font-size:12px;color:rgba(102,204,255,.6);transform:rotate('+p.wind_dir+'deg)">\u2191</div>',iconSize:[14,14]});
+   var m=L.marker([p.lat,p.lng],{icon:ic}).bindTooltip('Wind:'+p.wind_speed+'kt Vis:'+p.visibility+'km',{direction:'top'}).addTo(map);
+   _ovLayers.weather.push(m);
+   if(p.visibility<10){var op=Math.max(0.08,(10-p.visibility)/10*0.4);var c=L.circle([p.lat,p.lng],{radius:2500,color:'#66ccff',fillColor:'#66ccff',fillOpacity:op,weight:0}).addTo(map);_ovLayers.weather.push(c);}
   });
  }
 }

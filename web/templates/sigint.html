@@ -1,39 +1,68 @@
 {% extends "base.html" %}
 {% block title %}SIGINT{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endblock %}
 {% block content %}
-<div class="grid-3" style="margin-bottom:10px">
-    <div class="card stat"><div class="value" id="sig-total">--</div><div class="label">INTERCEPTS</div></div>
-    <div class="card stat"><div class="value" id="sig-emitters" style="color:#ffaa00">--</div><div class="label">UNIQUE EMITTERS</div></div>
-    <div class="card stat"><div class="value" id="sig-hostile" style="color:#ff4444">--</div><div class="label">HOSTILE</div></div>
-</div>
-<div class="grid-2">
-    <div class="card"><h3>INTERCEPT LOG</h3><div class="scroll-box" style="max-height:500px">
-        <table><thead><tr><th>TIME</th><th>COLLECTOR</th><th>FREQ</th><th>PWR</th><th>MOD</th><th>BRG</th><th>CLASS</th></tr></thead>
-        <tbody id="sig-tbody"></tbody></table></div></div>
-    <div class="card"><h3>EMITTER DATABASE</h3><div class="scroll-box" style="max-height:500px">
-        <table><thead><tr><th>FREQ</th><th>COUNT</th><th>FIRST SEEN</th><th>LAST SEEN</th></tr></thead>
-        <tbody id="emitter-tbody"></tbody></table></div></div>
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">SIGNALS INTELLIGENCE</h2>
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="sig-total">--</div><div class="label">INTERCEPTS</div></div>
+  <div class="card stat"><div class="value" id="sig-emitters" style="color:#ffaa00">--</div><div class="label">UNIQUE EMITTERS</div></div>
+  <div class="card stat"><div class="value" id="sig-hostile" style="color:#ff4444">--</div><div class="label">HOSTILE</div></div>
+  <div class="card stat"><div class="value" id="sig-suspect" style="color:#ffff00">--</div><div class="label">SUSPECT</div></div>
+ </div>
+ <div class="grid-2">
+  <div class="card"><h3>EMITTER MAP</h3><div id="sig-map" style="height:320px;background:#0a0a0a;border:1px solid #222"></div></div>
+  <div class="card"><h3>INTERCEPT LOG</h3><div class="scroll-box" style="max-height:320px">
+   <table><thead><tr><th>TIME</th><th>COLLECTOR</th><th>FREQ</th><th>PWR</th><th>MOD</th><th>BRG</th><th>CLASS</th></tr></thead>
+   <tbody id="sig-tbody"></tbody></table></div></div>
+ </div>
+ <div class="card" style="margin-top:8px"><h3>EMITTER DATABASE</h3><div class="scroll-box" style="max-height:300px">
+  <table><thead><tr><th>FREQ</th><th>COUNT</th><th>FIRST SEEN</th><th>LAST SEEN</th></tr></thead>
+  <tbody id="emitter-tbody"></tbody></table></div></div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
+var sigMap=L.map('sig-map',{zoomControl:false}).setView([34.0,-118.0],10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(sigMap);
+var sigLayer=L.layerGroup().addTo(sigMap);
 async function refreshSIGINT(){
-    const summary=await apiFetch('/api/sigint/summary');
+    var summary=await apiFetch('/api/sigint/summary');
     document.getElementById('sig-total').textContent=summary.total_intercepts||0;
     document.getElementById('sig-emitters').textContent=summary.unique_emitters||0;
     document.getElementById('sig-hostile').textContent=(summary.by_classification||{}).HOSTILE||0;
-    const intercepts=await apiFetch('/api/sigint');
-    const tbody=document.getElementById('sig-tbody'); tbody.innerHTML='';
-    (Array.isArray(intercepts)?intercepts:[]).slice(-50).reverse().forEach(function(i){
-        const cls=i.classification==='HOSTILE'?'badge-red':i.classification==='SUSPECT'?'badge-yellow':'badge-blue';
+    document.getElementById('sig-suspect').textContent=(summary.by_classification||{}).SUSPECT||0;
+    var intercepts=await apiFetch('/api/sigint');
+    var tbody=document.getElementById('sig-tbody'); tbody.innerHTML='';
+    var arr=Array.isArray(intercepts)?intercepts:[];
+    arr.slice(-50).reverse().forEach(function(i){
+        var cls=i.classification==='HOSTILE'?'badge-red':i.classification==='SUSPECT'?'badge-yellow':'badge-blue';
         tbody.innerHTML+='<tr><td>'+(i.timestamp||'').substring(11,19)+'</td><td>'+(i.collector||'')+'</td><td>'+(i.freq_mhz||0).toFixed(1)+'</td><td>'+(i.power_dbm||'')+'</td><td>'+(i.modulation||'')+'</td><td>'+(i.bearing_deg||'')+'</td><td><span class="badge '+cls+'">'+(i.classification||'')+'</span></td></tr>';
     });
-    const emitters=await apiFetch('/api/sigint/emitters');
-    const etbody=document.getElementById('emitter-tbody'); etbody.innerHTML='';
-    for(const[freq,e]of Object.entries(emitters)){
+    sigLayer.clearLayers();
+    var eob=await apiFetch('/api/eob/map');
+    (eob.features||[]).forEach(function(f){
+        var c=f.affiliation==='hostile'?'#ff4444':f.affiliation==='friendly'?'#00ff41':'#ffaa00';
+        L.circleMarker([f.lat,f.lng],{radius:6,color:c,fillColor:c,fillOpacity:.7}).addTo(sigLayer)
+         .bindTooltip(f.name+' ('+f.type+')',{permanent:false,className:'dark-tooltip'});
+    });
+    arr.slice(-20).forEach(function(i){
+        if(i.bearing_deg!=null&&i.collector){
+            var lat=34.0+Math.random()*0.1-0.05,lng=-118.0+Math.random()*0.1-0.05;
+            var rad=i.bearing_deg*Math.PI/180;
+            var endLat=lat+Math.cos(rad)*0.05,endLng=lng+Math.sin(rad)*0.05;
+            var lc=i.classification==='HOSTILE'?'#ff4444':'#ffaa00';
+            L.polyline([[lat,lng],[endLat,endLng]],{color:lc,weight:1,opacity:.5,dashArray:'4 4'}).addTo(sigLayer);
+        }
+    });
+    sigMap.invalidateSize();
+    var emitters=await apiFetch('/api/sigint/emitters');
+    var etbody=document.getElementById('emitter-tbody'); etbody.innerHTML='';
+    for(var[freq,e]of Object.entries(emitters)){
         etbody.innerHTML+='<tr><td>'+e.freq_mhz.toFixed(1)+' MHz</td><td>'+e.count+'</td><td>'+(e.first_seen||'').substring(11,19)+'</td><td>'+(e.last_seen||'').substring(11,19)+'</td></tr>';
     }
 }
-refreshSIGINT(); setInterval(refreshSIGINT,3000);
+refreshSIGINT(); setInterval(refreshSIGINT,5000);
 </script>
 {% endblock %}

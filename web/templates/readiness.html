@@ -35,9 +35,14 @@
   <div class="card rdy-cat" id="cat-sensors"></div>
  </div>
  <div class="grid-3" style="margin-bottom:8px">
+  <div class="card rdy-cat" id="cat-supply"></div>
+  <div class="card rdy-cat" id="cat-weather"></div>
   <div class="card rdy-cat" id="cat-endurance"></div>
+ </div>
+ <div class="grid-3" style="margin-bottom:8px">
   <div class="card rdy-cat" id="cat-integrations"></div>
   <div class="card rdy-cat" id="cat-risk"></div>
+  <div class="card rdy-cat" id="cat-summary"></div>
  </div>
 
  <!-- Asset Detail Table -->
@@ -89,6 +94,21 @@ async function refreshReadiness(){
             return '<span class="rdy-chip" style="color:#4488ff;border-color:#4488ff">'+s+'</span>';
         }).join('')+'</div>');
 
+    // Supply (Phase 10)
+    if(d.supply){
+        catCard(document.getElementById('cat-supply'),'SUPPLY CHAIN',d.supply.score,
+            rdyBar('Avg Fuel',d.supply.avg_fuel,rdyColor(d.supply.avg_fuel))+
+            rdyBar('Avg Ammo',Math.min(100,d.supply.avg_ammo/2),rdyColor(Math.min(100,d.supply.avg_ammo/2)))+
+            '<div style="font-size:.78em;margin-top:6px">Low Fuel: <span style="color:#ff4444">'+d.supply.low_fuel+'</span></div>');
+    }
+    // Weather (Phase 10)
+    if(d.weather){
+        var wxCol=rdyColor(d.weather.score);
+        catCard(document.getElementById('cat-weather'),'WEATHER',d.weather.score,
+            rdyBar('Weather Score',d.weather.score,wxCol)+
+            '<div style="font-size:.78em;margin-top:6px">'+d.weather.conditions+' | Wind: '+d.weather.wind_kt+'kt | Vis: '+d.weather.visibility_km+'km</div>');
+    }
+
     // Endurance
     catCard(document.getElementById('cat-endurance'),'ENDURANCE',d.endurance.score,
         rdyBar('Avg Endurance',d.endurance.score,rdyColor(d.endurance.score))+
@@ -114,21 +134,24 @@ async function refreshReadiness(){
 
     // Asset detail
     var aHtml='<div style="display:flex;padding:4px 0;border-bottom:1px solid #333;font-size:.72em;color:#666">'+
-        '<div style="width:120px">ASSET</div><div style="width:80px">DOMAIN</div>'+
-        '<div style="width:70px">BATT</div><div style="width:70px">COMMS</div>'+
-        '<div style="width:50px">GPS</div><div style="width:60px">ARMED</div>'+
-        '<div style="width:70px">ENDURANCE</div><div style="flex:1">STATUS</div></div>';
+        '<div style="width:100px">ASSET</div><div style="width:60px">DOM</div>'+
+        '<div style="width:55px">BATT</div><div style="width:55px">COM</div>'+
+        '<div style="width:55px">FUEL</div><div style="width:50px">AMMO</div>'+
+        '<div style="width:40px">GPS</div><div style="width:45px">ARM</div>'+
+        '<div style="flex:1">STATUS</div></div>';
     (d.asset_details||[]).forEach(function(a){
         var bCol=a.battery>60?'#00ff41':a.battery>30?'#ffaa00':'#ff4444';
         var cCol=a.comms>60?'#00ff41':a.comms>30?'#ffaa00':'#ff4444';
+        var fCol=(a.fuel||100)>50?'#00ff41':(a.fuel||100)>20?'#ffaa00':'#ff4444';
         aHtml+='<div class="asset-row">'+
-            '<div class="asset-id">'+a.id+'</div>'+
-            '<div style="width:80px;color:#888">'+a.domain+'</div>'+
-            '<div style="width:70px;color:'+bCol+'">'+a.battery.toFixed(0)+'%</div>'+
-            '<div style="width:70px;color:'+cCol+'">'+a.comms.toFixed(0)+'%</div>'+
-            '<div style="width:50px;color:'+(a.gps?'#00ff41':'#ff4444')+'">'+( a.gps?'YES':'NO')+'</div>'+
-            '<div style="width:60px;color:'+(a.armed?'#00ff41':'#666')+'">'+( a.armed?'YES':'—')+'</div>'+
-            '<div style="width:70px">'+a.endurance_hr+'h</div>'+
+            '<div class="asset-id" style="width:100px">'+a.id+'</div>'+
+            '<div style="width:60px;color:#888">'+a.domain+'</div>'+
+            '<div style="width:55px;color:'+bCol+'">'+a.battery.toFixed(0)+'%</div>'+
+            '<div style="width:55px;color:'+cCol+'">'+a.comms.toFixed(0)+'%</div>'+
+            '<div style="width:55px;color:'+fCol+'">'+(a.fuel!=null?a.fuel.toFixed(0)+'%':'--')+'</div>'+
+            '<div style="width:50px;color:#ffaa00">'+(a.ammo||0)+'</div>'+
+            '<div style="width:40px;color:'+(a.gps?'#00ff41':'#ff4444')+'">'+(a.gps?'Y':'N')+'</div>'+
+            '<div style="width:45px;color:'+(a.armed?'#00ff41':'#666')+'">'+(a.armed?'Y':'—')+'</div>'+
             '<div style="flex:1;color:'+(a.status==='operational'?'#00ff41':'#ff4444')+'">'+a.status+'</div></div>';
     });
     document.getElementById('rdy-assets').innerHTML=aHtml;

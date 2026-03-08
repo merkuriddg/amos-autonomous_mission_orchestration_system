@@ -256,8 +256,12 @@ print(f"[AMOS] Loaded {len(sim_threats)} threats")
 # Phase 10: Auto-populate EOB from threats
 for tid, t in sim_threats.items():
     _eob_units[tid] = {"id": tid, "name": t.get("id", tid), "type": t.get("type", "unknown"),
+        "affiliation": "hostile", "emitter_type": random.choice(["radar", "comms", "jammer", "datalink"]),
+        "freq_mhz": round(random.uniform(200, 18000), 1),
         "equipment": [t.get("type", "unknown")], "capability": "offensive",
         "threat_level": random.choice(["low", "medium", "high", "critical"]),
+        "confidence": random.choice(["low", "medium", "high"]),
+        "status": "active",
         "last_known": {"lat": t.get("lat", 0), "lng": t.get("lng", 0)},
         "positions": [], "engagements": 0, "first_seen": None, "notes": ""}
 
@@ -1251,6 +1255,25 @@ def api_cm_engage():
         cm_log.append(e)
         aar_events.append({"type":"countermeasure","timestamp":e["timestamp"],
             "elapsed":sim_clock["elapsed_sec"],"details":f"{ctype.upper()} {tid} by {c['name']}"})
+        # Auto-generate BDA report for this engagement
+        t = sim_threats[tid]
+        bda_rpt = {
+            "id": f"BDA-{uuid.uuid4().hex[:8]}",
+            "timestamp": e["timestamp"],
+            "reporter": c["user"],
+            "target_id": tid,
+            "target_name": t.get("type", "Unknown"),
+            "lat": t.get("lat", t.get("position", {}).get("lat", 0)),
+            "lng": t.get("lng", t.get("position", {}).get("lng", 0)),
+            "weapon_used": ctype,
+            "munitions_expended": 1,
+            "damage_level": "destroyed" if ctype == "intercept" else "moderate",
+            "functional_kill": ctype == "intercept",
+            "assessment_conf": "high" if ctype == "intercept" else "medium",
+            "imagery_available": False,
+            "remarks": f"Auto-BDA: {ctype} engagement on {tid}",
+        }
+        _bda_reports.append(bda_rpt)
         return jsonify({"status":"ok","result":"neutralized"})
     return jsonify({"error":"Not found"}),404
 
@@ -2623,6 +2646,29 @@ def api_reports_mission():
     for ttype, ti in _threat_intel.items():
         threat_summary.append({"type": ttype, "count": ti["count"],
             "neutralized": ti["neutralized"], "engagements": ti["engagements"]})
+    # Logistics snapshot (Phase 10)
+    fuels = [a.get("supplies", {}).get("fuel_pct", 100) for a in sim_assets.values()]
+    ammos = [a.get("supplies", {}).get("ammo_rounds", 0) for a in sim_assets.values()]
+    avg_fuel = round(sum(fuels) / max(1, len(fuels)), 1)
+    avg_ammo = round(sum(ammos) / max(1, len(ammos)), 1)
+    low_fuel = sum(1 for f in fuels if f < 25)
+    # Weather snapshot (Phase 10)
+    wx = {
+        "conditions": _weather["conditions"],
+        "wind_speed_kt": round(_weather["wind_speed_kt"], 1),
+        "wind_dir_deg": round(_weather["wind_dir_deg"]),
+        "visibility_km": round(_weather["visibility_km"], 1),
+        "ceiling_ft": _weather["ceiling_ft"],
+        "precipitation": _weather["precipitation"],
+        "sea_state": _weather["sea_state"],
+    }
+    # BDA summary (Phase 10)
+    bda_total = len(_bda_reports)
+    bda_destroyed = sum(1 for r in _bda_reports if r.get("damage_level") == "destroyed")
+    bda_fk = sum(1 for r in _bda_reports if r.get("functional_kill"))
+    # EOB summary (Phase 10)
+    eob_total = len(_eob_units)
+    eob_active = sum(1 for u in _eob_units.values() if u.get("status") == "active")
     report = {
         "title": f"MISSION REPORT — {platoon.get('name', 'UNNAMED')}",
         "callsign": platoon.get("callsign", ""),
@@ -2641,6 +2687,20 @@ def api_reports_mission():
             "engagements": len(cm_log),
             "countermeasures_deployed": len(cm_log),
             "voice_commands": event_types.get("voice_command", 0),
+        },
+        "logistics": {
+            "avg_fuel_pct": avg_fuel, "avg_ammo_rounds": avg_ammo,
+            "low_fuel_assets": low_fuel,
+        },
+        "weather": wx,
+        "bda": {
+            "total_reports": bda_total, "destroyed": bda_destroyed,
+            "functional_kills": bda_fk,
+            "fk_rate": round(bda_fk / max(1, bda_total) * 100, 1),
+        },
+        "eob": {
+            "total_units": eob_total, "active": eob_active,
+            "inactive": eob_total - eob_active,
         },
         "assets": asset_summary,
         "threat_intel": threat_summary,
@@ -2685,13 +2745,26 @@ def api_readiness():
     intg_score = sum(1 for v in intg.values() if v) / max(1, len(intg)) * 100
     # Domain coverage
     domains = set(a.get("domain", "") for a in sim_assets.values())
+    # Supply readiness (Phase 10)
+    fuels = [a["supplies"]["fuel_pct"] for a in sim_assets.values() if "supplies" in a]
+    ammos = [a["supplies"]["ammo_rounds"] for a in sim_assets.values() if "supplies" in a]
+    avg_fuel = sum(fuels) / max(1, len(fuels)) if fuels else 100
+    avg_ammo = sum(ammos) / max(1, len(ammos)) if ammos else 100
+    low_fuel = sum(1 for f in fuels if f < 25)
+    supply_score = min(100, avg_fuel * 0.6 + min(100, avg_ammo / 2) * 0.4)
+    # Weather impact (Phase 10)
+    ws = _weather["wind_speed_kt"]; vis = _weather["visibility_km"]
+    ceil = _weather["ceiling_ft"]; precip = _weather["precipitation"]
+    wx_penalty = (ws / 60) * 20 + (1 - vis / 30) * 25 + (1 - ceil / 40000) * 15
+    wx_penalty += 20 if precip in ["heavy_rain", "snow"] else 5 if precip != "none" else 0
+    weather_score = max(0, min(100, 100 - wx_penalty))
     # Compute GO/NO-GO scores
     fleet_score = min(100, avg_batt * 0.4 + avg_comms * 0.3 + (gps_fix / max(1, total) * 100) * 0.3)
     weapon_score = (armed / max(1, total)) * 100
     sensor_score = min(100, len(all_sensors) * 12.5)  # 8 unique sensors = 100%
     endurance_score = min(100, avg_endurance * 10)  # 10hr = 100%
-    overall = (fleet_score * 0.35 + weapon_score * 0.2 + sensor_score * 0.2 +
-               endurance_score * 0.15 + intg_score * 0.1)
+    overall = (fleet_score * 0.25 + weapon_score * 0.15 + sensor_score * 0.15 +
+               endurance_score * 0.1 + intg_score * 0.05 + supply_score * 0.15 + weather_score * 0.15)
     go_status = "GO" if overall >= 70 else "MARGINAL" if overall >= 50 else "NO-GO"
     risk = commander_support.get_risk()
     return jsonify({
@@ -2705,12 +2778,18 @@ def api_readiness():
                     "count": len(all_sensors), "score": round(sensor_score, 1)},
         "endurance": {"avg_hours": round(avg_endurance, 1),
                       "score": round(endurance_score, 1)},
+        "supply": {"avg_fuel": round(avg_fuel, 1), "avg_ammo": round(avg_ammo, 1),
+                   "low_fuel": low_fuel, "score": round(supply_score, 1)},
+        "weather": {"conditions": _weather["conditions"], "wind_kt": round(ws, 1),
+                    "visibility_km": round(vis, 1), "score": round(weather_score, 1)},
         "integrations": {**intg, "score": round(intg_score, 1)},
         "domains": sorted(list(domains)),
         "risk": {"level": risk.get("level", "LOW"), "score": risk.get("score", 0)},
         "asset_details": [{"id": a["id"], "type": a["type"], "domain": a["domain"],
             "battery": a["health"]["battery_pct"], "comms": a["health"]["comms_strength"],
             "gps": a["health"].get("gps_fix", True),
+            "fuel": a.get("supplies", {}).get("fuel_pct", 100),
+            "ammo": a.get("supplies", {}).get("ammo_rounds", 0),
             "armed": bool(a.get("weapons")), "endurance_hr": a.get("endurance_hr", 0),
             "status": a["status"]} for a in sim_assets.values()],
     })

@@ -1,19 +1,50 @@
 {% extends "base.html" %}
 {% block title %}AWACS{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endblock %}
 {% block content %}
-<div class="card"><h3>AWACS — Airborne Command Drones</h3></div>
-<div class="grid-2" id="awacs-cards"></div>
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">AWACS — Airborne Command Drones</h2>
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="aw-count" style="color:#00aaff">--</div><div class="label">AWACS ONLINE</div></div>
+  <div class="card stat"><div class="value" id="aw-alt">--</div><div class="label">AVG ALTITUDE</div></div>
+  <div class="card stat"><div class="value" id="aw-batt" style="color:#00ff41">--</div><div class="label">AVG BATTERY</div></div>
+  <div class="card stat"><div class="value" id="aw-cov" style="color:#ffaa00">--</div><div class="label">COVERAGE NM</div></div>
+ </div>
+ <div class="grid-2">
+  <div class="card"><h3>RADAR COVERAGE MAP</h3><div id="aw-map" style="height:360px;background:#0a0a0a;border:1px solid #222"></div></div>
+  <div class="card"><h3>ASSET DETAILS</h3><div class="scroll-box" style="max-height:360px" id="awacs-cards"></div></div>
+ </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
+var awMap=L.map('aw-map',{zoomControl:false}).setView([34.0,-118.0],9);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(awMap);
+var awLayer=L.layerGroup().addTo(awMap);
 async function refreshAWACS(){
-    const assets=await apiFetch('/api/assets');
-    const div=document.getElementById('awacs-cards'); div.innerHTML='';
-    for(const[id,a]of Object.entries(assets)){
+    var assets=await apiFetch('/api/assets');
+    var div=document.getElementById('awacs-cards'); div.innerHTML='';
+    awLayer.clearLayers();
+    var count=0,totalAlt=0,totalBatt=0;
+    for(var[id,a]of Object.entries(assets)){
         if(!id.startsWith('AWACS'))continue;
-        div.innerHTML+='<div class="card"><h3 style="color:#00aaff">'+id+' — '+a.type+'</h3><table><tr><td>Position</td><td>'+a.position.lat.toFixed(4)+', '+a.position.lng.toFixed(4)+'</td></tr><tr><td>Altitude</td><td>'+(a.position.alt_ft||0).toLocaleString()+' ft</td></tr><tr><td>Speed</td><td>'+a.speed_kts+' kts</td></tr><tr><td>Sensors</td><td>'+(a.sensors||[]).join(', ')+'</td></tr><tr><td>Battery</td><td>'+a.health.battery_pct+'%</td></tr><tr><td>Comms</td><td>'+a.health.comms_strength+'%</td></tr><tr><td>Status</td><td><span class="badge badge-green">'+a.status+'</span></td></tr></table></div>';
+        count++;
+        totalAlt+=(a.position.alt_ft||0);
+        totalBatt+=a.health.battery_pct;
+        div.innerHTML+='<div style="border:1px solid #222;padding:8px;margin:4px 0"><h3 style="color:#00aaff;margin:0 0 4px">'+id+' — '+a.type+'</h3><table><tr><td>Position</td><td>'+a.position.lat.toFixed(4)+', '+a.position.lng.toFixed(4)+'</td></tr><tr><td>Altitude</td><td>'+(a.position.alt_ft||0).toLocaleString()+' ft</td></tr><tr><td>Speed</td><td>'+a.speed_kts+' kts</td></tr><tr><td>Sensors</td><td>'+(a.sensors||[]).join(', ')+'</td></tr><tr><td>Battery</td><td><span style="color:'+(a.health.battery_pct>50?'#00ff41':'#ffaa00')+'">'+Math.round(a.health.battery_pct)+'%</span></td></tr><tr><td>Comms</td><td>'+Math.round(a.health.comms_strength)+'%</td></tr><tr><td>Status</td><td><span class="badge badge-green">'+a.status+'</span></td></tr></table></div>';
+        var rNm=Math.max(30,(a.position.alt_ft||0)/1000*3);
+        var rDeg=rNm/60;
+        L.circle([a.position.lat,a.position.lng],{radius:rDeg*111320,color:'#00aaff',fillColor:'#00aaff',fillOpacity:.08,weight:1}).addTo(awLayer);
+        L.circleMarker([a.position.lat,a.position.lng],{radius:5,color:'#00aaff',fillColor:'#00aaff',fillOpacity:.9}).addTo(awLayer)
+         .bindTooltip(id+' | '+Math.round(a.health.battery_pct)+'%',{permanent:true,className:'dark-tooltip',direction:'right'});
     }
+    document.getElementById('aw-count').textContent=count;
+    document.getElementById('aw-alt').textContent=count?Math.round(totalAlt/count).toLocaleString()+'ft':'--';
+    document.getElementById('aw-batt').textContent=count?Math.round(totalBatt/count)+'%':'--';
+    document.getElementById('aw-cov').textContent=count?Math.round(count*80)+'nm':'--';
+    awMap.invalidateSize();
 }
-refreshAWACS(); setInterval(refreshAWACS,3000);
+refreshAWACS(); setInterval(refreshAWACS,5000);
 </script>
 {% endblock %}
