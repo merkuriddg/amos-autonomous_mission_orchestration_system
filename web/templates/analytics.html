@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block head %}
+<style>
+.an-stat{text-align:center;padding:14px;background:#0d0d0d;border:1px solid #222;border-radius:4px}
+.an-stat .aval{font-size:2em;font-weight:bold}
+.an-stat .albl{font-size:.7em;color:#666;margin-top:4px;text-transform:uppercase}
+.an-bar-wrap{background:#1a1a1a;height:20px;border-radius:4px;overflow:hidden;position:relative}
+.an-bar{height:100%;border-radius:4px;transition:width .5s ease}
+.an-bar-label{position:absolute;top:2px;left:6px;font-size:.7em;color:#fff;z-index:1}
+.an-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #111;font-size:.82em}
+.an-row .an-key{color:#888}.an-row .an-val{color:#00ff41;font-weight:bold}
+.risk-chart{display:flex;align-items:flex-end;gap:2px;height:60px;margin-top:8px}
+.risk-chart .rbar{background:#00ff41;width:100%;border-radius:2px 2px 0 0;min-height:2px;transition:height .3s}
+.domain-chip{display:inline-block;padding:3px 10px;margin:2px;border:1px solid #333;border-radius:3px;font-size:.78em}
+.evt-row{padding:4px 0;font-size:.78em;border-bottom:1px solid #111}
+.integration-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.integration-dot.active{background:#00ff41}.integration-dot.inactive{background:#ff4444}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card"><h3>MISSION ANALYTICS — Real-Time Metrics</h3>
+  <div style="font-size:.8em;color:#888">Elapsed: <span id="an-elapsed" style="color:#00ff41">—</span> | Auto-refreshing every 3s</div>
+</div>
+
+<div class="grid-4" id="an-top-stats"></div>
+
+<div class="grid-2" style="margin-top:8px">
+  <!-- Threat Progress -->
+  <div class="card"><h3>THREAT NEUTRALIZATION</h3>
+    <div id="an-threat-bar" style="margin:10px 0"></div>
+    <div class="grid-2" id="an-threat-detail"></div>
+  </div>
+  <!-- Asset Health -->
+  <div class="card"><h3>FLEET HEALTH</h3>
+    <div id="an-health-bars" style="margin:10px 0"></div>
+    <div id="an-domains"></div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:8px">
+  <!-- COA Stats -->
+  <div class="card"><h3>COA DECISION METRICS</h3>
+    <div id="an-coa-stats"></div>
+  </div>
+  <!-- Risk Trend -->
+  <div class="card"><h3>RISK TREND</h3>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="an-risk-level" style="font-size:1.4em;font-weight:bold">—</span>
+      <span id="an-risk-score" style="color:#888;font-size:.85em"></span>
+    </div>
+    <div class="risk-chart" id="an-risk-chart"></div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:8px">
+  <!-- Event Breakdown -->
+  <div class="card"><h3>EVENT BREAKDOWN</h3>
+    <div class="scroll-box" style="max-height:250px" id="an-events"></div>
+  </div>
+  <!-- Integrations -->
+  <div class="card"><h3>INTEGRATION STATUS</h3>
+    <div id="an-integrations" style="margin-top:6px"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function riskColor(l){return l==='HIGH'||l==='CRITICAL'?'#ff4444':l==='MEDIUM'?'#ffaa00':'#00ff41';}
+function pctBar(label,pct,color){
+    return '<div style="margin:6px 0"><div style="font-size:.75em;color:#888;margin-bottom:2px">'+label+' — '+pct.toFixed(1)+'%</div>'+
+        '<div class="an-bar-wrap"><div class="an-bar" style="width:'+Math.round(pct)+'%;background:'+color+'"></div></div></div>';
+}
+
+async function refreshAnalytics(){
+    const d=await apiFetch('/api/analytics/summary');
+    // Elapsed
+    var mins=Math.floor(d.mission_elapsed_sec/60);
+    var secs=Math.floor(d.mission_elapsed_sec%60);
+    document.getElementById('an-elapsed').textContent=mins+'m '+secs+'s';
+    // Top stats
+    var t=d.threats, a=d.assets, c=d.coa;
+    document.getElementById('an-top-stats').innerHTML=
+        '<div class="an-stat"><div class="aval" style="color:#00ff41">'+a.total+'</div><div class="albl">Total Assets</div></div>'+
+        '<div class="an-stat"><div class="aval" style="color:#ff4444">'+t.active+'</div><div class="albl">Active Threats</div></div>'+
+        '<div class="an-stat"><div class="aval" style="color:#00ff41">'+t.neutralized+'</div><div class="albl">Neutralized</div></div>'+
+        '<div class="an-stat"><div class="aval" style="color:#ffaa00">'+d.engagements+'</div><div class="albl">Engagements</div></div>';
+    // Threat bar
+    document.getElementById('an-threat-bar').innerHTML=pctBar('Neutralization Progress',t.neutralization_pct,'#00ff41');
+    document.getElementById('an-threat-detail').innerHTML=
+        '<div class="an-row"><span class="an-key">Active</span><span class="an-val" style="color:#ff4444">'+t.active+'</span></div>'+
+        '<div class="an-row"><span class="an-key">Neutralized</span><span class="an-val">'+t.neutralized+'</span></div>';
+    // Health bars
+    document.getElementById('an-health-bars').innerHTML=
+        pctBar('Avg Battery',a.avg_battery_pct,a.avg_battery_pct<30?'#ff4444':a.avg_battery_pct<60?'#ffaa00':'#00ff41')+
+        pctBar('Avg Comms',a.avg_comms_pct,a.avg_comms_pct<40?'#ff4444':'#4488ff');
+    // Domains
+    var doms=a.by_domain||{};
+    document.getElementById('an-domains').innerHTML='<div style="margin-top:6px">'+
+        Object.keys(doms).map(function(k){return '<span class="domain-chip"><span style="color:#00ff41">'+doms[k]+'</span> '+k+'</span>';}).join('')+
+        '</div><div style="margin-top:6px;font-size:.8em"><span style="color:#888">Moving:</span> <span style="color:#00ff41">'+a.moving+'</span> | <span style="color:#888">Idle:</span> '+a.idle+' | <span style="color:#888">Low Batt:</span> <span style="color:#ff4444">'+a.low_battery+'</span></div>';
+    // COA
+    document.getElementById('an-coa-stats').innerHTML=
+        '<div class="an-row"><span class="an-key">Approved</span><span class="an-val">'+c.approved+'</span></div>'+
+        '<div class="an-row"><span class="an-key">Rejected</span><span class="an-val" style="color:#ff4444">'+c.rejected+'</span></div>'+
+        '<div class="an-row"><span class="an-key">Pending</span><span class="an-val" style="color:#ffaa00">'+c.pending+'</span></div>'+
+        pctBar('Approval Rate',c.approval_rate,'#00ff41');
+    // Risk
+    var rl=d.risk.level;
+    document.getElementById('an-risk-level').style.color=riskColor(rl);
+    document.getElementById('an-risk-level').textContent=rl;
+    document.getElementById('an-risk-score').textContent='Score: '+(d.risk.score||0);
+    var trend=d.risk.trend||[];
+    var maxS=Math.max.apply(null,trend.map(function(t){return t.score||0;}).concat([1]));
+    document.getElementById('an-risk-chart').innerHTML=trend.map(function(t){
+        var h=Math.max(2,((t.score||0)/maxS)*55);
+        var c=riskColor(t.level||'LOW');
+        return '<div class="rbar" style="height:'+h+'px;background:'+c+'" title="'+t.level+': '+(t.score||0)+'"></div>';
+    }).join('');
+    // Events
+    var evts=d.events.by_type||{};
+    var sorted=Object.entries(evts).sort(function(a,b){return b[1]-a[1];});
+    document.getElementById('an-events').innerHTML=sorted.map(function(e){
+        return '<div class="evt-row"><span style="color:#4488ff">'+e[0]+'</span> <span style="float:right;color:#00ff41">'+e[1]+'</span></div>';
+    }).join('')+'<div class="evt-row" style="color:#888;font-weight:bold">Total <span style="float:right;color:#ffaa00">'+d.events.total+'</span></div>';
+    // Integrations
+    var intg=d.integrations||{};
+    document.getElementById('an-integrations').innerHTML=
+        ['px4','tak','link16','ros2'].map(function(k){
+            var on=intg[k];
+            return '<div style="padding:6px 0;border-bottom:1px solid #111"><span class="integration-dot '+(on?'active':'inactive')+'"></span>'+
+                '<span style="font-size:.85em">'+k.toUpperCase()+'</span> <span style="color:'+(on?'#00ff41':'#888')+';font-size:.8em;margin-left:6px">'+(on?'ONLINE':'OFFLINE')+'</span></div>';
+        }).join('');
+}
+refreshAnalytics(); setInterval(refreshAnalytics,3000);
+</script>
+{% endblock %}

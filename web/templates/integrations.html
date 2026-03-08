@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Integrations{% endblock %}
+{% block head %}
+<style>
+.bridge-card{background:#0d0d0d;border:1px solid #333;padding:14px;border-radius:4px}
+.bridge-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.bridge-name{font-weight:bold;font-size:1em}
+.bridge-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+.bridge-dot.on{background:#00ff41}.bridge-dot.off{background:#ff4444}
+.bridge-stat{display:inline-block;margin-right:12px;font-size:.8em;color:#888}
+.bridge-stat span{color:#00ff41}
+.l16-msg{padding:4px 0;font-size:.78em;border-bottom:1px solid #111}
+.l16-msg .j-type{color:#ffaa00;font-weight:bold;width:40px;display:inline-block}
+.l16-participant{padding:4px 8px;margin:2px;display:inline-block;border:1px solid #333;font-size:.78em;border-radius:3px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card"><h3>INTEGRATION HUB — External System Bridges</h3></div>
+<div class="grid-3">
+  <!-- PX4 -->
+  <div class="bridge-card" id="px4-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="px4-dot"></span><span class="bridge-name">PX4 SITL</span></div>
+      <span class="badge badge-blue">MAVLink</span>
+    </div>
+    <div id="px4-info" style="font-size:.8em;color:#888">Loading...</div>
+  </div>
+  <!-- TAK -->
+  <div class="bridge-card" id="tak-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="tak-dot"></span><span class="bridge-name">TAK/ATAK</span></div>
+      <span class="badge badge-yellow">CoT XML</span>
+    </div>
+    <div id="tak-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="tak-host" placeholder="TAK host" value="239.2.3.1" style="width:110px">
+      <input type="number" id="tak-port" placeholder="Port" value="6969" style="width:70px">
+      <select id="tak-proto" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="udp">UDP</option><option value="tcp">TCP</option></select>
+      <button class="btn" onclick="takConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="takDisconnect()">DISCONNECT</button>
+    </div>
+  </div>
+  <!-- Link 16 -->
+  <div class="bridge-card" id="l16-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot on" id="l16-dot"></span><span class="bridge-name">Link 16</span></div>
+      <span class="badge badge-green">TADIL J</span>
+    </div>
+    <div id="l16-info" style="font-size:.8em;color:#888">Loading...</div>
+  </div>
+</div>
+
+<!-- Link 16 Detail -->
+<div class="grid-2" style="margin-top:8px">
+  <div class="card"><h3>LINK 16 — PARTICIPANTS</h3>
+    <div id="l16-participants" style="margin-top:6px"></div>
+    <div style="margin-top:8px">
+      <select id="l16-asset" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"></select>
+      <button class="btn" onclick="l16Join()" style="margin-left:4px">JOIN NET</button>
+    </div>
+  </div>
+  <div class="card"><h3>LINK 16 — MESSAGE LOG <span style="color:#888;font-size:.8em">(J-series)</span></h3>
+    <div class="scroll-box" style="max-height:300px" id="l16-messages"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshBridges(){
+    const d=await apiFetch('/api/bridge/all');
+    // PX4
+    const px4=d.px4||{};
+    document.getElementById('px4-dot').className='bridge-dot '+(px4.connected?'on':'off');
+    document.getElementById('px4-info').innerHTML=px4.connected
+        ?'<div class="bridge-stat">Status: <span>Connected</span></div><div class="bridge-stat">Vehicles: <span>'+(px4.vehicles||0)+'</span></div>'
+        :'<div style="color:#ff4444">Offline — No PX4 SITL detected</div>';
+    // TAK
+    const tak=d.tak||{};
+    document.getElementById('tak-dot').className='bridge-dot '+(tak.connected?'on':'off');
+    document.getElementById('tak-info').innerHTML=tak.connected
+        ?'<div class="bridge-stat">Protocol: <span>'+tak.protocol+'</span></div><div class="bridge-stat">Host: <span>'+tak.host+':'+tak.port+'</span></div><div class="bridge-stat">Sent: <span>'+tak.sent+'</span></div>'
+        :'<div style="color:#888">Not connected — configure below</div>';
+    // Link 16
+    const l16=d.link16||{};
+    document.getElementById('l16-dot').className='bridge-dot '+(l16.participants>0?'on':'off');
+    document.getElementById('l16-info').innerHTML='<div class="bridge-stat">Net: <span>'+(l16.net_id||'—')+'</span></div><div class="bridge-stat">Participants: <span>'+(l16.participants||0)+'</span></div><div class="bridge-stat">Tracks: <span>'+(l16.tracks||0)+'</span></div><div class="bridge-stat">Messages: <span>'+(l16.messages_sent||0)+'</span></div>';
+}
+
+async function refreshL16(){
+    // Participants
+    const parts=await apiFetch('/api/bridge/link16/participants');
+    const pdiv=document.getElementById('l16-participants');
+    const keys=Object.keys(parts);
+    if(keys.length===0){pdiv.innerHTML='<span style="color:#888">No participants</span>';
+    }else{pdiv.innerHTML=keys.map(function(k){return '<span class="l16-participant"><span style="color:#00ff41">'+k+'</span> TN:'+parts[k].tn+' ['+parts[k].role+']</span>';}).join('');}
+    // Messages
+    const msgs=await apiFetch('/api/bridge/link16/messages?limit=30');
+    const mdiv=document.getElementById('l16-messages');
+    mdiv.innerHTML=(Array.isArray(msgs)?msgs:[]).reverse().map(function(m){
+        return '<div class="l16-msg"><span class="j-type">'+m.j_type+'</span> '+m.description+' — TN:'+m.source_tn+' <span style="color:#555">seq:'+m.sequence+'</span></div>';
+    }).join('');
+    // Asset selector
+    const assets=await apiFetch('/api/assets');
+    const sel=document.getElementById('l16-asset');
+    sel.innerHTML=Object.keys(assets).map(function(k){return '<option value="'+k+'">'+k+'</option>';}).join('');
+}
+
+async function takConnect(){
+    const host=document.getElementById('tak-host').value;
+    const port=document.getElementById('tak-port').value;
+    const proto=document.getElementById('tak-proto').value;
+    await apiPost('/api/bridge/tak/connect',{host:host,port:parseInt(port),protocol:proto});
+    refreshBridges();
+}
+async function takDisconnect(){await apiPost('/api/bridge/tak/disconnect',{});refreshBridges();}
+async function l16Join(){
+    const aid=document.getElementById('l16-asset').value;
+    await apiPost('/api/bridge/link16/join',{asset_id:aid});
+    refreshL16();
+}
+
+refreshBridges(); refreshL16();
+setInterval(refreshBridges,5000);
+setInterval(refreshL16,5000);
+</script>
+{% endblock %}

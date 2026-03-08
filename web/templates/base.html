@@ -123,8 +123,10 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <div class="amos-menu-hdr">ANALYTICS</div>
       {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
       {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
+      <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">📊 Analytics</a>
       <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">📋 Documents</a>
       <div class="amos-menu-hdr" style="margin-top:10px">SYSTEM</div>
+      <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">🔌 Integrations</a>
       <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">⚙ Settings</a>
      </div>
     </div>

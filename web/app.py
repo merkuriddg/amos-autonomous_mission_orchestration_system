@@ -47,6 +47,27 @@ except Exception as e:
     _px4 = None
     _px4_ok = False
 
+# Phase 4 — TAK Bridge
+try:
+    from tak_bridge import TAKBridge
+    _tak = TAKBridge()
+    print("[AMOS] TAK Bridge: Ready (not connected — connect via API)")
+except Exception as e:
+    print(f"[AMOS] TAK Bridge: Not available ({e})")
+    _tak = None
+
+# Phase 4 — Link 16 Tactical Data Link
+try:
+    from link16_sim import Link16Network
+    _link16 = Link16Network(net_id="AMOS-SHADOW-NET")
+    # Auto-join all assets
+    for _aid in list(sim_assets.keys()) if 'sim_assets' in dir() else []:
+        _link16.join(_aid)
+    print(f"[AMOS] Link 16: Network initialized")
+except Exception as e:
+    print(f"[AMOS] Link 16: Not available ({e})")
+    _link16 = None
+
 # Database
 from db.connection import fetchall, fetchone, execute as db_execute, to_json, from_json, check as db_check
 
@@ -337,6 +358,14 @@ def sim_tick():
         if _px4 and _px4.connected:
             _px4.sync_to_amos(sim_assets)
 
+        # ── Phase 4: TAK + Link 16 sync (every ~5s) ──
+        if int(sim_clock["elapsed_sec"]) % 5 < 1:
+            if _tak and _tak.connected:
+                _tak.send_assets(sim_assets)
+                _tak.send_threats(sim_threats)
+            if _link16:
+                _link16.broadcast_all_assets(sim_assets)
+
         # ── Phase 10 ticks ──
         cognitive_engine.tick(sim_assets, sim_threats, dt)
         contested_env.tick(sim_assets, sim_threats, dt)
@@ -496,6 +525,14 @@ def tactical(): return render_template("tactical.html", **ctx())
 @app.route("/docs")
 @login_required
 def docs_page(): return render_template("docs.html", **ctx())
+
+@app.route("/integrations")
+@login_required
+def integrations_page(): return render_template("integrations.html", **ctx())
+
+@app.route("/analytics")
+@login_required
+def analytics_page(): return render_template("analytics.html", **ctx())
 
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS API
@@ -1693,8 +1730,20 @@ def api_recording_frames(session_id):
                      "ts": str(r["timestamp"])} for r in rows])
 
 # ═══════════════════════════════════════════════════════════
-#  PX4 SITL BRIDGE API (Phase 2)
+#  BRIDGE APIs (PX4 + TAK + Link 16)
 # ═══════════════════════════════════════════════════════════
+@app.route("/api/bridge/all")
+@login_required
+def api_bridge_all():
+    """Unified status of all integration bridges."""
+    return jsonify({
+        "px4": _px4.get_status() if _px4 else {"connected": False},
+        "tak": _tak.get_status() if _tak else {"connected": False},
+        "link16": _link16.get_status() if _link16 else {"connected": False},
+        "ros2": ros2_bridge.get_status() if ros2_bridge else {"available": False},
+    })
+
+# ── PX4 ──
 @app.route("/api/bridge/px4/status")
 @login_required
 def api_px4_status():
@@ -1753,6 +1802,147 @@ def api_px4_command():
     else:
         return jsonify({"error": f"Unknown command: {cmd}"}), 400
     return jsonify({"status": "ok" if ok else "failed", "command": cmd, "asset_id": aid})
+
+# ── TAK Bridge ──
+@app.route("/api/bridge/tak/status")
+@login_required
+def api_tak_status():
+    if not _tak:
+        return jsonify({"connected": False, "error": "TAK bridge not loaded"})
+    return jsonify(_tak.get_status())
+
+@app.route("/api/bridge/tak/connect", methods=["POST"])
+@login_required
+def api_tak_connect():
+    if not _tak:
+        return jsonify({"error": "TAK bridge not loaded"}), 503
+    d = request.json or {}
+    _tak.host = d.get("host", _tak.host)
+    _tak.port = int(d.get("port", _tak.port))
+    _tak.protocol = d.get("protocol", _tak.protocol)
+    ok = _tak.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _tak.connected})
+
+@app.route("/api/bridge/tak/disconnect", methods=["POST"])
+@login_required
+def api_tak_disconnect():
+    if _tak and _tak.sock:
+        try: _tak.sock.close()
+        except Exception: pass
+        _tak.connected = False
+    return jsonify({"status": "ok"})
+
+# ── Link 16 ──
+@app.route("/api/bridge/link16/status")
+@login_required
+def api_link16_status():
+    if not _link16:
+        return jsonify({"connected": False, "error": "Link 16 not loaded"})
+    return jsonify(_link16.get_status())
+
+@app.route("/api/bridge/link16/tracks")
+@login_required
+def api_link16_tracks():
+    if not _link16:
+        return jsonify({})
+    return jsonify(_link16.get_tactical_picture())
+
+@app.route("/api/bridge/link16/messages")
+@login_required
+def api_link16_messages():
+    if not _link16:
+        return jsonify([])
+    j_type = request.args.get("j_type")
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(_link16.get_messages(j_type=j_type, limit=limit))
+
+@app.route("/api/bridge/link16/participants")
+@login_required
+def api_link16_participants():
+    if not _link16:
+        return jsonify({})
+    return jsonify(_link16.get_participants())
+
+@app.route("/api/bridge/link16/join", methods=["POST"])
+@login_required
+def api_link16_join():
+    if not _link16:
+        return jsonify({"error": "Link 16 not loaded"}), 503
+    d = request.json or {}
+    aid = d.get("asset_id", "").strip().upper()
+    if not aid or aid not in sim_assets:
+        return jsonify({"error": "Valid asset_id required"}), 400
+    tn = _link16.join(aid, role=d.get("role", "PARTICIPANT"))
+    return jsonify({"status": "ok", "asset_id": aid, "track_number": tn})
+
+@app.route("/api/bridge/link16/command", methods=["POST"])
+@login_required
+def api_link16_command():
+    if not _link16:
+        return jsonify({"error": "Link 16 not loaded"}), 503
+    d = request.json or {}
+    msg = _link16.send_command(
+        d.get("from_id", ""), d.get("to_id", ""),
+        d.get("command_type", "ENGAGE"), d.get("params", {}))
+    return jsonify({"status": "ok" if msg else "failed", "message": msg})
+
+# ═══════════════════════════════════════════════════════════
+#  ANALYTICS API (Phase 4)
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/analytics/summary")
+@login_required
+def api_analytics_summary():
+    """Aggregated mission analytics."""
+    at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
+    nt = sum(1 for t in sim_threats.values() if t.get("neutralized"))
+    total_t = len(sim_threats)
+    # Asset utilization
+    moving = len(waypoint_nav.routes)
+    idle = len(sim_assets) - moving
+    low_batt = sum(1 for a in sim_assets.values() if a["health"]["battery_pct"] < 30)
+    # COA stats
+    cog_recs = cognitive_engine.get_recommendations(200)
+    approved = sum(1 for r in cog_recs if r.get("status") in ("approve", "approved"))
+    rejected = sum(1 for r in cog_recs if r.get("status") in ("reject", "rejected"))
+    pending = sum(1 for r in cog_recs if r.get("status") == "pending")
+    # Engagement stats
+    engagements = len(cm_log)
+    # Risk trend
+    risk = commander_support.get_risk()
+    risk_trend = commander_support.get_risk_trend()
+    # Event counts by type
+    event_types = {}
+    for ev in aar_events:
+        et = ev.get("type", "unknown")
+        event_types[et] = event_types.get(et, 0) + 1
+    # Domain breakdown
+    by_domain = {}
+    for a in sim_assets.values():
+        d = a.get("domain", "unknown")
+        by_domain[d] = by_domain.get(d, 0) + 1
+    # Health averages
+    avg_batt = sum(a["health"]["battery_pct"] for a in sim_assets.values()) / max(1, len(sim_assets))
+    avg_comms = sum(a["health"]["comms_strength"] for a in sim_assets.values()) / max(1, len(sim_assets))
+    return jsonify({
+        "mission_elapsed_sec": round(sim_clock["elapsed_sec"], 1),
+        "threats": {"active": at, "neutralized": nt, "total": total_t,
+                    "neutralization_pct": round(nt / max(1, total_t) * 100, 1)},
+        "assets": {"total": len(sim_assets), "moving": moving, "idle": idle,
+                   "low_battery": low_batt, "by_domain": by_domain,
+                   "avg_battery_pct": round(avg_batt, 1), "avg_comms_pct": round(avg_comms, 1)},
+        "coa": {"approved": approved, "rejected": rejected, "pending": pending,
+                "approval_rate": round(approved / max(1, approved + rejected) * 100, 1)},
+        "engagements": engagements,
+        "risk": {"level": risk.get("level", "LOW"), "score": risk.get("score", 0),
+                 "trend": risk_trend[-20:] if isinstance(risk_trend, list) else []},
+        "events": {"total": len(aar_events), "by_type": event_types},
+        "integrations": {
+            "px4": _px4.connected if _px4 else False,
+            "tak": _tak.connected if _tak else False,
+            "link16": bool(_link16),
+            "ros2": ros2_bridge.available if ros2_bridge else False,
+        },
+    })
 
 # ═══════════════════════════════════════════════════════════
 #  MULTI-OPERATOR COLLABORATION (Phase 2)
