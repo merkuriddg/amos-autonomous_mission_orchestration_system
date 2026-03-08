@@ -11,6 +11,14 @@
     <div class="card"><h3>REASONING & RECOMMENDATIONS</h3><div class="scroll-box" id="recs-list" style="max-height:350px"></div></div>
 </div>
 <div class="card"><h3>COURSES OF ACTION</h3><div class="scroll-box" id="coa-list" style="max-height:250px"></div></div>
+
+<div class="card" style="margin-top:8px">
+    <h3>THREAT INTELLIGENCE DATABASE <span class="badge badge-red" id="ti-count">0</span></h3>
+    <div class="grid-2">
+        <div class="scroll-box" id="ti-list" style="max-height:300px"></div>
+        <div id="ti-detail" style="font-size:.82em;padding:8px;color:#888">Select a threat type for details</div>
+    </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -48,5 +56,47 @@ async function refreshCog(){
     cDiv.innerHTML=html||'<div style="color:#666;padding:10px">No COAs generated yet</div>';
 }
 refreshCog(); setInterval(refreshCog,3000);
+
+/* ── Threat Intel ── */
+async function refreshThreatIntel(){
+    const ti=await apiFetch('/api/threat-intel');
+    const entries=Object.entries(ti||{});
+    document.getElementById('ti-count').textContent=entries.length;
+    if(!entries.length){
+        document.getElementById('ti-list').innerHTML='<div style="color:#666;padding:10px">No threat data collected yet</div>';
+        return;
+    }
+    document.getElementById('ti-list').innerHTML=entries.sort(function(a,b){return b[1].count-a[1].count;}).map(function(e){
+        var t=e[1]; var npct=t.count?Math.round(t.neutralized/t.count*100):0;
+        var col=npct>60?'#00ff41':npct>30?'#ffaa00':'#ff4444';
+        return '<div style="border:1px solid #222;padding:8px;margin:3px 0;cursor:pointer;border-left:3px solid '+col+'" onclick="showThreatDetail(\''+e[0]+'\')">'+
+            '<div style="display:flex;justify-content:space-between"><strong style="color:#ff4444">'+e[0].toUpperCase()+'</strong><span style="color:'+col+'">'+npct+'% neutralized</span></div>'+
+            '<div style="font-size:.75em;color:#666">Active: '+t.count+' | Neutralized: '+t.neutralized+' | Engagements: '+t.engagements+'</div></div>';
+    }).join('');
+}
+var _tiData={};
+async function showThreatDetail(ttype){
+    const ti=await apiFetch('/api/threat-intel');
+    var t=ti[ttype]; if(!t){document.getElementById('ti-detail').innerHTML='Not found';return;}
+    var npct=t.count?Math.round(t.neutralized/t.count*100):0;
+    var h='<h3 style="color:#ff4444;font-size:1em;margin-bottom:8px">'+ttype.toUpperCase()+'</h3>';
+    h+='<div style="margin:6px 0"><div style="font-size:.75em;color:#888">Neutralization Rate</div>';
+    h+='<div style="background:#1a1a1a;height:18px;border-radius:3px;overflow:hidden;margin:4px 0"><div style="height:100%;width:'+npct+'%;background:'+(npct>60?'#00ff41':'#ffaa00')+';border-radius:3px"></div></div>';
+    h+='<span style="font-size:.8em">'+npct+'%</span></div>';
+    h+='<div style="margin:6px 0"><div class="grid-2">';
+    h+='<div><span style="color:#888">Active:</span> <strong>'+t.count+'</strong></div>';
+    h+='<div><span style="color:#888">Neutralized:</span> <strong style="color:#00ff41">'+t.neutralized+'</strong></div>';
+    h+='<div><span style="color:#888">Engagements:</span> <strong style="color:#ffaa00">'+t.engagements+'</strong></div>';
+    h+='<div><span style="color:#888">Positions:</span> <strong>'+t.positions.length+'</strong></div>';
+    h+='</div></div>';
+    h+='<div style="margin:6px 0;font-size:.78em"><span style="color:#888">First seen:</span> '+(t.first_seen||'—').substring(0,19)+'</div>';
+    h+='<div style="font-size:.78em"><span style="color:#888">Last seen:</span> '+(t.last_seen||'—').substring(0,19)+'</div>';
+    if(t.positions.length){
+        h+='<div style="margin-top:8px;font-size:.7em;color:#666">RECENT POSITIONS</div>';
+        h+=t.positions.slice(-8).map(function(p){return '<span style="display:inline-block;background:#1a0000;border:1px solid #ff4444;padding:1px 5px;margin:2px;font-size:.75em;color:#ff8888">'+p.lat+', '+p.lng+'</span>';}).join('');
+    }
+    document.getElementById('ti-detail').innerHTML=h;
+}
+refreshThreatIntel(); setInterval(refreshThreatIntel,5000);
 </script>
 {% endblock %}

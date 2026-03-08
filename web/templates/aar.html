@@ -38,22 +38,69 @@
     </div>
 </div>
 
-<div class="card"><h3>EVENT TIMELINE</h3><div class="scroll-box" style="max-height:600px" id="aar-timeline"></div></div>
+<!-- ═══ Mission Report ═══ -->
+<div class="card" style="margin-bottom:10px">
+    <h3>MISSION REPORT</h3>
+    <div style="display:flex;gap:10px">
+        <button class="btn" onclick="downloadReport()">DOWNLOAD MISSION REPORT</button>
+    </div>
+</div>
+
+<!-- ═══ Enhanced Timeline ═══ -->
+<div class="card">
+    <h3>EVENT TIMELINE <span class="badge badge-green" id="timeline-total">0</span></h3>
+    <div style="margin:8px 0">
+        <div style="font-size:.7em;color:#666;margin-bottom:4px">FILTER BY TYPE</div>
+        <div id="timeline-filters" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
+    </div>
+    <div style="margin:8px 0">
+        <div style="font-size:.7em;color:#666;margin-bottom:4px">EVENT DENSITY</div>
+        <div id="timeline-density" style="display:flex;align-items:flex-end;gap:1px;height:40px"></div>
+    </div>
+    <div class="scroll-box" style="max-height:600px" id="aar-timeline"></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
-/* ── Live AAR Events ── */
+var _tlFilter=null;
+var EVT_COLORS={countermeasure:'#ff4444',detection:'#ffaa00',ew_action:'#4488ff',maneuver:'#00ff41',
+    hal_approved:'#00ccff',voice_command:'#ff66ff',geofence_alert:'#ff8800',red_force:'#ff2222',
+    contingency:'#ffa500',scenario_loaded:'#4488ff',swarm_created:'#00ff41',nlp_command:'#ff66ff',
+    waypoint_set:'#00aaff'};
+
 async function refreshAAR(){
-    const events=await apiFetch('/api/aar/events');
-    document.getElementById('aar-events').textContent=events.length||0;
-    const div=document.getElementById('aar-timeline'); div.innerHTML='';
-    (Array.isArray(events)?events:[]).reverse().forEach(function(e){
-        const color={countermeasure:'#ff4444',detection:'#ffaa00',ew_action:'#4488ff',maneuver:'#00ff41'}[e.type]||'#888';
-        div.innerHTML+='<div style="border-left:3px solid '+color+';padding:6px 12px;margin:3px 0"><span style="color:#666">T+'+Math.round(e.elapsed||0)+'s</span> <span class="badge" style="color:'+color+';border-color:'+color+';margin:0 8px">'+e.type+'</span> '+e.details+'</div>';
+    var url='/api/aar/timeline';
+    if(_tlFilter) url+='?type='+_tlFilter;
+    const d=await apiFetch(url);
+    document.getElementById('aar-events').textContent=d.total||0;
+    document.getElementById('timeline-total').textContent=d.events.length;
+    // Filter buttons
+    var fHtml='<button class="btn" style="padding:2px 8px;font-size:.7em'+(!_tlFilter?';background:#00ff41;color:#000':'')+'" onclick="setFilter(null)">ALL ('+d.total+')</button>';
+    var sorted=Object.entries(d.type_counts||{}).sort(function(a,b){return b[1]-a[1];});
+    sorted.forEach(function(e){
+        var col=EVT_COLORS[e[0]]||'#888';
+        var active=_tlFilter===e[0];
+        fHtml+='<button class="btn" style="padding:2px 8px;font-size:.7em;border-color:'+col+';color:'+(active?'#000':col)+(active?';background:'+col:'')+'" onclick="setFilter(\''+e[0]+'\')">'+e[0]+' ('+e[1]+')</button>';
+    });
+    document.getElementById('timeline-filters').innerHTML=fHtml;
+    // Density bar
+    var density=d.density||[];
+    var maxD=Math.max.apply(null,density.concat([1]));
+    document.getElementById('timeline-density').innerHTML=density.map(function(v){
+        var h=Math.max(2,Math.round((v/maxD)*38));
+        return '<div style="flex:1;height:'+h+'px;background:#00ff41;border-radius:1px;opacity:'+(v?'0.8':'0.15')+'"></div>';
+    }).join('');
+    // Events
+    var div=document.getElementById('aar-timeline'); div.innerHTML='';
+    (d.events||[]).reverse().forEach(function(e){
+        var col=EVT_COLORS[e.type]||'#888';
+        div.innerHTML+='<div style="border-left:3px solid '+col+';padding:6px 12px;margin:3px 0;cursor:pointer" onclick="this.querySelector(\'.evt-detail\').style.display=this.querySelector(\'.evt-detail\').style.display===\'none\'?\'block\':\'none\'"><span style="color:#666">T+'+Math.round(e.elapsed||0)+'s</span> <span class="badge" style="color:'+col+';border-color:'+col+';margin:0 8px">'+e.type+'</span> '+(e.details||'').substring(0,80)+'<div class="evt-detail" style="display:none;margin-top:4px;padding:4px 8px;background:#0a0a0a;font-size:.8em;color:#aaa">'+(e.details||'')+'<br><span style="color:#555">'+( e.timestamp||'')+'</span></div></div>';
     });
 }
-function exportAAR(){apiFetch('/api/aar/export').then(function(data){const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
-refreshAAR(); setInterval(refreshAAR,3000);
+function setFilter(t){_tlFilter=t;refreshAAR();}
+function exportAAR(){apiFetch('/api/aar/export').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
+function downloadReport(){apiFetch('/api/reports/mission').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MISSION_REPORT_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
+refreshAAR(); setInterval(refreshAAR,5000);
 
 /* ── Recording Controls ── */
 async function recStart(){

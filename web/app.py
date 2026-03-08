@@ -156,6 +156,9 @@ USERS, _DB_AUTH = _load_users_from_db()
 # Recording state
 _recording = {"active": False, "session_id": None, "frame_seq": 0, "tick_count": 0}
 
+# ── Phase 6: Threat Intel Database (in-memory) ──
+_threat_intel = {}  # {threat_type: {count, engagements, neutralized, first_seen, last_seen, positions}}
+
 # Online operator tracking  {socket_sid: {user, name, role, page, cursor, connected_at}}
 _online_ops = {}
 _asset_locks = {}  # {asset_id: {locked_by, locked_at, expires_at}}
@@ -403,6 +406,26 @@ def sim_tick():
                 except Exception:
                     pass
 
+        # ── Phase 6: Threat Intel tracking ──
+        for tid, t in sim_threats.items():
+            ttype = t.get("type", "unknown")
+            if ttype not in _threat_intel:
+                _threat_intel[ttype] = {"count": 0, "engagements": 0, "neutralized": 0,
+                    "first_seen": now_iso(), "last_seen": now_iso(), "positions": []}
+            ti = _threat_intel[ttype]
+            ti["last_seen"] = now_iso()
+            if t.get("neutralized"):
+                ti["neutralized"] = max(ti["neutralized"], sum(1 for x in sim_threats.values()
+                    if x.get("type") == ttype and x.get("neutralized")))
+            if t.get("lat") and len(ti["positions"]) < 50:
+                pos = {"lat": round(t["lat"], 4), "lng": round(t.get("lng", 0), 4)}
+                if not ti["positions"] or ti["positions"][-1] != pos:
+                    ti["positions"].append(pos)
+        for ttype in _threat_intel:
+            _threat_intel[ttype]["count"] = sum(1 for t in sim_threats.values() if t.get("type") == ttype)
+            _threat_intel[ttype]["engagements"] = sum(1 for c in cm_log if
+                sim_threats.get(c.get("threat_id", ""), {}).get("type") == ttype)
+
         # Trim
         for lst in [sigint_intercepts, ew_intercepts, cyber_events]:
             if len(lst) > 1000: del lst[:500]
@@ -528,6 +551,10 @@ def contested(): return render_template("contested.html", **ctx())
 @app.route("/redforce")
 @login_required
 def redforce(): return render_template("redforce.html", **ctx())
+
+@app.route("/readiness")
+@login_required
+def readiness(): return render_template("readiness.html", **ctx())
 
 @app.route("/settings")
 @login_required
@@ -2126,6 +2153,151 @@ def api_analytics_summary():
     })
 
 # ═══════════════════════════════════════════════════════════
+#  PHASE 6: MISSION INTELLIGENCE & REPORTING
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/aar/timeline")
+@login_required
+def api_aar_timeline():
+    """Enhanced AAR timeline with filtering."""
+    etype = request.args.get("type")  # filter by event type
+    limit = request.args.get("limit", 500, type=int)
+    events = aar_events[-limit:]
+    if etype:
+        events = [e for e in events if e.get("type") == etype]
+    # Build type summary for filter buttons
+    type_counts = {}
+    for e in aar_events:
+        t = e.get("type", "unknown")
+        type_counts[t] = type_counts.get(t, 0) + 1
+    # Build density buckets (30 buckets across timeline)
+    buckets = [0] * 30
+    max_elapsed = max((e.get("elapsed", 0) for e in aar_events), default=1) or 1
+    for e in aar_events:
+        idx = min(29, int((e.get("elapsed", 0) / max_elapsed) * 29))
+        buckets[idx] += 1
+    return jsonify({"events": events, "type_counts": type_counts,
+                    "density": buckets, "total": len(aar_events),
+                    "max_elapsed": round(max_elapsed, 1)})
+
+@app.route("/api/reports/mission")
+@login_required
+def api_reports_mission():
+    """Generate comprehensive mission report."""
+    at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
+    nt = sum(1 for t in sim_threats.values() if t.get("neutralized"))
+    risk = commander_support.get_risk()
+    cog_recs = cognitive_engine.get_recommendations(200)
+    approved = sum(1 for r in cog_recs if r.get("status") in ("approve", "approved"))
+    rejected = sum(1 for r in cog_recs if r.get("status") in ("reject", "rejected"))
+    # Asset status summary
+    asset_summary = []
+    for aid, a in sim_assets.items():
+        asset_summary.append({"id": aid, "type": a["type"], "domain": a["domain"],
+            "status": a["status"], "battery": a["health"]["battery_pct"],
+            "comms": a["health"]["comms_strength"]})
+    # Event summary by type
+    event_types = {}
+    for ev in aar_events:
+        et = ev.get("type", "unknown")
+        event_types[et] = event_types.get(et, 0) + 1
+    # Threat intel
+    threat_summary = []
+    for ttype, ti in _threat_intel.items():
+        threat_summary.append({"type": ttype, "count": ti["count"],
+            "neutralized": ti["neutralized"], "engagements": ti["engagements"]})
+    report = {
+        "title": f"MISSION REPORT — {platoon.get('name', 'UNNAMED')}",
+        "callsign": platoon.get("callsign", ""),
+        "generated_at": now_iso(),
+        "dtg": datetime.now(timezone.utc).strftime("%d%H%MZ %b %Y").upper(),
+        "elapsed_sec": round(sim_clock["elapsed_sec"], 1),
+        "elapsed_min": round(sim_clock["elapsed_sec"] / 60, 1),
+        "situation": {
+            "total_assets": len(sim_assets), "active_threats": at,
+            "neutralized_threats": nt, "total_threats": len(sim_threats),
+            "neutralization_pct": round(nt / max(1, len(sim_threats)) * 100, 1),
+            "risk_level": risk.get("level", "LOW"), "risk_score": risk.get("score", 0),
+        },
+        "decisions": {
+            "coa_approved": approved, "coa_rejected": rejected,
+            "engagements": len(cm_log),
+            "countermeasures_deployed": len(cm_log),
+            "voice_commands": event_types.get("voice_command", 0),
+        },
+        "assets": asset_summary,
+        "threat_intel": threat_summary,
+        "events": {"total": len(aar_events), "by_type": event_types},
+        "integrations": {
+            "px4": _px4.connected if _px4 else False,
+            "tak": _tak.connected if _tak else False,
+            "link16": bool(_link16), "ros2": ros2_bridge.available if ros2_bridge else False,
+        },
+    }
+    return jsonify(report)
+
+@app.route("/api/threat-intel")
+@login_required
+def api_threat_intel():
+    """Threat intelligence database."""
+    return jsonify(_threat_intel)
+
+@app.route("/api/readiness")
+@login_required
+def api_readiness():
+    """Pre-mission readiness scorecard."""
+    total = len(sim_assets)
+    # Fleet health
+    avg_batt = sum(a["health"]["battery_pct"] for a in sim_assets.values()) / max(1, total)
+    avg_comms = sum(a["health"]["comms_strength"] for a in sim_assets.values()) / max(1, total)
+    low_batt = sum(1 for a in sim_assets.values() if a["health"]["battery_pct"] < 30)
+    gps_fix = sum(1 for a in sim_assets.values() if a["health"].get("gps_fix", True))
+    # Sensor coverage
+    all_sensors = set()
+    for a in sim_assets.values():
+        all_sensors.update(a.get("sensors", []))
+    # Weapon readiness
+    armed = sum(1 for a in sim_assets.values() if a.get("weapons"))
+    # Endurance
+    avg_endurance = sum(a.get("endurance_hr", 0) for a in sim_assets.values()) / max(1, total)
+    # Integration status
+    intg = {"px4": _px4.connected if _px4 else False,
+            "tak": _tak.connected if _tak else False,
+            "link16": bool(_link16),
+            "ros2": ros2_bridge.available if ros2_bridge else False}
+    intg_score = sum(1 for v in intg.values() if v) / max(1, len(intg)) * 100
+    # Domain coverage
+    domains = set(a.get("domain", "") for a in sim_assets.values())
+    # Compute GO/NO-GO scores
+    fleet_score = min(100, avg_batt * 0.4 + avg_comms * 0.3 + (gps_fix / max(1, total) * 100) * 0.3)
+    weapon_score = (armed / max(1, total)) * 100
+    sensor_score = min(100, len(all_sensors) * 12.5)  # 8 unique sensors = 100%
+    endurance_score = min(100, avg_endurance * 10)  # 10hr = 100%
+    overall = (fleet_score * 0.35 + weapon_score * 0.2 + sensor_score * 0.2 +
+               endurance_score * 0.15 + intg_score * 0.1)
+    go_status = "GO" if overall >= 70 else "MARGINAL" if overall >= 50 else "NO-GO"
+    risk = commander_support.get_risk()
+    return jsonify({
+        "overall_score": round(overall, 1), "go_status": go_status,
+        "fleet": {"total": total, "avg_battery": round(avg_batt, 1),
+                  "avg_comms": round(avg_comms, 1), "low_battery": low_batt,
+                  "gps_fix": gps_fix, "score": round(fleet_score, 1)},
+        "weapons": {"armed_assets": armed, "unarmed": total - armed,
+                    "score": round(weapon_score, 1)},
+        "sensors": {"unique_types": sorted(list(all_sensors)),
+                    "count": len(all_sensors), "score": round(sensor_score, 1)},
+        "endurance": {"avg_hours": round(avg_endurance, 1),
+                      "score": round(endurance_score, 1)},
+        "integrations": {**intg, "score": round(intg_score, 1)},
+        "domains": sorted(list(domains)),
+        "risk": {"level": risk.get("level", "LOW"), "score": risk.get("score", 0)},
+        "asset_details": [{"id": a["id"], "type": a["type"], "domain": a["domain"],
+            "battery": a["health"]["battery_pct"], "comms": a["health"]["comms_strength"],
+            "gps": a["health"].get("gps_fix", True),
+            "armed": bool(a.get("weapons")), "endurance_hr": a.get("endurance_hr", 0),
+            "status": a["status"]} for a in sim_assets.values()],
+    })
+
+# ═══════════════════════════════════════════════════════════
 #  MULTI-OPERATOR COLLABORATION (Phase 2)
 # ═══════════════════════════════════════════════════════════
 _OP_COLORS = ["#00ff41","#4488ff","#ff4444","#ffaa00","#ff66ff","#00cccc","#ff8800","#88ff00"]
@@ -2281,7 +2453,7 @@ if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 10")
+    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 6")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)

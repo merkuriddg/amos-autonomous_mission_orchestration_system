@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Readiness{% endblock %}
+{% block head %}
+<style>
+.rdy-gauge{text-align:center;padding:20px;position:relative}
+.rdy-gauge .rdy-score{font-size:3em;font-weight:bold}
+.rdy-gauge .rdy-status{font-size:1.4em;margin-top:4px;letter-spacing:4px}
+.rdy-bar-wrap{background:#1a1a1a;height:22px;border-radius:4px;overflow:hidden;position:relative;margin:6px 0}
+.rdy-bar{height:100%;border-radius:4px;transition:width .5s ease}
+.rdy-bar-label{position:absolute;top:3px;left:8px;font-size:.72em;color:#fff;z-index:1}
+.rdy-cat{padding:12px;border:1px solid #222;margin-bottom:6px}
+.rdy-cat-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.rdy-cat-title{font-size:.9em;font-weight:bold}
+.rdy-cat-score{font-size:1.2em;font-weight:bold}
+.asset-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #111;font-size:.8em}
+.asset-row .asset-id{color:#4488ff;width:120px;font-weight:bold}
+.rdy-chip{display:inline-block;padding:2px 8px;border:1px solid;border-radius:3px;font-size:.75em;margin:2px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">MISSION READINESS</h2>
+
+ <!-- GO/NO-GO Gauge -->
+ <div class="card rdy-gauge" id="rdy-main">
+  <div class="rdy-score" id="rdy-overall">--</div>
+  <div class="rdy-status" id="rdy-go">CALCULATING...</div>
+  <div style="font-size:.75em;color:#666;margin-top:6px">Overall Readiness Score</div>
+ </div>
+
+ <!-- Category Scores -->
+ <div class="grid-3" style="margin-bottom:8px">
+  <div class="card rdy-cat" id="cat-fleet"></div>
+  <div class="card rdy-cat" id="cat-weapons"></div>
+  <div class="card rdy-cat" id="cat-sensors"></div>
+ </div>
+ <div class="grid-3" style="margin-bottom:8px">
+  <div class="card rdy-cat" id="cat-endurance"></div>
+  <div class="card rdy-cat" id="cat-integrations"></div>
+  <div class="card rdy-cat" id="cat-risk"></div>
+ </div>
+
+ <!-- Asset Detail Table -->
+ <div class="card">
+  <h3>ASSET READINESS DETAIL</h3>
+  <div class="scroll-box" style="max-height:400px" id="rdy-assets"></div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function rdyColor(s){return s>=80?'#00ff41':s>=60?'#00ccff':s>=40?'#ffaa00':'#ff4444';}
+function rdyBar(label,score,color){
+    return '<div style="font-size:.75em;color:#888;margin-bottom:2px">'+label+'</div>'+
+        '<div class="rdy-bar-wrap"><div class="rdy-bar-label">'+score.toFixed(0)+'%</div>'+
+        '<div class="rdy-bar" style="width:'+Math.round(score)+'%;background:'+color+'"></div></div>';
+}
+function catCard(el,title,score,content){
+    var col=rdyColor(score);
+    el.innerHTML='<div class="rdy-cat-hdr"><span class="rdy-cat-title">'+title+'</span>'+
+        '<span class="rdy-cat-score" style="color:'+col+'">'+score.toFixed(0)+'%</span></div>'+content;
+}
+
+async function refreshReadiness(){
+    const d=await apiFetch('/api/readiness');
+    // Main gauge
+    var col=d.go_status==='GO'?'#00ff41':d.go_status==='MARGINAL'?'#ffaa00':'#ff4444';
+    document.getElementById('rdy-overall').style.color=col;
+    document.getElementById('rdy-overall').textContent=d.overall_score.toFixed(1)+'%';
+    document.getElementById('rdy-go').style.color=col;
+    document.getElementById('rdy-go').textContent=d.go_status;
+    document.getElementById('rdy-main').style.borderColor=col;
+
+    // Fleet
+    catCard(document.getElementById('cat-fleet'),'FLEET HEALTH',d.fleet.score,
+        rdyBar('Battery (avg)',d.fleet.avg_battery,rdyColor(d.fleet.avg_battery))+
+        rdyBar('Comms (avg)',d.fleet.avg_comms,rdyColor(d.fleet.avg_comms))+
+        '<div style="font-size:.78em;margin-top:6px">GPS Fix: <span style="color:#00ff41">'+d.fleet.gps_fix+'/'+d.fleet.total+'</span> | Low Batt: <span style="color:#ff4444">'+d.fleet.low_battery+'</span></div>');
+
+    // Weapons
+    catCard(document.getElementById('cat-weapons'),'WEAPONS',d.weapons.score,
+        rdyBar('Armed Assets',d.weapons.score,rdyColor(d.weapons.score))+
+        '<div style="font-size:.78em;margin-top:6px">Armed: <span style="color:#00ff41">'+d.weapons.armed_assets+'</span> | Unarmed: '+d.weapons.unarmed+'</div>');
+
+    // Sensors
+    catCard(document.getElementById('cat-sensors'),'SENSORS',d.sensors.score,
+        rdyBar('Coverage',d.sensors.score,rdyColor(d.sensors.score))+
+        '<div style="margin-top:6px">'+d.sensors.unique_types.map(function(s){
+            return '<span class="rdy-chip" style="color:#4488ff;border-color:#4488ff">'+s+'</span>';
+        }).join('')+'</div>');
+
+    // Endurance
+    catCard(document.getElementById('cat-endurance'),'ENDURANCE',d.endurance.score,
+        rdyBar('Avg Endurance',d.endurance.score,rdyColor(d.endurance.score))+
+        '<div style="font-size:.78em;margin-top:6px">Average: <span style="color:#00ff41">'+d.endurance.avg_hours.toFixed(1)+'h</span></div>');
+
+    // Integrations
+    catCard(document.getElementById('cat-integrations'),'INTEGRATIONS',d.integrations.score,
+        ['px4','tak','link16','ros2'].map(function(k){
+            var on=d.integrations[k];
+            return '<div style="padding:3px 0;font-size:.82em"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+(on?'#00ff41':'#ff4444')+';margin-right:6px"></span>'+
+                k.toUpperCase()+' <span style="color:'+(on?'#00ff41':'#666')+'">'+(on?'ONLINE':'OFFLINE')+'</span></div>';
+        }).join(''));
+
+    // Risk
+    var rCol=d.risk.level==='HIGH'||d.risk.level==='CRITICAL'?'#ff4444':d.risk.level==='MEDIUM'?'#ffaa00':'#00ff41';
+    var rScore=Math.max(0,100-d.risk.score);
+    catCard(document.getElementById('cat-risk'),'THREAT RISK',rScore,
+        '<div style="text-align:center;margin:10px 0"><div style="font-size:1.6em;color:'+rCol+'">'+d.risk.level+'</div>'+
+        '<div style="font-size:.8em;color:#888">Score: '+d.risk.score+'</div></div>'+
+        '<div style="font-size:.78em">Domains: '+d.domains.map(function(dom){
+            return '<span class="rdy-chip" style="color:#00ff41;border-color:#00ff41">'+dom+'</span>';
+        }).join('')+'</div>');
+
+    // Asset detail
+    var aHtml='<div style="display:flex;padding:4px 0;border-bottom:1px solid #333;font-size:.72em;color:#666">'+
+        '<div style="width:120px">ASSET</div><div style="width:80px">DOMAIN</div>'+
+        '<div style="width:70px">BATT</div><div style="width:70px">COMMS</div>'+
+        '<div style="width:50px">GPS</div><div style="width:60px">ARMED</div>'+
+        '<div style="width:70px">ENDURANCE</div><div style="flex:1">STATUS</div></div>';
+    (d.asset_details||[]).forEach(function(a){
+        var bCol=a.battery>60?'#00ff41':a.battery>30?'#ffaa00':'#ff4444';
+        var cCol=a.comms>60?'#00ff41':a.comms>30?'#ffaa00':'#ff4444';
+        aHtml+='<div class="asset-row">'+
+            '<div class="asset-id">'+a.id+'</div>'+
+            '<div style="width:80px;color:#888">'+a.domain+'</div>'+
+            '<div style="width:70px;color:'+bCol+'">'+a.battery.toFixed(0)+'%</div>'+
+            '<div style="width:70px;color:'+cCol+'">'+a.comms.toFixed(0)+'%</div>'+
+            '<div style="width:50px;color:'+(a.gps?'#00ff41':'#ff4444')+'">'+( a.gps?'YES':'NO')+'</div>'+
+            '<div style="width:60px;color:'+(a.armed?'#00ff41':'#666')+'">'+( a.armed?'YES':'—')+'</div>'+
+            '<div style="width:70px">'+a.endurance_hr+'h</div>'+
+            '<div style="flex:1;color:'+(a.status==='operational'?'#00ff41':'#ff4444')+'">'+a.status+'</div></div>';
+    });
+    document.getElementById('rdy-assets').innerHTML=aHtml;
+}
+refreshReadiness(); setInterval(refreshReadiness,5000);
+</script>
+{% endblock %}
