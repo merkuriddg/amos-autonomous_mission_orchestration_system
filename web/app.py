@@ -427,15 +427,15 @@ def sim_tick():
         # ── Phase 5: Alert system ──
         alerts = []
         if risk.get("level") in ("HIGH", "CRITICAL"):
-            alerts.append({"level": "critical", "msg": f"Risk level {risk['level']} — score {risk.get('score',0)}"})
+            alerts.append({"level": "critical", "msg": f"Risk level {risk['level']} — score {risk.get('score',0)}", "link": "/cognitive"})
         low_batt = [a["id"] for a in sim_assets.values() if a["health"]["battery_pct"] < 15]
         if low_batt:
-            alerts.append({"level": "warning", "msg": f"Low battery: {', '.join(low_batt[:3])}"})
+            alerts.append({"level": "warning", "msg": f"Low battery: {', '.join(low_batt[:3])}", "link": "/dashboard"})
         low_comms = [a["id"] for a in sim_assets.values() if a["health"]["comms_strength"] < 25]
         if low_comms:
-            alerts.append({"level": "warning", "msg": f"Comms degraded: {', '.join(low_comms[:3])}"})
+            alerts.append({"level": "warning", "msg": f"Comms degraded: {', '.join(low_comms[:3])}", "link": "/integrations"})
         if phal > 5:
-            alerts.append({"level": "info", "msg": f"{phal} pending HAL approvals"})
+            alerts.append({"level": "info", "msg": f"{phal} pending HAL approvals", "link": "/hal"})
         if alerts:
             socketio.emit("amos_alerts", alerts)
 
