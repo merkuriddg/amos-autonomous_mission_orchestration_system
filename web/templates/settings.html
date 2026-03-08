@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">⚙ SYSTEM SETTINGS</h2>
+ <div style="display:flex;gap:4px;margin-bottom:12px">
+  <button class="btn tab-btn active" onclick="showTab('locations',this)">LOCATIONS</button>
+  <button class="btn tab-btn" onclick="showTab('assets',this)">ASSETS</button>
+  <button class="btn tab-btn" onclick="showTab('profile',this)">PROFILE</button>
+  <button class="btn tab-btn" onclick="showTab('system',this)">SYSTEM</button>
+ </div>
+
+ <!-- LOCATIONS TAB -->
+ <div id="tab-locations" class="tab-panel">
+  <div class="grid-2">
+   <div class="card">
+    <h3>SAVED LOCATIONS</h3>
+    <div id="loc-list" class="scroll-box" style="max-height:350px"></div>
+   </div>
+   <div class="card">
+    <h3 id="loc-form-title">ADD NEW LOCATION</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <input id="loc-key" type="text" placeholder="Key (e.g. kabul)" style="width:100%">
+     <input id="loc-name" type="text" placeholder="Display name (e.g. FOB Kabul)" style="width:100%">
+     <div class="grid-2">
+      <input id="loc-lat" type="number" step="0.001" placeholder="Latitude">
+      <input id="loc-lng" type="number" step="0.001" placeholder="Longitude">
+     </div>
+     <input id="loc-desc" type="text" placeholder="Description" style="width:100%">
+     <div style="font-size:.7em;color:#666;margin-top:2px">AO BOUNDS</div>
+     <div class="grid-4">
+      <input id="loc-ao-n" type="number" step="0.1" placeholder="North">
+      <input id="loc-ao-s" type="number" step="0.1" placeholder="South">
+      <input id="loc-ao-e" type="number" step="0.1" placeholder="East">
+      <input id="loc-ao-w" type="number" step="0.1" placeholder="West">
+     </div>
+     <input id="loc-zoom" type="number" value="10" placeholder="Map zoom (8-14)" style="width:100px">
+     <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="btn" onclick="saveLoc()">SAVE LOCATION</button>
+      <button class="btn btn-yellow" onclick="clearLocForm()">CLEAR</button>
+     </div>
+     <div id="loc-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+    <div id="loc-map" style="height:200px;margin-top:10px;border:1px solid #222"></div>
+   </div>
+  </div>
+ </div>
+
+ <!-- ASSETS TAB -->
+ <div id="tab-assets" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>FLEET ROSTER <span class="badge badge-green" id="fleet-count">0</span></h3>
+    <div style="display:flex;gap:4px;margin-bottom:6px">
+     <button class="btn" style="padding:2px 8px;font-size:.72em" onclick="filterFleet('all')">ALL</button>
+     <button class="btn" style="padding:2px 8px;font-size:.72em;color:#00aaff;border-color:#00aaff" onclick="filterFleet('air')">AIR</button>
+     <button class="btn" style="padding:2px 8px;font-size:.72em" onclick="filterFleet('ground')">GROUND</button>
+     <button class="btn" style="padding:2px 8px;font-size:.72em;color:#ff44ff;border-color:#ff44ff" onclick="filterFleet('maritime')">SEA</button>
+    </div>
+    <div id="fleet-list" class="scroll-box" style="max-height:420px"></div>
+   </div>
+   <div class="card">
+    <h3 id="asset-form-title">ADD NEW ASSET</h3>
+    <div style="display:flex;flex-direction:column;gap:5px">
+     <input id="a-id" type="text" placeholder="Asset ID (e.g. FALCON-01)" style="width:100%">
+     <div class="grid-2">
+      <select id="a-domain" style="width:100%">
+       <option value="air">AIR</option>
+       <option value="ground">GROUND</option>
+       <option value="maritime">MARITIME</option>
+      </select>
+      <input id="a-type" type="text" placeholder="Type (e.g. MQ-9B, armed_ugv)" style="width:100%">
+     </div>
+     <div class="grid-2">
+      <select id="a-role" style="width:100%">
+       <option value="isr_strike">ISR/Strike</option>
+       <option value="recon">Recon</option>
+       <option value="ew">EW</option>
+       <option value="air_superiority">Air Superiority</option>
+       <option value="airborne_c2">Airborne C2</option>
+       <option value="direct_action">Direct Action</option>
+       <option value="resupply">Resupply</option>
+       <option value="medevac">Medevac</option>
+       <option value="sigint">SIGINT</option>
+       <option value="cbrn">CBRN</option>
+       <option value="seismic">Seismic</option>
+       <option value="coastal_patrol">Coastal Patrol</option>
+       <option value="subsurface_recon">Subsurface Recon</option>
+       <option value="decoy">Decoy</option>
+      </select>
+      <input id="a-tier" type="number" min="1" max="5" value="2" placeholder="Autonomy Tier" style="width:100%">
+     </div>
+     <div class="grid-3">
+      <input id="a-lat" type="number" step="0.001" placeholder="Lat">
+      <input id="a-lng" type="number" step="0.001" placeholder="Lng">
+      <input id="a-alt" type="number" placeholder="Alt ft" value="0">
+     </div>
+     <input id="a-sensors" type="text" placeholder="Sensors (comma-sep: EO/IR,SIGINT,LIDAR)" style="width:100%">
+     <input id="a-weapons" type="text" placeholder="Weapons (comma-sep: AGM-114,GBU-38)" style="width:100%">
+     <input id="a-endurance" type="number" placeholder="Endurance (hours)" style="width:100px">
+     <div style="font-size:.7em;color:#666;margin-top:4px;border-top:1px solid #222;padding-top:4px">INTEGRATION BRIDGE</div>
+     <div class="grid-2">
+      <select id="a-bridge" style="width:100%">
+       <option value="none">None (Simulated)</option>
+       <option value="px4">PX4 Autopilot</option>
+       <option value="ardupilot">ArduPilot</option>
+       <option value="ros2">ROS 2</option>
+       <option value="moos">MOOS-IvP</option>
+       <option value="tak">TAK Server</option>
+       <option value="nav2">Nav2</option>
+       <option value="link16">Link-16</option>
+       <option value="sdr">SDR Radio</option>
+      </select>
+      <input id="a-bridge-addr" type="text" placeholder="Connection (e.g. udp:14540)" style="width:100%">
+     </div>
+     <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="btn" onclick="saveAsset()">SAVE ASSET</button>
+      <button class="btn btn-yellow" onclick="clearAssetForm()">CLEAR</button>
+     </div>
+     <div id="asset-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- PROFILE TAB -->
+ <div id="tab-profile" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>DISPLAY NAME</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <div style="font-size:.75em;color:#666">Current: <span id="prof-current" style="color:#00ff41">{{ name }}</span></div>
+     <input id="prof-name" type="text" placeholder="New display name" style="width:100%">
+     <button class="btn" onclick="saveProfile()">UPDATE NAME</button>
+     <div id="prof-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+   <div class="card">
+    <h3>CHANGE PASSWORD</h3>
+    <div style="display:flex;flex-direction:column;gap:6px">
+     <input id="pw-current" type="password" placeholder="Current password" style="width:100%">
+     <input id="pw-new" type="password" placeholder="New password" style="width:100%">
+     <input id="pw-confirm" type="password" placeholder="Confirm new password" style="width:100%">
+     <button class="btn" onclick="changePW()">CHANGE PASSWORD</button>
+     <div id="pw-msg" style="font-size:.75em;margin-top:4px"></div>
+    </div>
+   </div>
+  </div>
+  <div class="card" style="margin-top:8px">
+   <h3>YOUR ROLE &amp; ACCESS</h3>
+   <div style="font-size:.8em">
+    <div>Username: <span style="color:#fff">{{ user }}</span></div>
+    <div>Role: <span style="color:#fff">{{ role }}</span></div>
+    <div>Domain: <span style="color:#fff">{{ domain }}</span></div>
+    <div style="margin-top:6px">Access: {% for a in access %}<span class="badge badge-green" style="margin:2px">{{ a }}</span>{% endfor %}</div>
+   </div>
+  </div>
+ </div>
+
+ <!-- SYSTEM TAB -->
+ <div id="tab-system" class="tab-panel" style="display:none">
+  <div class="grid-3" style="margin-bottom:8px">
+   <div class="card stat"><div class="value" id="sys-assets">--</div><div class="label">ASSETS</div></div>
+   <div class="card stat"><div class="value" id="sys-threats" style="color:#ff4444">--</div><div class="label">THREATS</div></div>
+   <div class="card stat"><div class="value" id="sys-uptime" style="color:#4488ff">--</div><div class="label">UPTIME</div></div>
+  </div>
+  <div class="grid-2">
+   <div class="card">
+    <h3>SYSTEM INFO</h3>
+    <div id="sys-info" style="font-size:.8em"></div>
+   </div>
+   <div class="card">
+    <h3>ACTIVE USERS</h3>
+    <div id="sys-users" style="font-size:.8em"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function showTab(name,btn){
+ document.querySelectorAll('.tab-panel').forEach(function(p){p.style.display='none';});
+ document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');b.style.background='';b.style.color='';});
+ document.getElementById('tab-'+name).style.display='block';
+ if(btn){btn.classList.add('active');btn.style.background='#00ff41';btn.style.color='#000';}
+}
+// init first tab
+document.querySelector('.tab-btn.active').style.background='#00ff41';
+document.querySelector('.tab-btn.active').style.color='#000';
+
+/* ── LOCATIONS ── */
+var locMap=null,locMarker=null,locData={};
+function initLocMap(){
+ if(locMap)return;
+ locMap=L.map('loc-map',{zoomControl:true}).setView([35.689,51.312],6);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(locMap);
+ locMap.on('click',function(e){
+  document.getElementById('loc-lat').value=e.latlng.lat.toFixed(4);
+  document.getElementById('loc-lng').value=e.latlng.lng.toFixed(4);
+  if(locMarker)locMap.removeLayer(locMarker);
+  locMarker=L.marker(e.latlng).addTo(locMap);
+ });
+ setTimeout(function(){locMap.invalidateSize();},200);
+}
+function refreshLocs(){
+ apiFetch('/api/settings/locations').then(function(d){
+  locData=d;
+  var h='';
+  var locs=d.locations||{};
+  for(var k in locs){
+   var loc=locs[k];
+   var isActive=k===d.active;
+   var border=isActive?'#00ff41':'#333';
+   h+='<div style="border:1px solid '+border+';padding:8px;margin:4px 0;border-radius:4px'+(isActive?';background:#00ff4110':'')+'">';
+   h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+   h+='<div><strong style="color:#fff">'+loc.name+'</strong>';
+   if(isActive) h+=' <span class="badge badge-green">ACTIVE</span>';
+   h+='<div style="font-size:.7em;color:#666">'+loc.lat.toFixed(3)+', '+loc.lng.toFixed(3)+'</div>';
+   if(loc.description) h+='<div style="font-size:.7em;color:#555">'+loc.description+'</div>';
+   h+='</div><div style="display:flex;gap:4px">';
+   if(!isActive) h+='<button class="btn" style="padding:2px 8px;font-size:.7em" onclick="activateLoc(\''+k+'\')">ACTIVATE</button>';
+   h+='<button class="btn btn-yellow" style="padding:2px 8px;font-size:.7em" onclick="editLoc(\''+k+'\')">EDIT</button>';
+   h+='<button class="btn btn-red" style="padding:2px 8px;font-size:.7em" onclick="deleteLoc(\''+k+'\')">DEL</button>';
+   h+='</div></div></div>';
+  }
+  document.getElementById('loc-list').innerHTML=h||'<div style="color:#666;padding:8px">No saved locations</div>';
+ });
+}
+function saveLoc(){
+ var key=document.getElementById('loc-key').value.trim();
+ var name=document.getElementById('loc-name').value.trim();
+ if(!key||!name){showMsg('loc-msg','Key and name required','#ff4444');return;}
+ apiPost('/api/settings/locations/save',{
+  key:key,name:name,
+  lat:parseFloat(document.getElementById('loc-lat').value)||0,
+  lng:parseFloat(document.getElementById('loc-lng').value)||0,
+  description:document.getElementById('loc-desc').value,
+  ao:{north:parseFloat(document.getElementById('loc-ao-n').value)||0,
+      south:parseFloat(document.getElementById('loc-ao-s').value)||0,
+      east:parseFloat(document.getElementById('loc-ao-e').value)||0,
+      west:parseFloat(document.getElementById('loc-ao-w').value)||0},
+  zoom:parseInt(document.getElementById('loc-zoom').value)||10
+ }).then(function(r){
+  if(r.status==='ok'){showMsg('loc-msg','Location saved','#00ff41');clearLocForm();refreshLocs();}
+  else showMsg('loc-msg',r.error||'Error','#ff4444');
+ });
+}
+function editLoc(k){
+ var loc=locData.locations[k];
+ if(!loc)return;
+ document.getElementById('loc-key').value=k;
+ document.getElementById('loc-name').value=loc.name;
+ document.getElementById('loc-lat').value=loc.lat;
+ document.getElementById('loc-lng').value=loc.lng;
+ document.getElementById('loc-desc').value=loc.description||'';
+ if(loc.ao){
+  document.getElementById('loc-ao-n').value=loc.ao.north||'';
+  document.getElementById('loc-ao-s').value=loc.ao.south||'';
+  document.getElementById('loc-ao-e').value=loc.ao.east||'';
+  document.getElementById('loc-ao-w').value=loc.ao.west||'';
+ }
+ document.getElementById('loc-zoom').value=loc.zoom||10;
+ document.getElementById('loc-form-title').textContent='EDIT: '+loc.name;
+ if(locMap){
+  locMap.setView([loc.lat,loc.lng],8);
+  if(locMarker)locMap.removeLayer(locMarker);
+  locMarker=L.marker([loc.lat,loc.lng]).addTo(locMap);
+ }
+}
+function deleteLoc(k){
+ if(!confirm('Delete location "'+k+'"?'))return;
+ apiPost('/api/settings/locations/delete',{key:k}).then(function(){refreshLocs();});
+}
+function activateLoc(k){
+ apiPost('/api/settings/locations/activate',{key:k}).then(function(r){
+  if(r.status==='ok'){showMsg('loc-msg','Activated: '+r.location.name+'. Map center updated.','#00ff41');refreshLocs();}
+  else showMsg('loc-msg',r.error||'Error','#ff4444');
+ });
+}
+function clearLocForm(){
+ ['loc-key','loc-name','loc-lat','loc-lng','loc-desc','loc-ao-n','loc-ao-s','loc-ao-e','loc-ao-w'].forEach(function(id){document.getElementById(id).value='';});
+ document.getElementById('loc-zoom').value='10';
+ document.getElementById('loc-form-title').textContent='ADD NEW LOCATION';
+ if(locMarker&&locMap){locMap.removeLayer(locMarker);locMarker=null;}
+}
+
+/* ── PROFILE ── */
+function saveProfile(){
+ var n=document.getElementById('prof-name').value.trim();
+ if(!n){showMsg('prof-msg','Name required','#ff4444');return;}
+ apiPost('/api/settings/profile',{name:n}).then(function(r){
+  if(r.status==='ok'){showMsg('prof-msg','Name updated to: '+r.name,'#00ff41');document.getElementById('prof-current').textContent=r.name;}
+  else showMsg('prof-msg',r.error||'Error','#ff4444');
+ });
+}
+function changePW(){
+ var cur=document.getElementById('pw-current').value;
+ var nw=document.getElementById('pw-new').value;
+ var cf=document.getElementById('pw-confirm').value;
+ if(!cur||!nw){showMsg('pw-msg','All fields required','#ff4444');return;}
+ if(nw!==cf){showMsg('pw-msg','Passwords do not match','#ff4444');return;}
+ apiPost('/api/settings/password',{current:cur,new:nw}).then(function(r){
+  if(r.status==='ok'){showMsg('pw-msg','Password changed','#00ff41');document.getElementById('pw-current').value='';document.getElementById('pw-new').value='';document.getElementById('pw-confirm').value='';}
+  else showMsg('pw-msg',r.error||'Error','#ff4444');
+ });
+}
+
+/* ── SYSTEM ── */
+function refreshSystem(){
+ apiFetch('/api/settings/system').then(function(s){
+  document.getElementById('sys-assets').textContent=s.assets;
+  document.getElementById('sys-threats').textContent=s.threats;
+  var m=Math.floor(s.uptime_sec/60);var h=Math.floor(m/60);
+  document.getElementById('sys-uptime').textContent=(h?h+'h ':'')+(m%60)+'m';
+  document.getElementById('sys-info').innerHTML=
+   '<div>Location: <span style="color:#fff">'+s.location_name+'</span></div>'+
+   '<div>Base: <span style="color:#fff">'+s.base.lat.toFixed(3)+', '+s.base.lng.toFixed(3)+'</span></div>'+
+   '<div>EW-capable: <span style="color:#fff">'+s.ew_capable+'</span></div>'+
+   '<div>ROS 2: <span style="color:'+(s.ros2?'#00ff41':'#ff4444')+'">'+(s.ros2?'Connected':'Standalone')+'</span></div>'+
+   '<div>Sim Speed: <span style="color:#fff">'+s.sim_speed+'x</span></div>';
+ });
+ apiFetch('/api/users').then(function(u){
+  var h='';
+  for(var k in u){h+='<div style="padding:3px 0;border-bottom:1px solid #222">'+u[k].name+' <span style="color:#666">('+u[k].role+')</span> <span class="badge badge-blue">'+u[k].domain+'</span></div>';}
+  document.getElementById('sys-users').innerHTML=h||'<div style="color:#666">Access denied</div>';
+ }).catch(function(){document.getElementById('sys-users').innerHTML='<div style="color:#666">Commander access required</div>';});
+}
+
+function showMsg(id,msg,color){var el=document.getElementById(id);el.style.color=color||'#00ff41';el.textContent=msg;setTimeout(function(){el.textContent='';},4000);}
+
+/* ── ASSETS ── */
+var fleetFilter='all';
+function filterFleet(d){fleetFilter=d;refreshFleet();}
+function refreshFleet(){
+ apiFetch('/api/settings/assets').then(function(assets){
+  var keys=Object.keys(assets).sort();
+  var filtered=fleetFilter==='all'?keys:keys.filter(function(k){return assets[k].domain===fleetFilter;});
+  document.getElementById('fleet-count').textContent=keys.length;
+  var h='';
+  filtered.forEach(function(id){
+   var a=assets[id];
+   var dc={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+   var col=dc[a.domain]||'#888';
+   var bridge=a.integration||'none';
+   h+='<div style="border:1px solid #222;padding:6px;margin:3px 0;border-radius:3px;border-left:3px solid '+col+'">';
+   h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+   h+='<div><strong style="color:'+col+'">'+id+'</strong> <span style="color:#666;font-size:.7em">'+a.type+' | '+a.role+'</span>';
+   if(bridge!=='none') h+=' <span class="badge badge-blue" style="font-size:.6em">'+bridge.toUpperCase()+'</span>';
+   h+='<div style="font-size:.65em;color:#555">T'+a.autonomy_tier+' | '+a.domain+' | '+(a.sensors||[]).join(',')+' | '+(a.endurance_hr||'?')+'h</div>';
+   h+='</div><div style="display:flex;gap:3px">';
+   h+='<button class="btn btn-yellow" style="padding:1px 6px;font-size:.65em" onclick="editAsset(\''+id+'\')">EDIT</button>';
+   h+='<button class="btn btn-red" style="padding:1px 6px;font-size:.65em" onclick="deleteAsset(\''+id+'\')">DEL</button>';
+   h+='</div></div></div>';
+  });
+  document.getElementById('fleet-list').innerHTML=h||'<div style="color:#666;padding:8px">No assets</div>';
+ });
+}
+function saveAsset(){
+ var id=document.getElementById('a-id').value.trim().toUpperCase();
+ if(!id){showMsg('asset-msg','Asset ID required','#ff4444');return;}
+ var sensors=document.getElementById('a-sensors').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ var weapons=document.getElementById('a-weapons').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ apiPost('/api/settings/assets/save',{
+  id:id,
+  domain:document.getElementById('a-domain').value,
+  type:document.getElementById('a-type').value.trim(),
+  role:document.getElementById('a-role').value,
+  autonomy_tier:parseInt(document.getElementById('a-tier').value)||2,
+  sensors:sensors, weapons:weapons,
+  endurance_hr:parseFloat(document.getElementById('a-endurance').value)||0,
+  lat:parseFloat(document.getElementById('a-lat').value)||0,
+  lng:parseFloat(document.getElementById('a-lng').value)||0,
+  alt_ft:parseFloat(document.getElementById('a-alt').value)||0,
+  integration:document.getElementById('a-bridge').value,
+  bridge_addr:document.getElementById('a-bridge-addr').value.trim()
+ }).then(function(r){
+  if(r.status==='ok'){showMsg('asset-msg','Asset saved: '+id,'#00ff41');clearAssetForm();refreshFleet();}
+  else showMsg('asset-msg',r.error||'Error','#ff4444');
+ });
+}
+function editAsset(id){
+ apiFetch('/api/assets/'+id).then(function(a){
+  if(a.error)return;
+  document.getElementById('a-id').value=id;
+  document.getElementById('a-domain').value=a.domain||'ground';
+  document.getElementById('a-type').value=a.type||'';
+  document.getElementById('a-role').value=a.role||'recon';
+  document.getElementById('a-tier').value=a.autonomy_tier||2;
+  document.getElementById('a-lat').value=a.position?a.position.lat:'';
+  document.getElementById('a-lng').value=a.position?a.position.lng:'';
+  document.getElementById('a-alt').value=a.position?a.position.alt_ft:0;
+  document.getElementById('a-sensors').value=(a.sensors||[]).join(', ');
+  document.getElementById('a-weapons').value=(a.weapons||[]).join(', ');
+  document.getElementById('a-endurance').value=a.endurance_hr||'';
+  document.getElementById('a-bridge').value=a.integration||'none';
+  document.getElementById('a-bridge-addr').value=a.bridge_addr||'';
+  document.getElementById('asset-form-title').textContent='EDIT: '+id;
+ });
+}
+function deleteAsset(id){
+ if(!confirm('Delete asset '+id+'?'))return;
+ apiPost('/api/settings/assets/delete',{id:id}).then(function(){refreshFleet();});
+}
+function clearAssetForm(){
+ ['a-id','a-type','a-sensors','a-weapons','a-endurance','a-lat','a-lng','a-bridge-addr'].forEach(function(x){document.getElementById(x).value='';});
+ document.getElementById('a-alt').value='0';
+ document.getElementById('a-tier').value='2';
+ document.getElementById('a-domain').value='air';
+ document.getElementById('a-role').value='recon';
+ document.getElementById('a-bridge').value='none';
+ document.getElementById('asset-form-title').textContent='ADD NEW ASSET';
+}
+
+// Init
+refreshLocs();refreshSystem();refreshFleet();
+setTimeout(initLocMap,300);
+</script>
+{% endblock %}

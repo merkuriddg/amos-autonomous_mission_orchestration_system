@@ -5,6 +5,16 @@
         transition:all .2s;text-align:center}
     .swarm-btn:hover{background:#00ff4115;border-color:#00ff41;box-shadow:0 0 10px #00ff4133}
     .swarm-btn.active{background:#00ff4122;border-color:#00ff41;color:#fff;box-shadow:0 0 15px #00ff4144}
+    .cpanel{background:#111;border:1px solid #222;margin-bottom:4px}
+    .cpanel-hdr{color:#00ff41;font-size:.85em;padding:6px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;border-bottom:1px solid #222}
+    .cpanel-hdr:hover{background:#1a1a1a}
+    .cpanel-hdr .chevron{color:#666;font-size:.7em;transition:transform .2s}
+    .cpanel-hdr .chevron.collapsed{transform:rotate(-90deg)}
+    .cpanel-body{padding:6px 10px;transition:max-height .3s ease}
+    .cpanel-body.collapsed{display:none}
+    .right-col{display:flex;flex-direction:column}
+    .right-col .cpanel{flex-shrink:1;min-height:0}
+    .right-col .cpanel .scroll-box{overflow-y:auto}
     </style>
 {% extends "base.html" %}
 {% block title %}C2 Console{% endblock %}
@@ -17,7 +27,7 @@
 </div>
 <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:8px">
  <div>
-  <div class="card"><h3>TACTICAL MAP — Tampa Bay AO
+  <div class="card"><h3>TACTICAL MAP — Tehran AO
    <span style="float:right">
     <select id="wp-asset" style="width:130px;font-size:.8em"><option value="">-- select asset --</option></select>
     <button class="btn" id="wp-btn" onclick="toggleWP()" style="padding:3px 8px" title="Toggle waypoint mode">📍 WP MODE</button>
@@ -26,16 +36,6 @@
    <div id="map" style="height:520px"></div>
    <div id="wp-status" style="color:#666;font-size:.75em;padding:4px"></div>
   </div>
- </div>
- <div>
-  <div class="card"><h3>ASSET STATUS</h3><div class="scroll-box" style="max-height:200px">
-   <table><thead><tr><th>ID</th><th>DOM</th><th>STS</th><th>BAT</th><th>COM</th></tr></thead>
-   <tbody id="a-tb"></tbody></table></div></div>
-  <div class="card"><h3>THREAT TRACKS</h3><div class="scroll-box" style="max-height:160px">
-   <table><thead><tr><th>TRACK</th><th>TYPE</th><th>STS</th></tr></thead>
-   <tbody id="t-tb"></tbody></table></div></div>
-  <div class="card"><h3>GEOFENCE ALERTS</h3><div class="scroll-box" style="max-height:120px" id="gf-alerts">
-   <div style="color:#666;padding:6px">No alerts</div></div></div>
   <div class="card"><h3>SIM CONTROL</h3>
    <button class="btn" onclick="setSpd(0.5)">0.5x</button>
    <button class="btn" onclick="setSpd(1)">1x</button>
@@ -44,89 +44,66 @@
    <button class="btn" onclick="setSpd(10)">10x</button>
    <span id="sim-clk" style="margin-left:10px;color:#888">T+0s</span>
   </div>
-
-    <!-- ═══ SWARM CONTROL PANEL ═══ -->
-    <div id="swarm-control" style="margin-top:12px;padding:12px;background:#0a0a1a;border:1px solid #1a1a3e;border-radius:6px">
-        <div style="color:#00ff41;font-size:12px;font-weight:bold;margin-bottom:10px;font-family:'Courier New',monospace;letter-spacing:1px">
-            ⬡ SWARM CONTROL
-        </div>
-        
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- AMOS C2 PLANNER PANEL                                   -->
-<!-- ═══════════════════════════════════════════════════════ -->
-<div id="c2-planner-panel" style="background:rgba(0,0,0,0.85);border:1px solid #00ff41;border-radius:8px;padding:10px;margin:6px 0;font-family:'Courier New',monospace">
-  <div style="color:#00ff41;font-weight:bold;font-size:.85em;margin-bottom:6px;border-bottom:1px solid #00ff4144;padding-bottom:4px">
-    ⬡ C2 COMMAND PANEL
-  </div>
-
-  <!-- ROW 1: Asset selector + Domain -->
-  <div style="display:flex;gap:6px;margin-bottom:6px;align-items:stretch">
-    <!-- Asset Multi-Select Dropdown -->
-    <div style="flex:2;position:relative">
-      <button id="c2-asset-toggle" onclick="c2ToggleDropdown()" 
-              style="width:100%;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:.75em;text-align:left;font-family:inherit">
-        ▼ SELECT ASSETS <span id="c2-asset-count" style="float:right;color:#888">(0)</span>
-      </button>
-      <div id="c2-asset-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;background:#111;border:1px solid #00ff41;border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;padding:4px">
-        <div style="padding:2px 6px;border-bottom:1px solid #333">
-          <label style="color:#888;font-size:.7em;cursor:pointer">
-            <input type="checkbox" id="c2-select-all" onchange="c2ToggleAll(this.checked)"> SELECT ALL
-          </label>
-        </div>
-        <div id="c2-asset-list">
-          <div style="color:#555;font-size:.7em;padding:4px">Loading...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Domain Filter -->
-    <select id="c2-domain-filter" onchange="c2FilterAssets()" 
-            style="flex:1;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px;border-radius:4px;font-size:.75em;font-family:inherit">
-      <option value="all">ALL</option>
-      <option value="ground" selected>GROUND</option>
-      <option value="air">AIR</option>
-      <option value="maritime">MARITIME</option>
-    </select>
-  </div>
-
-  <!-- ROW 2: Action Dropdown + Execute -->
-  <div style="display:flex;gap:6px;margin-bottom:6px">
-    <select id="c2-action" style="flex:2;background:#111;border:1px solid #00ff41;color:#00ff41;padding:5px;border-radius:4px;font-size:.75em;font-family:inherit">
-      <optgroup label="FORMATIONS">
-        <option value="form:LINE">⊞ LINE</option>
-        <option value="form:COLUMN">⊞ COLUMN</option>
-        <option value="form:WEDGE">⊞ WEDGE</option>
-        <option value="form:DIAMOND">⊞ DIAMOND</option>
-        <option value="form:SPREAD">⊞ SPREAD</option>
-        <option value="form:ORBIT">⊞ ORBIT</option>
-      </optgroup>
-      <optgroup label="COMMANDS">
-        <option value="cmd:hold">⏸ HOLD POSITION</option>
-        <option value="cmd:rtb">⏎ RETURN TO BASE</option>
-        <option value="cmd:patrol">↻ RESUME PATROL</option>
-      </optgroup>
-      <optgroup label="SWARM">
-        <option value="swarm:create">⬡ CREATE SWARM</option>
-        <option value="swarm:clear">✕ CLEAR FORMATION</option>
-      </optgroup>
-    </select>
-    <button onclick="c2Execute()" 
-            style="flex:1;background:#00ff41;color:#000;border:none;padding:5px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:.8em;font-family:inherit">
-      ▶ EXECUTE
-    </button>
-  </div>
-
-  <!-- ROW 3: Status -->
-  <div id="c2-status" style="color:#888;font-size:.7em;padding:2px 4px">Ready — select assets and action</div>
-</div>
-
-
  </div>
+ <div class="right-col">
+  <div class="cpanel">
+   <div class="cpanel-hdr" onclick="togglePanel(this)">ASSET STATUS <span class="badge badge-green" id="asset-count-badge">0</span><span class="chevron collapsed">▼</span></div>
+   <div class="cpanel-body collapsed"><div class="scroll-box" style="max-height:180px">
+    <table><thead><tr><th>ID</th><th>DOM</th><th>STS</th><th>BAT</th><th>COM</th></tr></thead>
+    <tbody id="a-tb"></tbody></table></div></div>
+  </div>
+  <div class="cpanel">
+   <div class="cpanel-hdr" onclick="togglePanel(this)">THREAT TRACKS <span class="badge badge-red" id="threat-count-badge">0</span><span class="chevron collapsed">▼</span></div>
+   <div class="cpanel-body collapsed"><div class="scroll-box" style="max-height:130px">
+    <table><thead><tr><th>TRACK</th><th>TYPE</th><th>STS</th></tr></thead>
+    <tbody id="t-tb"></tbody></table></div></div>
+  </div>
+  <div class="cpanel">
+   <div class="cpanel-hdr" onclick="togglePanel(this)">GEOFENCE ALERTS <span class="badge badge-yellow" id="gf-count-badge">0</span><span class="chevron collapsed">▼</span></div>
+   <div class="cpanel-body collapsed"><div class="scroll-box" style="max-height:100px" id="gf-alerts">
+    <div style="color:#666;padding:6px">No alerts</div></div></div>
+  </div>
+  <div class="cpanel">
+   <div class="cpanel-hdr" onclick="togglePanel(this)">C2 COMMAND<span class="chevron collapsed">▼</span></div>
+   <div class="cpanel-body collapsed">
+    <div style="display:flex;gap:4px;margin-bottom:4px;align-items:stretch">
+     <div style="flex:2;position:relative">
+      <button id="c2-asset-toggle" onclick="event.stopPropagation();c2ToggleDropdown()" style="width:100%;background:#0a0a0a;border:1px solid #00ff41;color:#00ff41;padding:4px 6px;border-radius:3px;cursor:pointer;font-size:.72em;text-align:left;font-family:inherit">▼ ASSETS <span id="c2-asset-count" style="float:right;color:#888">(0)</span></button>
+     </div>
+     <select id="c2-domain-filter" onchange="c2FilterAssets()" style="flex:1;background:#0a0a0a;border:1px solid #00ff41;color:#00ff41;padding:4px;border-radius:3px;font-size:.72em;font-family:inherit">
+      <option value="all">ALL</option><option value="ground" selected>GND</option><option value="air">AIR</option><option value="maritime">SEA</option>
+     </select>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+     <select id="c2-action" style="flex:2;background:#0a0a0a;border:1px solid #00ff41;color:#00ff41;padding:4px;border-radius:3px;font-size:.72em;font-family:inherit">
+      <optgroup label="FORMATIONS"><option value="form:LINE">⊞ LINE</option><option value="form:COLUMN">⊞ COLUMN</option><option value="form:WEDGE">⊞ WEDGE</option><option value="form:DIAMOND">⊞ DIAMOND</option><option value="form:SPREAD">⊞ SPREAD</option><option value="form:ORBIT">⊞ ORBIT</option></optgroup>
+      <optgroup label="COMMANDS"><option value="cmd:hold">⏸ HOLD</option><option value="cmd:rtb">⏎ RTB</option><option value="cmd:patrol">↻ PATROL</option></optgroup>
+      <optgroup label="SWARM"><option value="swarm:create">⬡ CREATE</option><option value="swarm:clear">✕ CLEAR</option></optgroup>
+     </select>
+     <button onclick="c2Execute()" style="flex:1;background:#00ff41;color:#000;border:none;padding:4px 10px;border-radius:3px;font-weight:bold;cursor:pointer;font-size:.75em;font-family:inherit">▶ EXEC</button>
+    </div>
+    <div id="c2-status" style="color:#888;font-size:.68em;padding:1px 2px">Ready</div>
+   </div>
+  </div>
+ </div>
+</div>
+</div>
+<div id="c2-asset-dropdown" style="display:none;position:fixed;z-index:9999;background:#111;border:1px solid #00ff41;border-radius:4px;max-height:250px;overflow-y:auto;padding:4px">
+ <div style="padding:2px 6px;border-bottom:1px solid #333"><label style="color:#888;font-size:.7em;cursor:pointer"><input type="checkbox" id="c2-select-all" onchange="c2ToggleAll(this.checked)"> ALL</label></div>
+ <div id="c2-asset-list"><div style="color:#555;font-size:.7em;padding:4px">Loading...</div></div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
-const map=L.map('map',{zoomControl:false}).setView([27.849,-82.521],11);
+// Collapsible panels
+function togglePanel(hdr){
+ var body=hdr.nextElementSibling;
+ var chev=hdr.querySelector('.chevron');
+ body.classList.toggle('collapsed');
+ if(chev)chev.classList.toggle('collapsed');
+}
+
+const map=L.map('map',{zoomControl:false}).setView([35.689,51.312],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(map);
 let aM={},tM={},wpM={},wpL={},gfL={},wpMode=false;
 const DC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
@@ -173,14 +150,18 @@ async function refresh(){
   const p=[a.position.lat,a.position.lng];
   if(aM[id])aM[id].setLatLng(p);else aM[id]=L.marker(p,{icon:mkI(c)}).bindTooltip(id).addTo(map);
  }
+ document.getElementById('asset-count-badge').textContent=Object.keys(assets).length;
  const threats=await apiFetch('/api/threats');
  const ttb=document.getElementById('t-tb');ttb.innerHTML='';
+ var activeThreatCount=0;
  for(const[id,t]of Object.entries(threats)){
   const n=t.neutralized;
   ttb.innerHTML+='<tr style="'+(n?'opacity:.4':'')+'"><td>'+id+'</td><td>'+t.type+'</td><td><span class="badge '+(n?'badge-green':'badge-red')+'">'+(n?'NEUT':'ACTIVE')+'</span></td></tr>';
   if(t.lat&&t.lng&&!n){const p=[t.lat,t.lng];if(tM[id])tM[id].setLatLng(p);else tM[id]=L.marker(p,{icon:mkI('#ff4444',10)}).bindTooltip(id).addTo(map);}
   else if(n&&tM[id]){map.removeLayer(tM[id]);delete tM[id];}
+  if(!n) activeThreatCount++;
  }
+ document.getElementById('threat-count-badge').textContent=activeThreatCount;
  // Waypoints
  const wps=await apiFetch('/api/waypoints');
  for(const[aid,ms]of Object.entries(wpM)){ms.forEach(function(m){map.removeLayer(m);});}
@@ -209,6 +190,7 @@ async function refresh(){
  }
  // GF Alerts
  const alerts=await apiFetch('/api/geofences/alerts');
+ document.getElementById('gf-count-badge').textContent=alerts.length;
  const ad=document.getElementById('gf-alerts');
  if(alerts.length===0)ad.innerHTML='<div style="color:#666;padding:6px">No alerts</div>';
  else ad.innerHTML=alerts.slice(-20).reverse().map(function(a){
@@ -329,7 +311,15 @@ function c2ToggleAll(checked){
 
 function c2ToggleDropdown(){
     var dd = document.getElementById('c2-asset-dropdown');
-    if(dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    if(!dd) return;
+    var showing = dd.style.display !== 'none';
+    if(showing){ dd.style.display='none'; return; }
+    var btn = document.getElementById('c2-asset-toggle');
+    var r = btn.getBoundingClientRect();
+    dd.style.width = r.width + 'px';
+    dd.style.left = r.left + 'px';
+    dd.style.bottom = (window.innerHeight - r.top + 2) + 'px';
+    dd.style.display = 'block';
 }
 
 function c2FilterAssets(){ c2RenderList(); }

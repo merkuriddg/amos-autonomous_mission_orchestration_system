@@ -1,5 +1,4 @@
 assets:
-# ── AIR DOMAIN ──────────────────────────────────────────────
 - id: REAPER-01
   type: MQ-9B
   domain: air
@@ -15,8 +14,8 @@ assets:
   - AGM-114
   endurance_hr: 27
   spawn:
-    lat: 35.695
-    lng: 51.320
+    lat: 27.855
+    lng: -82.521
     alt_ft: 15000
 - id: REAPER-02
   type: MQ-9B
@@ -33,8 +32,8 @@ assets:
   - AGM-114
   endurance_hr: 27
   spawn:
-    lat: 35.700
-    lng: 51.315
+    lat: 27.86
+    lng: -82.525
     alt_ft: 18000
 - id: GHOST-01
   type: small_uas
@@ -46,8 +45,8 @@ assets:
   - SIGINT
   endurance_hr: 6
   spawn:
-    lat: 35.688
-    lng: 51.325
+    lat: 27.849
+    lng: -82.518
     alt_ft: 400
 - id: GHOST-02
   type: small_uas
@@ -59,8 +58,8 @@ assets:
   - EW_JAMMER
   endurance_hr: 5
   spawn:
-    lat: 35.687
-    lng: 51.330
+    lat: 27.848
+    lng: -82.515
     alt_ft: 500
 - id: GHOST-03
   type: small_uas
@@ -72,8 +71,8 @@ assets:
   - SIGINT
   endurance_hr: 6
   spawn:
-    lat: 35.686
-    lng: 51.335
+    lat: 27.847
+    lng: -82.512
     alt_ft: 400
 - id: GHOST-04
   type: small_uas
@@ -84,8 +83,8 @@ assets:
   - EO/IR
   endurance_hr: 4
   spawn:
-    lat: 35.685
-    lng: 51.340
+    lat: 27.846
+    lng: -82.51
     alt_ft: 300
 - id: VALKYR-01
   type: loyal_wingman
@@ -100,8 +99,8 @@ assets:
   - AIM-120_SIM
   endurance_hr: 3
   spawn:
-    lat: 35.710
-    lng: 51.300
+    lat: 27.862
+    lng: -82.53
     alt_ft: 20000
 - id: VALKYR-02
   type: loyal_wingman
@@ -116,8 +115,8 @@ assets:
   - AIM-120_SIM
   endurance_hr: 3
   spawn:
-    lat: 35.715
-    lng: 51.295
+    lat: 27.864
+    lng: -82.535
     alt_ft: 22000
 - id: AWACS-01
   type: high_alt_uas
@@ -131,8 +130,8 @@ assets:
   - ELINT
   endurance_hr: 24
   spawn:
-    lat: 35.720
-    lng: 51.280
+    lat: 27.87
+    lng: -82.54
     alt_ft: 35000
 - id: AWACS-02
   type: high_alt_uas
@@ -146,11 +145,9 @@ assets:
   - ELINT
   endurance_hr: 24
   spawn:
-    lat: 35.725
-    lng: 51.275
+    lat: 27.875
+    lng: -82.545
     alt_ft: 38000
-
-# ── GROUND DOMAIN ──────────────────────────────────────────
 - id: TALON-01
   type: armed_ugv
   domain: ground
@@ -164,8 +161,8 @@ assets:
   - M240_RWS
   cargo_lb: 0
   spawn:
-    lat: 35.680
-    lng: 51.318
+    lat: 27.842
+    lng: -82.522
 - id: TALON-02
   type: armed_ugv
   domain: ground
@@ -179,8 +176,8 @@ assets:
   - M240_RWS
   cargo_lb: 0
   spawn:
-    lat: 35.678
-    lng: 51.322
+    lat: 27.84
+    lng: -82.52
 - id: TALON-03
   type: armed_ugv
   domain: ground
@@ -194,8 +191,8 @@ assets:
   - MK19_RWS
   cargo_lb: 0
   spawn:
-    lat: 35.676
-    lng: 51.326
+    lat: 27.838
+    lng: -82.518
 - id: TALON-04
   type: armed_ugv
   domain: ground
@@ -209,8 +206,8 @@ assets:
   - M240_RWS
   cargo_lb: 0
   spawn:
-    lat: 35.674
-    lng: 51.330
+    lat: 27.836
+    lng: -82.516
 - id: MULE-01
   type: logistics_ugv
   domain: ground
@@ -221,8 +218,8 @@ assets:
   - GPS
   cargo_lb: 1200
   spawn:
-    lat: 35.682
-    lng: 51.314
+    lat: 27.844
+    lng: -82.524
 - id: MULE-02
   type: logistics_ugv
   domain: ground
@@ -233,8 +230,8 @@ assets:
   - GPS
   cargo_lb: 1200
   spawn:
-    lat: 35.681
-    lng: 51.316
+    lat: 27.843
+    lng: -82.523
 - id: MULE-03
   type: logistics_ugv
   domain: ground
@@ -245,8 +242,8 @@ assets:
   - GPS
   cargo_lb: 800
   spawn:
-    lat: 35.679
-    lng: 51.320
+    lat: 27.841
+    lng: -82.521
 - id: MULE-04
   type: logistics_ugv
   domain: ground
@@ -257,8 +254,8 @@ assets:
   - GPS
   cargo_lb: 1200
   spawn:
-    lat: 35.677
-    lng: 51.324
+    lat: 27.839
+    lng: -82.519
 - id: SPECTR-01
   type: sensor_ugv
   domain: ground
@@ -270,8 +267,8 @@ assets:
   - COMINT
   - DIRECTION_FINDING
   spawn:
-    lat: 35.672
-    lng: 51.334
+    lat: 27.835
+    lng: -82.514
 - id: SPECTR-02
   type: sensor_ugv
   domain: ground
@@ -283,8 +280,8 @@ assets:
   - COMINT
   - DIRECTION_FINDING
   spawn:
-    lat: 35.670
-    lng: 51.338
+    lat: 27.833
+    lng: -82.512
 - id: SPECTR-03
   type: sensor_ugv
   domain: ground
@@ -295,8 +292,8 @@ assets:
   - SIGINT
   - LIDAR
   spawn:
-    lat: 35.668
-    lng: 51.342
+    lat: 27.831
+    lng: -82.51
 - id: SPECTR-04
   type: sensor_ugv
   domain: ground
@@ -307,10 +304,8 @@ assets:
   - ACOUSTIC
   - MAGNETIC
   spawn:
-    lat: 35.666
-    lng: 51.346
-
-# ── MARITIME DOMAIN (Caspian Sea) ──────────────────────────
+    lat: 27.829
+    lng: -82.508
 - id: TRITON-01
   type: usv
   domain: maritime
@@ -323,8 +318,8 @@ assets:
   - AIS
   endurance_hr: 72
   spawn:
-    lat: 36.750
-    lng: 51.400
+    lat: 27.82
+    lng: -82.545
 - id: TRITON-02
   type: usv
   domain: maritime
@@ -337,8 +332,8 @@ assets:
   - AIS
   endurance_hr: 72
   spawn:
-    lat: 36.740
-    lng: 51.420
+    lat: 27.815
+    lng: -82.55
 - id: KRAKEN-01
   type: uuv
   domain: maritime
@@ -350,79 +345,72 @@ assets:
   - ACOUSTIC
   endurance_hr: 48
   spawn:
-    lat: 36.730
-    lng: 51.440
-
+    lat: 27.81
+    lng: -82.56
 threats:
-# ── Hostile Drones ──
 - id: HOSTILE-DRO-001
   type: drone
-  lat: 35.62
-  lng: 51.45
+  lat: 27.78
+  lng: -82.55
   rf_freq_mhz: 915.0
   speed_kts: 45
 - id: HOSTILE-DRO-002
   type: drone
-  lat: 35.73
-  lng: 51.22
+  lat: 27.79
+  lng: -82.48
   rf_freq_mhz: 2437.0
   speed_kts: 35
 - id: HOSTILE-DRO-003
   type: drone
-  lat: 35.65
-  lng: 51.50
+  lat: 27.76
+  lng: -82.52
   rf_freq_mhz: 5805.0
   speed_kts: 50
-# ── GPS/Comms Jammers ──
 - id: HOSTILE-JAM-001
   type: gps_jammer
-  lat: 35.71
-  lng: 51.38
+  lat: 27.82
+  lng: -82.51
   rf_freq_mhz: 1575.42
   power_dbm: 40
 - id: HOSTILE-JAM-002
   type: gps_jammer
-  lat: 35.66
-  lng: 51.28
+  lat: 27.77
+  lng: -82.57
   rf_freq_mhz: 1575.42
   power_dbm: 35
-# ── Hostile Vessels (Caspian) ──
 - id: HOSTILE-VES-001
   type: vessel
-  lat: 36.78
-  lng: 51.35
+  lat: 27.72
+  lng: -82.6
   speed_kts: 22
 - id: HOSTILE-VES-002
   type: vessel
-  lat: 36.76
-  lng: 51.50
+  lat: 27.7
+  lng: -82.58
   speed_kts: 18
-# ── Cyber Threats ──
 - id: HOSTILE-CYB-001
   type: cyber
-  source_ip: 10.99.13.77
+  source_ip: 10.99.1.50
 - id: HOSTILE-CYB-002
   type: cyber
-  source_ip: 10.99.14.201
-# ── RF Emitter ──
+  source_ip: 10.99.2.100
 - id: HOSTILE-RF-001
   type: rf_emitter
-  lat: 35.70
-  lng: 51.42
+  lat: 27.8
+  lng: -82.53
   rf_freq_mhz: 433.0
   power_dbm: 25
-
 platoon:
   name: MAVRIX-1 Robotic Platoon
   callsign: SHADOW FORGE
   base:
-    lat: 35.689
-    lng: 51.312
-    name: FOB Tehran
+    lat: 27.849
+    lng: -82.521
+    name: MacDill AFB
   ao:
-    north: 36.9
-    south: 35.3
-    east: 52.0
-    west: 50.8
+    north: 28.2
+    south: 27.4
+    east: -82.1
+    west: -82.9
 system_name: AMOS
 system_full_name: Autonomous Mission Operating System

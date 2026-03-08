@@ -32,6 +32,20 @@ import sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "platoon_config.yaml")
+LOCATIONS_PATH = os.path.join(ROOT_DIR, "config", "locations.json")
+
+def _load_locations():
+    """Load saved locations from JSON file."""
+    try:
+        with open(LOCATIONS_PATH) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"active": "", "locations": {}}
+
+def _save_locations(data):
+    """Persist locations to JSON file."""
+    with open(LOCATIONS_PATH, "w") as f:
+        json.dump(data, f, indent=2)
 
 app = Flask(__name__,
 
@@ -57,22 +71,22 @@ def add_no_cache(response):
 USERS = {
     "commander": {"password": "mavrix2026", "role": "commander",
                    "name": "CDR Mitchell", "domain": "all",
-                   "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin"]},
+                   "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin","fusion","cognitive","contested","redforce"]},
     "pilot":     {"password": "wings2026", "role": "pilot",
                    "name": "CPT Torres", "domain": "air",
-                   "access": ["c2","twin","ew","sigint","hal","plan","aar","awacs","field","voice"]},
+                   "access": ["c2","twin","ew","sigint","hal","plan","aar","awacs","field","voice","fusion","cognitive","contested"]},
     "grunt":     {"password": "hooah2026", "role": "ground_op",
                    "name": "SGT Reeves", "domain": "ground",
-                   "access": ["c2","twin","cm","hal","plan","aar","field","voice"]},
+                   "access": ["c2","twin","cm","hal","plan","aar","field","voice","fusion","contested"]},
     "sailor":    {"password": "anchor2026", "role": "maritime_op",
                    "name": "PO1 Chen", "domain": "maritime",
-                   "access": ["c2","twin","sigint","hal","aar","field","voice"]},
+                   "access": ["c2","twin","sigint","hal","aar","field","voice","fusion","contested"]},
     "observer":  {"password": "watch2026", "role": "observer",
                    "name": "Analyst Kim", "domain": "all",
-                   "access": ["c2","twin","ew","sigint","cyber","aar","awacs","field"]},
+                   "access": ["c2","twin","ew","sigint","cyber","aar","awacs","field","fusion","cognitive","redforce"]},
     "field":     {"password": "tactical2026", "role": "field_op",
                    "name": "SPC Davis", "domain": "all",
-                   "access": ["c2","field","voice","cm"]},
+                   "access": ["c2","field","voice","cm","contested"]},
 }
 def login_required(f):
     @wraps(f)
@@ -152,10 +166,10 @@ if ao:
     geofence_mgr.add_geofence("operational",
         [{"lat": ao["north"], "lng": ao["west"]}, {"lat": ao["north"], "lng": ao["east"]},
          {"lat": ao["south"], "lng": ao["east"]}, {"lat": ao["south"], "lng": ao["west"]}],
-        "Tampa Bay AO", "AO-PRIMARY")
+        "Tehran AO", "AO-PRIMARY")
     geofence_mgr.add_geofence("restricted",
         {"center": {"lat": base_pos["lat"], "lng": base_pos["lng"]}, "radius_nm": 1.5},
-        "MacDill AFB Restricted", "RESTRICT-MACDILL")
+        "FOB Tehran Restricted", "RESTRICT-FOB-TEHRAN")
 
 ew_capable = [a for a in sim_assets.values()
               if any(s in (a.get("sensors") or [])
@@ -388,6 +402,165 @@ def contested(): return render_template("contested.html", **ctx())
 @login_required
 def redforce(): return render_template("redforce.html", **ctx())
 
+@app.route("/settings")
+@login_required
+def settings_page(): return render_template("settings.html", **ctx())
+
+# ═══════════════════════════════════════════════════════════
+#  SETTINGS API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/settings/locations")
+@login_required
+def api_settings_locations():
+    return jsonify(_load_locations())
+
+@app.route("/api/settings/locations/save", methods=["POST"])
+@login_required
+def api_settings_locations_save():
+    d = request.json
+    data = _load_locations()
+    key = d.get("key", "").strip().lower().replace(" ", "_")
+    if not key:
+        return jsonify({"error": "Key required"}), 400
+    data["locations"][key] = {
+        "name": d.get("name", key),
+        "lat": float(d.get("lat", 0)),
+        "lng": float(d.get("lng", 0)),
+        "ao": d.get("ao", {"north": 0, "south": 0, "east": 0, "west": 0}),
+        "zoom": int(d.get("zoom", 10)),
+        "description": d.get("description", "")
+    }
+    _save_locations(data)
+    return jsonify({"status": "ok", "locations": data})
+
+@app.route("/api/settings/locations/delete", methods=["POST"])
+@login_required
+def api_settings_locations_delete():
+    key = request.json.get("key", "")
+    data = _load_locations()
+    if key in data["locations"]:
+        del data["locations"][key]
+        if data["active"] == key:
+            data["active"] = next(iter(data["locations"]), "")
+        _save_locations(data)
+    return jsonify({"status": "ok", "locations": data})
+
+@app.route("/api/settings/locations/activate", methods=["POST"])
+@login_required
+def api_settings_locations_activate():
+    key = request.json.get("key", "")
+    data = _load_locations()
+    if key not in data["locations"]:
+        return jsonify({"error": "Location not found"}), 404
+    data["active"] = key
+    loc = data["locations"][key]
+    # Update in-memory base position
+    base_pos["lat"] = loc["lat"]
+    base_pos["lng"] = loc["lng"]
+    base_pos["name"] = loc["name"]
+    _save_locations(data)
+    return jsonify({"status": "ok", "active": key, "location": loc,
+                    "note": "Map center updated. Full scenario reload requires server restart."})
+
+@app.route("/api/settings/password", methods=["POST"])
+@login_required
+def api_settings_password():
+    d = request.json
+    u = session.get("user")
+    usr = USERS.get(u)
+    if not usr:
+        return jsonify({"error": "User not found"}), 404
+    if d.get("current") != usr["password"]:
+        return jsonify({"error": "Current password incorrect"}), 403
+    new_pw = d.get("new", "").strip()
+    if len(new_pw) < 4:
+        return jsonify({"error": "Password must be at least 4 characters"}), 400
+    usr["password"] = new_pw
+    return jsonify({"status": "ok"})
+
+@app.route("/api/settings/profile", methods=["POST"])
+@login_required
+def api_settings_profile():
+    d = request.json
+    u = session.get("user")
+    usr = USERS.get(u)
+    if not usr:
+        return jsonify({"error": "User not found"}), 404
+    if d.get("name"):
+        usr["name"] = d["name"].strip()
+    return jsonify({"status": "ok", "name": usr["name"], "role": usr["role"]})
+
+@app.route("/api/settings/system")
+@login_required
+def api_settings_system():
+    loc_data = _load_locations()
+    active_loc = loc_data["locations"].get(loc_data.get("active", ""), {})
+    return jsonify({
+        "base": base_pos,
+        "active_location": loc_data.get("active", ""),
+        "location_name": active_loc.get("name", "Unknown"),
+        "assets": len(sim_assets),
+        "threats": len(sim_threats),
+        "users": len(USERS),
+        "ew_capable": len(ew_capable),
+        "ros2": ros2_bridge.available,
+        "sim_speed": sim_clock["speed"],
+        "uptime_sec": round(time.time() - sim_clock["start_time"], 1)
+    })
+
+# ═══════════════════════════════════════════════════════════
+#  SETTINGS – ASSETS (Fleet CRUD)
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/settings/assets")
+@login_required
+def api_settings_assets():
+    """Return full sim_assets dict for fleet management."""
+    return jsonify(sim_assets)
+
+@app.route("/api/settings/assets/save", methods=["POST"])
+@login_required
+def api_settings_assets_save():
+    """Create or update an asset in sim_assets."""
+    d = request.json
+    aid = d.get("id", "").strip().upper()
+    if not aid:
+        return jsonify({"error": "Asset ID required"}), 400
+    existing = sim_assets.get(aid, {})
+    sim_assets[aid] = {
+        "id": aid,
+        "type": d.get("type", existing.get("type", "unknown")),
+        "domain": d.get("domain", existing.get("domain", "ground")),
+        "role": d.get("role", existing.get("role", "recon")),
+        "autonomy_tier": int(d.get("autonomy_tier", existing.get("autonomy_tier", 2))),
+        "sensors": d.get("sensors", existing.get("sensors", [])),
+        "weapons": d.get("weapons", existing.get("weapons", [])),
+        "endurance_hr": float(d.get("endurance_hr", existing.get("endurance_hr", 0))),
+        "position": {
+            "lat": float(d.get("lat", existing.get("position", {}).get("lat", base_pos["lat"]))),
+            "lng": float(d.get("lng", existing.get("position", {}).get("lng", base_pos["lng"]))),
+            "alt_ft": float(d.get("alt_ft", existing.get("position", {}).get("alt_ft", 0)))
+        },
+        "status": existing.get("status", "standby"),
+        "health": existing.get("health", {
+            "battery_pct": 100, "comms_strength": 95,
+            "cpu_temp_c": 42, "gps_fix": True
+        }),
+        "speed_kts": existing.get("speed_kts", 0),
+        "heading_deg": existing.get("heading_deg", 0),
+        "integration": d.get("integration", existing.get("integration", "none")),
+        "bridge_addr": d.get("bridge_addr", existing.get("bridge_addr", ""))
+    }
+    return jsonify({"status": "ok", "id": aid})
+
+@app.route("/api/settings/assets/delete", methods=["POST"])
+@login_required
+def api_settings_assets_delete():
+    """Remove an asset from sim_assets."""
+    aid = request.json.get("id", "").strip().upper()
+    if aid in sim_assets:
+        del sim_assets[aid]
+    return jsonify({"status": "ok", "id": aid})
+
 # ═══════════════════════════════════════════════════════════
 #  ASSET API
 # ═══════════════════════════════════════════════════════════
@@ -557,7 +730,7 @@ def api_coa():
         {"rank":3,"name":"CYBER-EW FIRST","score":round(random.uniform(.55,.80),2),
          "risk":"MEDIUM","description":"Degrade C2 via cyber/EW before kinetic. Blind then strike."},
         {"rank":4,"name":"DEFENSIVE HOLD","score":round(random.uniform(.50,.70),2),
-         "risk":"LOW","description":"Consolidate at MacDill. Sensor perimeter. Engage on approach only."}])
+         "risk":"LOW","description":"Consolidate at FOB Tehran. Sensor perimeter. Engage on approach only."}])
 
 # ═══════════════════════════════════════════════════════════
 #  SWARM API

@@ -113,7 +113,7 @@ def task_asset(asset_id):
     d = request.get_json() or {}
     task = d.get('task', '')
     if task == 'rtb':
-        a['status'] = 'rtb'; a['waypoints'] = [{'lat': 27.849, 'lng': -82.521}]
+        a['status'] = 'rtb'; a['waypoints'] = [{'lat': 35.689, 'lng': 51.312}]
         _alert(f'{a.get("callsign", asset_id)} RTB', 'info')
     elif task == 'orbit':
         a['status'] = 'orbiting'; _alert(f'{a.get("callsign", asset_id)} orbiting', 'info')

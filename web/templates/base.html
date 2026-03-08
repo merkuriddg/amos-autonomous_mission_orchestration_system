@@ -42,7 +42,20 @@ tr:hover td{background:#1a1a1a}
 .scroll-box::-webkit-scrollbar-thumb{background:#333}
 .live-dot{display:inline-block;width:7px;height:7px;background:#00ff41;border-radius:50%;animation:pulse 1.5s infinite;margin-right:4px}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-select,input[type=number],input[type=text]{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:5px;font-family:inherit;font-size:.85em}
+select,input[type=number],input[type=text],input[type=password]{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:5px;font-family:inherit;font-size:.85em}
+/* Dropdown menu */
+.amos-menu-wrap{position:relative}
+.amos-menu-trigger{cursor:pointer;user-select:none}
+.amos-menu-trigger:hover{color:#fff}
+.amos-menu{display:none;position:absolute;top:32px;left:0;background:#111;border:1px solid #00ff41;border-radius:0 6px 6px 6px;z-index:2000;min-width:520px;box-shadow:0 8px 32px rgba(0,255,65,.12)}
+.amos-menu.open{display:block}
+.amos-menu-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:10px 6px}
+.amos-menu-col{padding:0 8px;border-right:1px solid #1a1a1a}
+.amos-menu-col:last-child{border-right:none}
+.amos-menu-hdr{color:#666;font-size:.65em;letter-spacing:2px;padding:4px 6px 2px;text-transform:uppercase}
+.amos-menu-item{display:block;color:#00ff41;text-decoration:none;padding:4px 6px;font-size:.78em;border-radius:3px;margin:1px 0}
+.amos-menu-item:hover{background:#00ff4118;color:#fff}
+.amos-menu-item.active{color:#fff;background:#00ff4122;border-left:2px solid #00ff41}
 /* Voice UI */
 #voice-btn{background:transparent;border:1px solid #4488ff;color:#4488ff;padding:3px 10px;cursor:pointer;font-size:1.1em;border-radius:3px}
 #voice-btn:hover{background:#4488ff;color:#000}
@@ -56,26 +69,48 @@ select,input[type=number],input[type=text]{background:#0a0a0a;color:#00ff41;bord
         <link rel="stylesheet" href="/static/css/amos_phase3.css">
 </head><body>
 <div class="topbar">
- <div style="display:flex;align-items:center">
-  <span class="brand">AMOS</span>
-  <span style="margin-left:12px">
-   {% if 'c2' in access %}<a href="/" {% if request.path=='/' %}class="active"{% endif %}>C2</a>{% endif %}
-   {% if 'twin' in access %}<a href="/dashboard" {% if request.path=='/dashboard' %}class="active"{% endif %}>TWIN</a>{% endif %}
-   {% if 'ew' in access %}<a href="/ew" {% if request.path=='/ew' %}class="active"{% endif %}>EW</a>{% endif %}
-   {% if 'sigint' in access %}<a href="/sigint" {% if request.path=='/sigint' %}class="active"{% endif %}>SIGINT</a>{% endif %}
-   {% if 'cyber' in access %}<a href="/cyber" {% if request.path=='/cyber' %}class="active"{% endif %}>CYBER</a>{% endif %}
-   {% if 'cm' in access %}<a href="/countermeasures" {% if request.path=='/countermeasures' %}class="active"{% endif %}>CM</a>{% endif %}
-   {% if 'hal' in access %}<a href="/hal" {% if request.path=='/hal' %}class="active"{% endif %}>HAL</a>{% endif %}
-   {% if 'plan' in access %}<a href="/planner" {% if request.path=='/planner' %}class="active"{% endif %}>PLAN</a>{% endif %}
-   {% if 'aar' in access %}<a href="/aar" {% if request.path=='/aar' %}class="active"{% endif %}>AAR</a>{% endif %}
-   {% if 'awacs' in access %}<a href="/awacs" {% if request.path=='/awacs' %}class="active"{% endif %}>AWACS</a>{% endif %}
-   {% if 'field' in access %}<a href="/field" {% if request.path=='/field' %}class="active"{% endif %}>FIELD</a>{% endif %}
-  </span>
+ <div style="display:flex;align-items:center;gap:12px">
+  <div class="amos-menu-wrap">
+   <span class="brand amos-menu-trigger" onclick="toggleAmosMenu()">▾ AMOS: <span id="topbar-page" style="color:#888"></span></span>
+   <div class="amos-menu" id="amos-menu">
+    <div class="amos-menu-inner">
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">OPERATIONS</div>
+      {% if 'c2' in access %}<a href="/" class="amos-menu-item{% if request.path=='/' %} active{% endif %}">C2 Console</a>{% endif %}
+      {% if 'twin' in access %}<a href="/dashboard" class="amos-menu-item{% if request.path=='/dashboard' %} active{% endif %}">Digital Twin</a>{% endif %}
+      {% if 'plan' in access %}<a href="/planner" class="amos-menu-item{% if request.path=='/planner' %} active{% endif %}">Mission Planner</a>{% endif %}
+      {% if 'field' in access %}<a href="/field" class="amos-menu-item{% if request.path=='/field' %} active{% endif %}">Field 3D View</a>{% endif %}
+     </div>
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">INTELLIGENCE</div>
+      {% if 'ew' in access %}<a href="/ew" class="amos-menu-item{% if request.path=='/ew' %} active{% endif %}">EW Warfare</a>{% endif %}
+      {% if 'sigint' in access %}<a href="/sigint" class="amos-menu-item{% if request.path=='/sigint' %} active{% endif %}">SIGINT</a>{% endif %}
+      {% if 'cyber' in access %}<a href="/cyber" class="amos-menu-item{% if request.path=='/cyber' %} active{% endif %}">Cyber Ops</a>{% endif %}
+      {% if 'awacs' in access %}<a href="/awacs" class="amos-menu-item{% if request.path=='/awacs' %} active{% endif %}">AWACS</a>{% endif %}
+      {% if 'fusion' in access %}<a href="/fusion" class="amos-menu-item{% if request.path=='/fusion' %} active{% endif %}">Sensor Fusion</a>{% endif %}
+     </div>
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">COMBAT</div>
+      {% if 'cm' in access %}<a href="/countermeasures" class="amos-menu-item{% if request.path=='/countermeasures' %} active{% endif %}">Countermeasures</a>{% endif %}
+      {% if 'hal' in access %}<a href="/hal" class="amos-menu-item{% if request.path=='/hal' %} active{% endif %}">HAL Autonomy</a>{% endif %}
+      {% if 'contested' in access %}<a href="/contested" class="amos-menu-item{% if request.path=='/contested' %} active{% endif %}">Contested Ops</a>{% endif %}
+      {% if 'redforce' in access %}<a href="/redforce" class="amos-menu-item{% if request.path=='/redforce' %} active{% endif %}">Red Force</a>{% endif %}
+     </div>
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">ANALYTICS</div>
+      {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
+      {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
+      <div class="amos-menu-hdr" style="margin-top:10px">SYSTEM</div>
+      <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">⚙ Settings</a>
+     </div>
+    </div>
+   </div>
+  </div>
  </div>
  <div class="user-info">
   {% if 'voice' in access %}<button id="voice-btn" onclick="toggleVoice()" title="Voice Command (Chrome)">🎤</button>{% endif %}
   <span class="live-dot"></span>LIVE
-  | <span>{{ name }}</span> ({{ role }})
+  | <a href="/settings" style="color:#00ff41;text-decoration:none;margin-left:0">{{ name }}</a> ({{ role }})
   | <a href="/logout">LOGOUT</a>
  </div>
 </div>
@@ -92,6 +127,10 @@ const socket=io();
 socket.on('sim_update',function(d){if(window.onSimUpdate)window.onSimUpdate(d);});
 function apiFetch(u){return fetch(u).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
+// Menu
+function toggleAmosMenu(){document.getElementById('amos-menu').classList.toggle('open');}
+document.getElementById('topbar-page').textContent=document.title.replace(/^AMOS\s*[—–-]\s*/,'');
+document.addEventListener('click',function(e){var m=document.getElementById('amos-menu');if(m&&!e.target.closest('.amos-menu-wrap'))m.classList.remove('open');});
 // Voice
 let _sr=null,_recording=false;
 function toggleVoice(){
