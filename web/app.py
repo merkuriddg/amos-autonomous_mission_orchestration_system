@@ -125,48 +125,6 @@ cyber_events, cyber_blocked_ips = [], set()
 cm_log, hal_recommendations, aar_events = [], [], []
 swarms = {}
 
-class WaypointNav:
-    """Navigate assets along waypoints"""
-    def __init__(self):
-        self.routes = {}  # {asset_id: [{lat, lng}, ...]}
-
-    def set_waypoints(self, asset_id, waypoints):
-        self.routes[asset_id] = [{"lat": w["lat"], "lng": w["lng"]} for w in waypoints]
-
-    def get_waypoints(self, asset_id):
-        return self.routes.get(asset_id, [])
-
-    def tick(self, assets, dt):
-        """Move assets toward their next waypoint"""
-        import math
-        speed = 0.00008 * dt  # ~5 knots ground speed
-        for aid, wps in list(self.routes.items()):
-            if not wps or aid not in assets:
-                continue
-            a = assets[aid]
-            p = a.get("position", a)
-            if "lat" not in p:
-                continue
-            target = wps[0]
-            dlat = target["lat"] - p["lat"]
-            dlng = target["lng"] - p["lng"]
-            dist = math.sqrt(dlat**2 + dlng**2)
-            if dist < 0.0001:
-                # Arrived at waypoint
-                p["lat"] = target["lat"]
-                p["lng"] = target["lng"]
-                wps.pop(0)
-                if not wps:
-                    del self.routes[aid]
-            else:
-                # Move toward waypoint
-                ratio = min(1.0, speed / dist)
-                p["lat"] = round(p["lat"] + dlat * ratio, 6)
-                p["lng"] = round(p["lng"] + dlng * ratio, 6)
-                # Update heading
-                a["heading_deg"] = round(math.degrees(math.atan2(dlng, dlat)) % 360, 1)
-
-
 sim_clock = {"start_time": time.time(), "elapsed_sec": 0, "speed": 1.0, "running": True}
 
 ao = platoon.get("ao", {})
@@ -307,41 +265,6 @@ def sim_tick():
 # ═══════════════════════════════════════════════════════════
 #  AUTH ROUTES
 # ═══════════════════════════════════════════════════════════
-
-    print("[AMOS] Phase 3 routes registered")
-
-
-try:
-    from phase3_routes import phase3_bp, init_phase3
-
-    def _amos_state_getter():
-        """Return live sim state for Phase 3 APIs"""
-        g = globals()
-        state = {}
-        for aname in ['assets', 'ASSETS', 'asset_registry', 'platoon_assets', 'sim_assets']:
-            if aname in g and g[aname]:
-                state['assets'] = g[aname]
-                break
-        for tname in ['threats', 'THREATS', 'sim_threats', 'threat_list']:
-            if tname in g and g[tname]:
-                state['threats'] = g[tname]
-                break
-        for ename in ['events', 'EVENTS', 'sim_events', 'event_log']:
-            if ename in g and g[ename]:
-                state['events'] = g[ename]
-                break
-        if 'sim' in g and hasattr(g['sim'], 'assets'):
-            state.setdefault('assets', g['sim'].assets)
-        if 'sim' in g and hasattr(g['sim'], 'threats'):
-            state.setdefault('threats', g['sim'].threats)
-        if 'sim' in g and hasattr(g['sim'], 'events'):
-            state.setdefault('events', g['sim'].events)
-        return state
-
-    print("[AMOS] Phase 3 routes registered")
-except Exception as e:
-    print(f"[AMOS] Phase 3 load warning: {e}")
-
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -991,4 +914,4 @@ if __name__ == "__main__":
     for u, i in USERS.items():
         print(f"  {u:12s} / {i['password']:14s} [{i['role']}]")
     print("=" * 58 + "\n")
-    socketio.run(app, host="0.0.0.0", port=5000, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=2600, allow_unsafe_werkzeug=True)

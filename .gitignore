@@ -4,6 +4,7 @@ install/
 log/
 
 # Python
+.venv/
 __pycache__/
 *.pyc
 *.pyo
