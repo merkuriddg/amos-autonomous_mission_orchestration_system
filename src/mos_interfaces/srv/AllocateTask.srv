@@ -1,9 +1,0 @@
-string task_id
-string task_type
-string required_domain
-int32 priority
-string[] parameters
----
-bool success
-string assigned_asset_id
-string message

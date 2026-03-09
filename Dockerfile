@@ -1,31 +1,36 @@
 # AMOS — Autonomous Mission Operating System
-# Docker deployment for field operations
-FROM ros:humble-ros-base
+# Production container
+FROM python:3.11-slim
+
+LABEL maintainer="MavrixOne / Merkuri DDG"
+LABEL description="AMOS — Autonomous Mission Operating System"
+
+WORKDIR /opt/amos
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip python3-colcon-common-extensions \
-    ros-humble-mavros ros-humble-mavros-extras \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip3 install flask pyyaml
+    curl net-tools && \
+    rm -rf /var/lib/apt/lists/*
 
-# GeographicLib datasets (required by MAVROS)
-RUN wget https://raw.githubusercontent.com/mavlink/mavros/ros2/mavros/scripts/install_geographiclib_datasets.sh \
-    && bash install_geographiclib_datasets.sh || true && rm -f install_geographiclib_datasets.sh
+# Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy workspace
-WORKDIR /amos_ws
-COPY src/ src/
+# Copy application
+COPY core/ ./core/
+COPY services/ ./services/
+COPY integrations/ ./integrations/
+COPY simulator/ ./simulator/
+COPY plugins/ ./plugins/
+COPY web/ ./web/
+COPY config/ ./config/
+COPY db/ ./db/
 
-# Build
-RUN . /opt/ros/humble/setup.sh && colcon build
+ENV PYTHONUNBUFFERED=1
 
-# Expose ports
-EXPOSE 5000 6969/udp 14540/udp
+EXPOSE 2600
 
-# Entry
-COPY launch_mos.sh /amos_ws/
-RUN chmod +x /amos_ws/launch_mos.sh
-COPY docker_entrypoint.sh /
-RUN chmod +x /docker_entrypoint.sh
-ENTRYPOINT ["/docker_entrypoint.sh"]
+HEALTHCHECK --interval=30s --timeout=5s \
+    CMD curl -f http://localhost:2600/login || exit 1
+
+CMD ["python3", "web/app.py"]
