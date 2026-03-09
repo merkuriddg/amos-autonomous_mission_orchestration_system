@@ -40,6 +40,20 @@ from mos_core.nodes.space_domain import SpaceDomain
 from mos_core.nodes.hmt_engine import HMTEngine
 from mos_core.nodes.mesh_network import MeshNetwork
 
+# Phase 23-28: Data Integration Stack
+from mos_core.data_model import Track, Detection, Command, SensorReading, VideoFrame, Message
+from mos_core.schema_validator import SchemaValidator
+from mos_core.adapter_base import AdapterManager, LegacyBridgeAdapter
+from mos_core.nodes.video_pipeline import VideoPipeline
+from mos_core.nodes.klv_parser import KLVParser
+from mos_core.nodes.imagery_handler import ImageryHandler
+from mos_core.geo_utils import (haversine, vincenty, bearing, destination_point,
+                                latlng_to_utm, utm_to_latlng, latlng_to_mgrs,
+                                mgrs_to_latlng, tracks_to_geojson, bounding_box)
+from mos_core.comsec import SecureChannel, ClassificationMarker
+from mos_core.key_manager import KeyManager
+from mos_core.security_audit import SecurityAudit
+
 # Phase 3 — Document Generators
 from mos_core.docs.opord_generator import generate_opord
 from mos_core.docs.conop_generator import generate_conop
@@ -308,6 +322,79 @@ effects_chain = EffectsChain()
 space_domain = SpaceDomain()
 hmt_engine = HMTEngine()
 mesh_network = MeshNetwork()
+
+# Phase 23-28: Data Integration Stack
+adapter_mgr = AdapterManager()
+schema_validator = SchemaValidator()
+video_pipeline = VideoPipeline()
+klv_parser = KLVParser()
+imagery_handler = ImageryHandler()
+key_mgr = KeyManager()
+security_audit = SecurityAudit()
+comsec_channel = SecureChannel(channel_id="AMOS-PRIMARY")
+
+# Phase 23-28 adapters (import + connect with graceful fallback)
+try:
+    from integrations.mqtt_adapter import MQTTAdapter
+    _mqtt_adapter = MQTTAdapter()
+    adapter_mgr.register(_mqtt_adapter)
+    print("[AMOS] MQTT Adapter: Registered")
+except Exception as e:
+    print(f"[AMOS] MQTT Adapter: Not available ({e})")
+    _mqtt_adapter = None
+
+try:
+    from integrations.dds_adapter import DDSAdapter
+    _dds_adapter = DDSAdapter()
+    adapter_mgr.register(_dds_adapter)
+    print("[AMOS] DDS Adapter: Registered")
+except Exception as e:
+    print(f"[AMOS] DDS Adapter: Not available ({e})")
+    _dds_adapter = None
+
+try:
+    from integrations.kafka_adapter import KafkaAdapter
+    _kafka_adapter = KafkaAdapter()
+    adapter_mgr.register(_kafka_adapter)
+    print("[AMOS] Kafka Adapter: Registered")
+except Exception as e:
+    print(f"[AMOS] Kafka Adapter: Not available ({e})")
+    _kafka_adapter = None
+
+try:
+    from integrations.vmf_adapter import VMFAdapter
+    _vmf_adapter = VMFAdapter()
+    adapter_mgr.register(_vmf_adapter)
+    print("[AMOS] VMF Adapter: Registered")
+except Exception as e:
+    print(f"[AMOS] VMF Adapter: Not available ({e})")
+    _vmf_adapter = None
+
+try:
+    from integrations.stanag4586_adapter import STANAG4586Adapter
+    _stanag4586 = STANAG4586Adapter()
+    adapter_mgr.register(_stanag4586)
+    print("[AMOS] STANAG 4586: Registered")
+except Exception as e:
+    print(f"[AMOS] STANAG 4586: Not available ({e})")
+    _stanag4586 = None
+
+try:
+    from integrations.nffi_adapter import NFFIAdapter
+    _nffi_adapter = NFFIAdapter()
+    adapter_mgr.register(_nffi_adapter)
+    print("[AMOS] NFFI Adapter: Registered")
+except Exception as e:
+    print(f"[AMOS] NFFI Adapter: Not available ({e})")
+    _nffi_adapter = None
+
+try:
+    from integrations.ogc_client import OGCClient
+    _ogc_client = OGCClient()
+    print("[AMOS] OGC WMS/WFS: Ready")
+except Exception as e:
+    print(f"[AMOS] OGC Client: Not available ({e})")
+    _ogc_client = None
 
 ew_active_jams, ew_intercepts = [], []
 sigint_intercepts, sigint_emitter_db = [], {}
@@ -870,6 +957,10 @@ def docs_page(): return render_template("docs.html", **ctx())
 @app.route("/integrations")
 @login_required
 def integrations_page(): return render_template("integrations.html", **ctx())
+
+@app.route("/video")
+@login_required
+def video_page(): return render_template("video.html", **ctx())
 
 @app.route("/analytics")
 @login_required
@@ -4098,14 +4189,269 @@ def api_mesh_degrade():
     d = request.json or {}
     return jsonify(mesh_network.degrade_link(d.get("node_id", ""), d.get("amount", 30)))
 
+# ═══════════════════════════════════════════════════════════
+#  PHASE 23-28: DATA INTEGRATION STACK APIS
+# ═══════════════════════════════════════════════════════════
+
+# ── Adapter Manager ──
+@app.route("/api/adapters/status")
+@login_required
+def api_adapters_status():
+    return jsonify(adapter_mgr.get_all_status())
+
+@app.route("/api/adapters/connect", methods=["POST"])
+@login_required
+def api_adapters_connect():
+    d = request.json or {}
+    aid = d.get("adapter_id", "")
+    ok = adapter_mgr.connect_adapter(aid)
+    security_audit.log_config("ADAPTER_CONNECT", session.get("user", "unknown"), aid)
+    return jsonify({"adapter_id": aid, "connected": ok})
+
+@app.route("/api/adapters/disconnect", methods=["POST"])
+@login_required
+def api_adapters_disconnect():
+    d = request.json or {}
+    aid = d.get("adapter_id", "")
+    ok = adapter_mgr.disconnect_adapter(aid)
+    return jsonify({"adapter_id": aid, "disconnected": ok})
+
+# ── Schema Validator ──
+@app.route("/api/schema/validate", methods=["POST"])
+@login_required
+def api_schema_validate():
+    d = request.json or {}
+    result = schema_validator.validate(d.get("data", {}), d.get("schema_name", "track"))
+    return jsonify(result)
+
+# ── Video / Imagery ──
+@app.route("/api/video/status")
+@login_required
+def api_video_status():
+    return jsonify(video_pipeline.get_stats())
+
+@app.route("/api/video/feeds")
+@login_required
+def api_video_feeds():
+    return jsonify(video_pipeline.get_feeds())
+
+@app.route("/api/imagery/catalog")
+@login_required
+def api_imagery_catalog():
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(imagery_handler.get_catalog(limit))
+
+@app.route("/api/imagery/status")
+@login_required
+def api_imagery_status():
+    return jsonify(imagery_handler.get_stats())
+
+# ── Geospatial ──
+@app.route("/api/geo/distance")
+@login_required
+def api_geo_distance():
+    lat1 = request.args.get("lat1", 0, type=float)
+    lng1 = request.args.get("lng1", 0, type=float)
+    lat2 = request.args.get("lat2", 0, type=float)
+    lng2 = request.args.get("lng2", 0, type=float)
+    method = request.args.get("method", "vincenty")
+    dist = vincenty(lat1, lng1, lat2, lng2) if method == "vincenty" else haversine(lat1, lng1, lat2, lng2)
+    brg = bearing(lat1, lng1, lat2, lng2)
+    return jsonify({"distance_m": round(dist, 2), "bearing_deg": round(brg, 2), "method": method})
+
+@app.route("/api/geo/convert")
+@login_required
+def api_geo_convert():
+    lat = request.args.get("lat", 0, type=float)
+    lng = request.args.get("lng", 0, type=float)
+    return jsonify({"utm": latlng_to_utm(lat, lng), "mgrs": latlng_to_mgrs(lat, lng)})
+
+@app.route("/api/geo/mgrs")
+@login_required
+def api_geo_mgrs():
+    mgrs_str = request.args.get("mgrs", "")
+    if not mgrs_str:
+        return jsonify({"error": "mgrs parameter required"}), 400
+    try:
+        lat, lng = mgrs_to_latlng(mgrs_str)
+        return jsonify({"lat": lat, "lng": lng, "mgrs": mgrs_str})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/api/geo/tracks")
+@login_required
+def api_geo_tracks():
+    """Export all fused tracks as GeoJSON FeatureCollection."""
+    tracks = sensor_fusion.get_tracks()
+    return jsonify(tracks_to_geojson(tracks))
+
+# ── Military Message Formats ──
+@app.route("/api/vmf/status")
+@login_required
+def api_vmf_status():
+    if _vmf_adapter:
+        return jsonify(_vmf_adapter.get_status())
+    return jsonify({"error": "VMF adapter not available"}), 503
+
+@app.route("/api/vmf/messages")
+@login_required
+def api_vmf_messages():
+    if _vmf_adapter:
+        return jsonify(_vmf_adapter.get_message_log(limit=int(request.args.get("limit", 50))))
+    return jsonify([])
+
+@app.route("/api/stanag4586/status")
+@login_required
+def api_stanag4586_status():
+    if _stanag4586:
+        return jsonify(_stanag4586.get_status())
+    return jsonify({"error": "STANAG 4586 not available"}), 503
+
+@app.route("/api/stanag4586/vehicles")
+@login_required
+def api_stanag4586_vehicles():
+    if _stanag4586:
+        return jsonify(_stanag4586.get_vehicles())
+    return jsonify({})
+
+@app.route("/api/stanag4586/command", methods=["POST"])
+@login_required
+def api_stanag4586_command():
+    if not _stanag4586:
+        return jsonify({"error": "STANAG 4586 not available"}), 503
+    d = request.json or {}
+    result = _stanag4586.send_vehicle_command(
+        d.get("vehicle_id", ""), d.get("command", "HOLD"), d.get("params", {}))
+    security_audit.log_access("STANAG4586_CMD", session.get("user", "unknown"),
+        f"{d.get('vehicle_id')}: {d.get('command')}")
+    return jsonify(result)
+
+@app.route("/api/nffi/status")
+@login_required
+def api_nffi_status():
+    if _nffi_adapter:
+        return jsonify(_nffi_adapter.get_status())
+    return jsonify({"error": "NFFI not available"}), 503
+
+@app.route("/api/nffi/units")
+@login_required
+def api_nffi_units():
+    if _nffi_adapter:
+        return jsonify(_nffi_adapter.get_units())
+    return jsonify({})
+
+@app.route("/api/nffi/contacts")
+@login_required
+def api_nffi_contacts():
+    if _nffi_adapter:
+        return jsonify(_nffi_adapter.get_contacts())
+    return jsonify([])
+
+# ── OGC WMS/WFS ──
+@app.route("/api/ogc/status")
+@login_required
+def api_ogc_status():
+    if _ogc_client:
+        return jsonify(_ogc_client.get_status())
+    return jsonify({"error": "OGC client not available"}), 503
+
+@app.route("/api/ogc/endpoints")
+@login_required
+def api_ogc_endpoints():
+    if _ogc_client:
+        return jsonify(_ogc_client.get_endpoints())
+    return jsonify({"wms": {}, "wfs": {}})
+
+@app.route("/api/ogc/add", methods=["POST"])
+@login_required
+def api_ogc_add():
+    if not _ogc_client:
+        return jsonify({"error": "OGC client not available"}), 503
+    d = request.json or {}
+    svc = d.get("service", "wms").lower()
+    if svc == "wfs":
+        return jsonify(_ogc_client.add_wfs(d.get("name", ""), d.get("url", "")))
+    return jsonify(_ogc_client.add_wms(d.get("name", ""), d.get("url", "")))
+
+# ── COMSEC ──
+@app.route("/api/comsec/status")
+@login_required
+def api_comsec_status():
+    return jsonify({
+        "channel": comsec_channel.get_status(),
+        "key_manager": key_mgr.get_status(),
+    })
+
+@app.route("/api/comsec/keys")
+@login_required
+def api_comsec_keys():
+    return jsonify(key_mgr.list_keys())
+
+@app.route("/api/comsec/generate-key", methods=["POST"])
+@login_required
+def api_comsec_gen_key():
+    d = request.json or {}
+    rec = key_mgr.generate_key(d.get("purpose", "channel"), d.get("ttl", 86400))
+    security_audit.log_crypto("KEY_GENERATE", rec.get("key_id", ""))
+    return jsonify(rec)
+
+@app.route("/api/comsec/rotate-key", methods=["POST"])
+@login_required
+def api_comsec_rotate_key():
+    d = request.json or {}
+    rec = key_mgr.rotate_key(d.get("key_id", ""))
+    security_audit.log_crypto("KEY_ROTATE", d.get("key_id", ""))
+    return jsonify(rec)
+
+# ── Security Audit ──
+@app.route("/api/security/audit")
+@login_required
+def api_security_audit():
+    cat = request.args.get("category")
+    sev = request.args.get("severity")
+    lim = request.args.get("limit", 50, type=int)
+    return jsonify(security_audit.get_events(category=cat, severity=sev, limit=lim))
+
+@app.route("/api/security/audit/status")
+@login_required
+def api_security_audit_status():
+    return jsonify(security_audit.get_status())
+
+@app.route("/api/security/classify", methods=["POST"])
+@login_required
+def api_security_classify():
+    d = request.json or {}
+    result = ClassificationMarker.mark(
+        d.get("data", {}), d.get("level", "UNCLASSIFIED"),
+        d.get("caveats"), d.get("releasability", "RELTO USA"))
+    return jsonify(result)
+
+# ── Integration Hub aggregate ──
+@app.route("/api/integration/hub")
+@login_required
+def api_integration_hub():
+    """Aggregate status for the Integration Hub dashboard."""
+    return jsonify({
+        "adapters": adapter_mgr.get_all_status(),
+        "video": video_pipeline.get_stats(),
+        "imagery": imagery_handler.get_stats(),
+        "comsec": comsec_channel.get_status(),
+        "keys": key_mgr.get_status(),
+        "audit": security_audit.get_status(),
+        "ogc": _ogc_client.get_status() if _ogc_client else {},
+    })
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
+    adapter_count = len(adapter_mgr.get_all_status())
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v3.0")
-    print("  Phase 22: Beyond Lattice")
+    print("  AMOS — Autonomous Mission Operating System v4.0")
+    print("  Phase 29: Full Data Integration Stack")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
+    print(f"  Adapters: {adapter_count} registered")
+    print(f"  COMSEC:   {comsec_channel.get_status()['cipher']}")
     print("-" * 58)
     for u, i in USERS.items():
         print(f"  {u:12s} [{i.get('role','')}]")

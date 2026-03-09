@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Video Feeds{% endblock %}
+{% block head %}
+<style>
+.feed-card{background:#0d0d0d;border:1px solid #333;padding:12px;border-radius:4px;position:relative}
+.feed-card .feed-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.feed-card .feed-name{font-weight:bold;font-size:.95em}
+.feed-placeholder{width:100%;height:200px;background:#000;border:1px solid #222;display:flex;align-items:center;justify-content:center;color:#444;font-size:.8em}
+.feed-stat{display:inline-block;margin-right:10px;font-size:.78em;color:#888}
+.feed-stat span{color:#00ff41}
+.klv-row{padding:3px 0;font-size:.76em;border-bottom:1px solid #111}
+.klv-row .klv-tag{color:#ffaa00;width:140px;display:inline-block}
+.img-row{padding:4px 0;font-size:.78em;border-bottom:1px solid #111;cursor:pointer}
+.img-row:hover{background:#1a1a1a}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card"><h3>VIDEO / IMAGERY PIPELINE — STANAG 4609 · NITF · GeoTIFF</h3></div>
+<div class="grid-3" id="video-feeds">
+  <div class="feed-card">
+    <div class="feed-hdr"><span class="feed-name">EO/IR — Alpha-1</span><span class="badge badge-green">LIVE</span></div>
+    <div class="feed-placeholder">FEED: rtsp://alpha-1/eo — awaiting stream</div>
+    <div style="margin-top:6px">
+      <span class="feed-stat">Res: <span>1920×1080</span></span>
+      <span class="feed-stat">FPS: <span>30</span></span>
+      <span class="feed-stat">KLV: <span class="live-dot"></span>Active</span>
+    </div>
+  </div>
+  <div class="feed-card">
+    <div class="feed-hdr"><span class="feed-name">FLIR — Bravo-2</span><span class="badge badge-yellow">STANDBY</span></div>
+    <div class="feed-placeholder">FEED: rtsp://bravo-2/flir — standby</div>
+    <div style="margin-top:6px">
+      <span class="feed-stat">Res: <span>640×480</span></span>
+      <span class="feed-stat">FPS: <span>15</span></span>
+    </div>
+  </div>
+  <div class="feed-card">
+    <div class="feed-hdr"><span class="feed-name">SAR — Echo-5</span><span class="badge badge-blue">REPLAY</span></div>
+    <div class="feed-placeholder">FEED: recorded — SAR imagery replay</div>
+    <div style="margin-top:6px">
+      <span class="feed-stat">Mode: <span>Stripmap</span></span>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:8px">
+  <div class="card"><h3>KLV METADATA STREAM <span style="color:#888;font-size:.8em">(MISB ST 0601)</span></h3>
+    <div class="scroll-box" style="max-height:280px" id="klv-stream">
+      <div class="klv-row"><span class="klv-tag">Platform Heading</span> 142.7°</div>
+      <div class="klv-row"><span class="klv-tag">Sensor Latitude</span> 35.6892° N</div>
+      <div class="klv-row"><span class="klv-tag">Sensor Longitude</span> 51.3890° E</div>
+      <div class="klv-row"><span class="klv-tag">Sensor Alt (MSL)</span> 4,200 ft</div>
+      <div class="klv-row"><span class="klv-tag">Frame Center Lat</span> 35.6850° N</div>
+      <div class="klv-row"><span class="klv-tag">Frame Center Lon</span> 51.3820° E</div>
+      <div class="klv-row"><span class="klv-tag">Slant Range</span> 3,450 m</div>
+      <div class="klv-row"><span class="klv-tag">Target Width</span> 12.4 m</div>
+      <div class="klv-row"><span class="klv-tag">Image Source</span> EO Daylight</div>
+    </div>
+  </div>
+  <div class="card"><h3>IMAGERY CATALOG <span style="color:#888;font-size:.8em">(NITF / GeoTIFF)</span></h3>
+    <div class="scroll-box" style="max-height:280px" id="imagery-catalog"></div>
+    <div style="margin-top:6px">
+      <span class="feed-stat">Pipeline: <span id="vid-pipe-status">—</span></span>
+      <span class="feed-stat">Feeds: <span id="vid-feed-count">0</span></span>
+      <span class="feed-stat">Images: <span id="vid-img-count">0</span></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshVideo(){
+    try{
+        const st=await apiFetch('/api/video/status');
+        document.getElementById('vid-pipe-status').textContent=st.active_feeds>0?'Active':'Standby';
+        document.getElementById('vid-feed-count').textContent=st.active_feeds||0;
+        document.getElementById('vid-img-count').textContent=st.images_captured||0;
+    }catch(e){}
+    try{
+        const imgs=await apiFetch('/api/imagery/catalog?limit=20');
+        const div=document.getElementById('imagery-catalog');
+        if(Array.isArray(imgs)&&imgs.length>0){
+            div.innerHTML=imgs.map(function(im){
+                return '<div class="img-row"><span style="color:#ffaa00">'+im.image_type+'</span> '+
+                    (im.filename||im.image_id)+' <span style="color:#555">'+
+                    (im.width||'?')+'×'+(im.height||'?')+'</span></div>';
+            }).join('');
+        }else{div.innerHTML='<span style="color:#555">No imagery catalogued</span>';}
+    }catch(e){}
+}
+refreshVideo(); setInterval(refreshVideo,5000);
+</script>
+{% endblock %}
