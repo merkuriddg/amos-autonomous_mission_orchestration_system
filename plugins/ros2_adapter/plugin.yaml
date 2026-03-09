@@ -1,0 +1,11 @@
+name: ros2_adapter
+version: "1.0"
+type: transport
+domain: all
+author: AMOS Team
+description: >
+  ROS 2 bridge adapter — publishes AMOS asset state to ROS 2 topics
+  and subscribes to external robotic nodes.
+dependencies:
+  - amos-core >=1.0
+  - rclpy

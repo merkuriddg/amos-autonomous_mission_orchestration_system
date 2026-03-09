@@ -13,50 +13,50 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.insert(0, ROOT_DIR)
 
-from mos_core.nodes.waypoint_nav import WaypointNav
-from mos_core.nodes.geofence_manager import GeofenceManager
-from mos_core.nodes.voice_parser import VoiceParser
-from mos_core.nodes.ros2_bridge import ROS2Bridge
+from services.waypoint_nav import WaypointNav
+from services.geofence_manager import GeofenceManager
+from services.voice_parser import VoiceParser
+from services.ros2_bridge import ROS2Bridge
 
 # Phase 10
-from mos_core.nodes.cognitive_engine import CognitiveEngine
-from mos_core.nodes.nlp_mission_parser import NLPMissionParser
-from mos_core.nodes.environment_effects import ContestedEnvironment
-from mos_core.nodes.task_allocator import TaskAllocator
-from mos_core.nodes.red_force_ai import RedForceAI
-from mos_core.nodes.sensor_fusion_engine import SensorFusionEngine
-from mos_core.nodes.commander_support import CommanderSupport
-from mos_core.nodes.learning_engine import LearningEngine
-from mos_core.nodes.kill_web import KillWeb
-from mos_core.nodes.roe_engine import ROEEngine
-from mos_core.nodes.threat_predictor import ThreatPredictor
+from services.cognitive_engine import CognitiveEngine
+from services.nlp_mission_parser import NLPMissionParser
+from services.environment_effects import ContestedEnvironment
+from services.task_allocator import TaskAllocator
+from services.red_force_ai import RedForceAI
+from services.sensor_fusion_engine import SensorFusionEngine
+from services.commander_support import CommanderSupport
+from services.learning_engine import LearningEngine
+from services.kill_web import KillWeb
+from services.roe_engine import ROEEngine
+from services.threat_predictor import ThreatPredictor
 
 # Phase 16-22
-from mos_core.nodes.wargame_engine import WargameEngine
-from mos_core.nodes.swarm_intelligence import SwarmIntelligence
-from mos_core.nodes.isr_pipeline import ISRPipeline
-from mos_core.nodes.effects_chain import EffectsChain
-from mos_core.nodes.space_domain import SpaceDomain
-from mos_core.nodes.hmt_engine import HMTEngine
-from mos_core.nodes.mesh_network import MeshNetwork
+from services.wargame_engine import WargameEngine
+from services.swarm_intelligence import SwarmIntelligence
+from services.isr_pipeline import ISRPipeline
+from services.effects_chain import EffectsChain
+from services.space_domain import SpaceDomain
+from services.hmt_engine import HMTEngine
+from services.mesh_network import MeshNetwork
 
 # Phase 23-28: Data Integration Stack
-from mos_core.data_model import Track, Detection, Command, SensorReading, VideoFrame, Message
-from mos_core.schema_validator import SchemaValidator
-from mos_core.adapter_base import AdapterManager, LegacyBridgeAdapter
-from mos_core.nodes.video_pipeline import VideoPipeline
-from mos_core.nodes.klv_parser import KLVParser
-from mos_core.nodes.imagery_handler import ImageryHandler
-from mos_core.geo_utils import (haversine, vincenty, bearing, destination_point,
+from core.data_model import Track, Detection, Command, SensorReading, VideoFrame, Message
+from core.schema_validator import SchemaValidator
+from core.adapter_base import AdapterManager, LegacyBridgeAdapter
+from services.video_pipeline import VideoPipeline
+from services.klv_parser import KLVParser
+from services.imagery_handler import ImageryHandler
+from core.geo_utils import (haversine, vincenty, bearing, destination_point,
                                 latlng_to_utm, utm_to_latlng, latlng_to_mgrs,
                                 mgrs_to_latlng, tracks_to_geojson, bounding_box)
-from mos_core.comsec import SecureChannel, ClassificationMarker
-from mos_core.key_manager import KeyManager
-from mos_core.security_audit import SecurityAudit
+from core.comsec import SecureChannel, ClassificationMarker
+from core.key_manager import KeyManager
+from core.security_audit import SecurityAudit
 
 # Phase 3 — Document Generators
-from mos_core.docs.opord_generator import generate_opord
-from mos_core.docs.conop_generator import generate_conop
+from core.docs.opord_generator import generate_opord
+from core.docs.conop_generator import generate_conop
 
 # PX4 Bridge (Phase 2)
 try:
@@ -1920,7 +1920,7 @@ def api_redforce_units():
 def api_redforce_spawn():
     d = request.json
     uid = f"RED-SPAWN-{len(red_force_ai.units)+1:02d}"
-    from mos_core.nodes.red_force_ai import RedUnit
+    from services.red_force_ai import RedUnit
     lat = d.get("lat", base_pos["lat"] + 0.05)
     lng = d.get("lng", base_pos["lng"] + 0.05)
     utype = d.get("unit_type", "drone")

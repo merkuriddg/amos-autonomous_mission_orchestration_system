@@ -12,7 +12,7 @@ import json
 import threading
 from datetime import datetime, timezone
 
-from mos_core.data_model import (
+from core.data_model import (
     Track, Detection, Command, SensorReading, VideoFrame, Message,
     CLASSIFICATIONS, AFFILIATIONS, DOMAINS, COMMAND_TYPES, MESSAGE_TYPES,
 )

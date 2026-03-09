@@ -13,10 +13,10 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 
-from mos_core.data_model import (
+from core.data_model import (
     Track, Detection, Command, SensorReading, Message, DataProvenance,
 )
-from mos_core.schema_validator import SchemaValidator
+from core.schema_validator import SchemaValidator
 
 log = logging.getLogger("amos.adapters")
 

@@ -29,8 +29,8 @@ from datetime import datetime, timezone
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mos_core.adapter_base import ProtocolAdapter
-from mos_core.data_model import Track, Command
+from core.adapter_base import ProtocolAdapter
+from core.data_model import Track, Command
 
 log = logging.getLogger("amos.stanag4586")
 

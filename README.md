@@ -1,7 +1,7 @@
 # AMOS — Autonomous Mission Operating System
 
 Multi-domain C2 platform for autonomous robotic platoon operations.
-**v3.0 — Phase 22: Beyond Lattice**
+**v4.0 — Phase 29: Full Data Integration Stack**
 
 ## Quick Start
 
@@ -34,17 +34,36 @@ AMOS goes beyond sensor-fusion-and-fire-control platforms by integrating Monte C
 ## Architecture
 
 ```
-Flask + SocketIO (real-time WebSocket)
-├── web/app.py              — Main server (~4100 lines, 100+ API routes)
-├── web/templates/           — 30+ HTML views
-├── mos_core/nodes/          — 22 autonomous subsystems
-├── mos_core/docs/           — Document generators (OPORD, CONOP)
-├── integrations/            — External system bridges (PX4, TAK, Link 16)
-├── db/                      — MariaDB persistence layer (30 tables)
-└── config/                  — Platoon config + locations
+amos/
+├── core/                    — Mission engine: data model, adapters, COMSEC, geo utilities
+├── services/                — Autonomous subsystems: planners, AI, sensor fusion (36 modules)
+├── integrations/            — External system bridges (PX4, TAK, Link 16, MQTT, DDS, Kafka)
+├── simulator/               — Scenario management and simulation utilities
+├── plugins/                 — Extensible plugin system (see Plugin SDK docs)
+│   ├── px4_adapter/         — PX4 Autopilot asset adapter
+│   ├── ros2_adapter/        — ROS 2 transport bridge
+│   └── example_drone/       — Reference plugin implementation
+├── web/                     — Flask + SocketIO server, 30+ HTML views
+│   ├── app.py               — Main server (~4500 lines, 100+ API routes)
+│   └── templates/           — Terminal-aesthetic UI templates
+├── db/                      — MariaDB persistence layer (36 tables)
+├── config/                  — Platoon config + locations
+└── docs/                    — Architecture, SDK, simulation, API docs
 ```
 
-### Backend Modules (mos_core/nodes/)
+### Core (core/)
+
+| Module | Function |
+|--------|----------|
+| data_model.py | Canonical data model (Track, Detection, Command, etc.) |
+| schema_validator.py | Schema validation for data contracts |
+| adapter_base.py | Adapter manager + legacy bridge |
+| geo_utils.py | Haversine, Vincenty, UTM, MGRS, GeoJSON conversion |
+| comsec.py | AES-256-GCM encryption + classification markers |
+| key_manager.py | Cryptographic key lifecycle management |
+| security_audit.py | Security audit logging |
+
+### Services (services/)
 
 | Module | Function |
 |--------|----------|
@@ -66,6 +85,9 @@ Flask + SocketIO (real-time WebSocket)
 | space_domain.py | Keplerian orbital propagation, SATCOM, JADC2 mesh |
 | hmt_engine.py | Human-machine teaming with adaptive autonomy |
 | mesh_network.py | MANET with Dijkstra routing + frequency hopping |
+| video_pipeline.py | Full-motion video processing pipeline |
+| klv_parser.py | KLV metadata extraction |
+| imagery_handler.py | Imagery ingest and management |
 
 ### Integration Bridges (integrations/)
 
@@ -191,14 +213,20 @@ GET  /api/mesh/resilience           — Network resilience score
 
 ## Database
 
-MariaDB — 30 tables including: users, assets, audit_log, missions, mission_events, recording_sessions, recording_frames, chat_messages, asset_locks, wargame_scenarios, wargame_results, isr_collections, target_patterns, effects_chains, orbital_assets, satcom_links
+MariaDB — 36 tables including: users, assets, audit_log, missions, mission_events, recording_sessions, recording_frames, chat_messages, asset_locks, wargame_scenarios, wargame_results, isr_collections, target_patterns, effects_chains, orbital_assets, satcom_links, tracks, detections, video_streams, security_audit
 
 ## Tech Stack
 
 - **Backend:** Python 3, Flask, Flask-SocketIO
 - **Frontend:** Vanilla JS, Leaflet.js, WebSocket
 - **Database:** MariaDB
-- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2
+- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, NFFI, OGC WMS/WFS
+- **Security:** AES-256-GCM encryption, HMAC, key management, security audit logging
+
+## Plugin Development
+
+See `docs/platform/AMOS_Plugin_SDK.md` for the full Plugin SDK guide.
+Example plugins live in `plugins/` — copy `plugins/example_drone/` to start building your own.
 
 ## License
 
