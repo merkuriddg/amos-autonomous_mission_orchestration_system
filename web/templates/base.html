@@ -35,6 +35,7 @@ tr:hover td{background:#1a1a1a}
 .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
 #map{height:500px;background:#0a0a0a;border:1px solid #222}
 .leaflet-container{background:#0a0a0a!important}
+.leaflet-top,.leaflet-bottom{z-index:999!important}
 .stat{text-align:center;padding:12px}
 .stat .value{font-size:1.8em;color:#00ff41}
 .stat .label{font-size:.7em;color:#666;margin-top:3px}
@@ -48,9 +49,9 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
 .amos-menu-wrap{position:relative}
 .amos-menu-trigger{cursor:pointer;user-select:none}
 .amos-menu-trigger:hover{color:#fff}
-.amos-menu{display:none;position:absolute;top:32px;left:0;background:#111;border:1px solid #00ff41;border-radius:0 6px 6px 6px;z-index:2000;min-width:780px;box-shadow:0 8px 32px rgba(0,255,65,.12)}
+.amos-menu{display:none;position:absolute;top:32px;left:0;background:#111;border:1px solid #00ff41;border-radius:0 6px 6px 6px;z-index:2000;min-width:900px;box-shadow:0 8px 32px rgba(0,255,65,.12)}
 .amos-menu.open{display:block}
-.amos-menu-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:0;padding:10px 6px}
+.amos-menu-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:0;padding:10px 6px}
 .amos-menu-col{padding:0 8px;border-right:1px solid #1a1a1a}
 .amos-menu-col:last-child{border-right:none}
 .amos-menu-hdr{color:#666;font-size:.65em;letter-spacing:2px;padding:4px 6px 2px;text-transform:uppercase}
@@ -148,16 +149,18 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <a href="/hmt" class="amos-menu-item{% if request.path=='/hmt' %} active{% endif %}">HMT</a>
       <a href="/space" class="amos-menu-item{% if request.path=='/space' %} active{% endif %}">Space/JADC2</a>
       <a href="/mesh" class="amos-menu-item{% if request.path=='/mesh' %} active{% endif %}">Mesh Network</a>
-      <div class="amos-menu-hdr" style="margin-top:10px">ANALYTICS</div>
+     </div>
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">ANALYTICS</div>
       {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
       {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
       <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">Analytics</a>
       <a href="/predictions" class="amos-menu-item{% if request.path=='/predictions' %} active{% endif %}">Predictions</a>
+      <a href="/training" class="amos-menu-item{% if request.path=='/training' %} active{% endif %}">Training</a>
+      <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">Documents</a>
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">SYSTEM</div>
-      <a href="/training" class="amos-menu-item{% if request.path=='/training' %} active{% endif %}">Training</a>
-      <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">Documents</a>
       <a href="/automation" class="amos-menu-item{% if request.path=='/automation' %} active{% endif %}">Automation</a>
       <a href="/readiness" class="amos-menu-item{% if request.path=='/readiness' %} active{% endif %}">Readiness</a>
       <a href="/syscmd" class="amos-menu-item{% if request.path=='/syscmd' %} active{% endif %}">Sys Command</a>
