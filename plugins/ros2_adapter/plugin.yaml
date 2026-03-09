@@ -3,6 +3,8 @@ version: "1.0"
 type: transport
 domain: all
 author: AMOS Team
+enabled: true
+entry_point: ROS2AdapterPlugin
 description: >
   ROS 2 bridge adapter — publishes AMOS asset state to ROS 2 topics
   and subscribes to external robotic nodes.

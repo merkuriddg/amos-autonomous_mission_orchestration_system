@@ -3,6 +3,8 @@ version: "1.0"
 type: asset_adapter
 domain: air
 author: AMOS Team
+enabled: true
+entry_point: ExampleDronePlugin
 description: >
   Example drone plugin — reference implementation showing how to
   integrate a custom drone platform with AMOS.  Use this as a

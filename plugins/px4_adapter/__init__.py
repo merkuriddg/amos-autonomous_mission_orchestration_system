@@ -2,41 +2,25 @@
 
 Bridges PX4 autopilot systems (SITL or hardware) into AMOS via MAVLink.
 See ``integrations/px4_bridge.py`` for the low-level connection logic.
-
-Usage::
-
-    from plugins.px4_adapter import PX4AdapterPlugin
-    plugin = PX4AdapterPlugin()
-    plugin.activate(event_bus)
 """
 
+from core.plugin_base import PluginBase
 
-class PX4AdapterPlugin:
-    """PX4 asset-adapter plugin scaffold.
 
-    Implements the AMOS plugin lifecycle:
-    load → register → activate → operate → shutdown
-    """
+class PX4AdapterPlugin(PluginBase):
+    """PX4 asset-adapter plugin."""
 
-    NAME = "px4_adapter"
-    VERSION = "1.0"
-    TYPE = "asset_adapter"
+    PLUGIN_NAME = "px4_adapter"
+    PLUGIN_VERSION = "1.0"
+    PLUGIN_TYPE = "asset_adapter"
 
-    def __init__(self):
-        self.active = False
+    def on_activate(self, event_bus) -> None:
+        self.subscribe("asset.*", self._on_asset_event)
+        self.emit("plugin.ready", {"name": self.PLUGIN_NAME})
 
-    def register(self, registry: dict) -> None:
-        """Register plugin capabilities with the platform."""
-        registry[self.NAME] = {
-            "type": self.TYPE,
-            "version": self.VERSION,
-            "capabilities": ["telemetry", "command", "health"],
-        }
+    def get_capabilities(self) -> list[str]:
+        return ["telemetry", "command", "health"]
 
-    def activate(self, event_bus=None) -> None:
-        """Begin interacting with the AMOS event bus."""
-        self.active = True
-
-    def shutdown(self) -> None:
-        """Cleanly disconnect."""
-        self.active = False
+    def _on_asset_event(self, event) -> None:
+        """Handle asset events for PX4-connected platforms."""
+        pass  # wire to integrations/px4_bridge.py when hardware is present

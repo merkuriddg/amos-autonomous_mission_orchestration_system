@@ -3,41 +3,25 @@
 Bridges the ROS 2 middleware into AMOS, publishing asset telemetry on
 standard ROS topics and subscribing to external robot state.
 See ``services/ros2_bridge.py`` for the core bridge implementation.
-
-Usage::
-
-    from plugins.ros2_adapter import ROS2AdapterPlugin
-    plugin = ROS2AdapterPlugin()
-    plugin.activate(event_bus)
 """
 
+from core.plugin_base import PluginBase
 
-class ROS2AdapterPlugin:
-    """ROS 2 transport plugin scaffold.
 
-    Implements the AMOS plugin lifecycle:
-    load → register → activate → operate → shutdown
-    """
+class ROS2AdapterPlugin(PluginBase):
+    """ROS 2 transport plugin."""
 
-    NAME = "ros2_adapter"
-    VERSION = "1.0"
-    TYPE = "transport"
+    PLUGIN_NAME = "ros2_adapter"
+    PLUGIN_VERSION = "1.0"
+    PLUGIN_TYPE = "transport"
 
-    def __init__(self):
-        self.active = False
+    def on_activate(self, event_bus) -> None:
+        self.subscribe("asset.updated", self._on_asset_update)
+        self.emit("plugin.ready", {"name": self.PLUGIN_NAME})
 
-    def register(self, registry: dict) -> None:
-        """Register plugin capabilities with the platform."""
-        registry[self.NAME] = {
-            "type": self.TYPE,
-            "version": self.VERSION,
-            "capabilities": ["publish_telemetry", "subscribe_state"],
-        }
+    def get_capabilities(self) -> list[str]:
+        return ["publish_telemetry", "subscribe_state"]
 
-    def activate(self, event_bus=None) -> None:
-        """Begin interacting with the AMOS event bus."""
-        self.active = True
-
-    def shutdown(self) -> None:
-        """Cleanly disconnect."""
-        self.active = False
+    def _on_asset_update(self, event) -> None:
+        """Forward asset updates to ROS 2 topics."""
+        pass  # wire to services/ros2_bridge.py when ROS 2 is available

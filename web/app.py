@@ -44,6 +44,10 @@ from services.mesh_network import MeshNetwork
 from core.data_model import Track, Detection, Command, SensorReading, VideoFrame, Message
 from core.schema_validator import SchemaValidator
 from core.adapter_base import AdapterManager, LegacyBridgeAdapter
+
+# Phase 31: Plugin Loader System
+from core.event_bus import EventBus
+from core.plugin_loader import PluginLoader
 from services.video_pipeline import VideoPipeline
 from services.klv_parser import KLVParser
 from services.imagery_handler import ImageryHandler
@@ -332,6 +336,18 @@ imagery_handler = ImageryHandler()
 key_mgr = KeyManager()
 security_audit = SecurityAudit()
 comsec_channel = SecureChannel(channel_id="AMOS-PRIMARY")
+
+# Phase 31: Plugin Loader System
+event_bus = EventBus()
+plugin_loader = PluginLoader(
+    os.path.join(ROOT_DIR, "plugins"), event_bus=event_bus)
+try:
+    _plugin_results = plugin_loader.discover_and_load_all()
+    _ps = plugin_loader.registry.get_summary()
+    print(f"[AMOS] Plugins: {_ps['active']} active, {_ps['errored']} errored, {_ps['disabled']} disabled")
+except Exception as e:
+    print(f"[AMOS] Plugin loader error: {e}")
+    _plugin_results = {}
 
 # Phase 23-28 adapters (import + connect with graceful fallback)
 try:
@@ -4439,21 +4455,76 @@ def api_integration_hub():
         "keys": key_mgr.get_status(),
         "audit": security_audit.get_status(),
         "ogc": _ogc_client.get_status() if _ogc_client else {},
+        "plugins": plugin_loader.registry.get_summary(),
     })
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 31 — PLUGIN & EVENT BUS API
+# ═══════════════════════════════════════════════════════════
+@app.route("/api/plugins")
+@login_required
+def api_plugins():
+    """List all plugins with status."""
+    return jsonify({
+        "plugins": plugin_loader.registry.get_all_status(),
+        "summary": plugin_loader.registry.get_summary(),
+        "capabilities": plugin_loader.get_capability_registry(),
+    })
+
+@app.route("/api/plugins/<name>")
+@login_required
+def api_plugin_detail(name):
+    """Get detailed status for a single plugin."""
+    status = plugin_loader.registry.get_plugin_status(name)
+    if status:
+        return jsonify(status)
+    return jsonify({"error": f"Plugin '{name}' not found"}), 404
+
+@app.route("/api/plugins/health")
+@login_required
+def api_plugins_health():
+    """Health check across all plugins."""
+    return jsonify(plugin_loader.registry.health_check_all())
+
+@app.route("/api/events/recent")
+@login_required
+def api_events_recent():
+    """Return recent events from the event bus."""
+    topic = request.args.get("topic")
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify({
+        "events": event_bus.get_history(topic=topic, limit=limit),
+        "stats": event_bus.get_stats(),
+        "topics": event_bus.get_topics(),
+    })
+
+@app.route("/api/events/publish", methods=["POST"])
+@login_required
+def api_events_publish():
+    """Publish an event to the bus (for operator-initiated events)."""
+    d = request.json or {}
+    topic = d.get("topic", "")
+    if not topic:
+        return jsonify({"error": "topic required"}), 400
+    evt = event_bus.publish(topic, d.get("payload"), source=ctx()["user"])
+    return jsonify(evt.to_dict())
 
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     adapter_count = len(adapter_mgr.get_all_status())
+    ps = plugin_loader.registry.get_summary()
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v4.0")
-    print("  Phase 29: Full Data Integration Stack")
+    print("  AMOS — Autonomous Mission Operating System v5.0")
+    print("  Phase 31: Plugin Loader System")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print(f"  Adapters: {adapter_count} registered")
+    print(f"  Plugins:  {ps['active']} active / {ps['total']} discovered")
+    print(f"  EventBus: {event_bus.get_stats()['subscribers']} subscribers")
     print(f"  COMSEC:   {comsec_channel.get_status()['cipher']}")
     print("-" * 58)
     for u, i in USERS.items():
         print(f"  {u:12s} [{i.get('role','')}]")
     print("=" * 58 + "\n")
-    socketio.run(app, host="0.0.0.0", port=2600, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="*******", port=2600, allow_unsafe_werkzeug=True)

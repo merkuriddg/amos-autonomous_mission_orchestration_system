@@ -3,6 +3,8 @@ version: "1.0"
 type: asset_adapter
 domain: air
 author: AMOS Team
+enabled: true
+entry_point: PX4AdapterPlugin
 description: >
   PX4 Autopilot adapter — bridges MAVLink telemetry and commands
   between PX4 SITL / hardware and the AMOS platform.
