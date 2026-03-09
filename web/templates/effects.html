@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Effects Chain{% endblock %}
+{% block head %}
+<style>
+.fx-stage{display:inline-block;padding:2px 6px;border:1px solid #333;border-radius:2px;font-size:.65em;margin:1px}
+.fx-pending{color:#666;border-color:#333}.fx-executing{color:#ffaa00;border-color:#ffaa00;animation:pulse 1.5s infinite}
+.fx-success{color:#00ff41;border-color:#00ff41}.fx-failed{color:#ff4444;border-color:#ff4444}
+.fx-skipped{color:#666;border-color:#333;text-decoration:line-through}
+.fx-chain{border:1px solid #222;padding:6px;margin:4px 0;border-radius:3px;background:#0d0d0d}
+.fx-chain:hover{border-color:#333}
+.fx-tmpl{padding:6px;border:1px solid #333;margin:4px 0;border-radius:3px;cursor:pointer}
+.fx-tmpl:hover{border-color:#00ff41;background:#001a00}
+.fx-domain{display:inline-block;padding:1px 4px;border-radius:2px;font-size:.6em;font-weight:bold}
+.dom-cyber{background:#1a001a;color:#ff00ff}.dom-ew{background:#1a1a00;color:#ffaa00}
+.dom-sigint{background:#001a33;color:#4488ff}.dom-kinetic{background:#330000;color:#ff4444}
+.dom-isr{background:#001a00;color:#00ff41}.dom-space{background:#0a0a1a;color:#8888ff}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">CROSS-DOMAIN EFFECTS CHAIN</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="fx-total">0</div><div class="label">TOTAL CHAINS</div></div>
+  <div class="card stat"><div class="value" id="fx-active" style="color:#ffaa00">0</div><div class="label">EXECUTING</div></div>
+  <div class="card stat"><div class="value" id="fx-complete" style="color:#00ff41">0</div><div class="label">COMPLETE</div></div>
+  <div class="card stat"><div class="value" id="fx-failed" style="color:#ff4444">0</div><div class="label">FAILED</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>ACTIVE CHAINS</h3>
+   <div class="scroll-box" id="fx-chains" style="max-height:400px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>CREATE FROM TEMPLATE</h3>
+    <div class="scroll-box" id="fx-templates" style="max-height:200px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>HISTORY</h3>
+    <div class="scroll-box" id="fx-history" style="max-height:200px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshEffects(){
+ var status=await apiFetch('/api/effects/status');
+ var templates=await apiFetch('/api/effects/templates');
+ var history=await apiFetch('/api/effects/history');
+ if(!status)return;
+
+ var stats=status.stats||{};
+ document.getElementById('fx-total').textContent=stats.total||0;
+ document.getElementById('fx-active').textContent=stats.active||0;
+ document.getElementById('fx-complete').textContent=stats.complete||0;
+ document.getElementById('fx-failed').textContent=stats.failed||0;
+
+ // Chains
+ var chains=status.chains||{};
+ var el=document.getElementById('fx-chains');
+ var keys=Object.keys(chains);
+ if(!keys.length){el.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No effects chains — create from templates</div>';
+ } else {
+  el.innerHTML=keys.map(function(cid){
+   var c=chains[cid];
+   var scol=c.status==='executing'?'#ffaa00':c.status==='complete'?'#00ff41':c.status==='failed'?'#ff4444':'#888';
+   var h='<div class="fx-chain">';
+   h+='<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+   h+='<span style="color:#4488ff;font-weight:bold;font-size:.82em">'+c.name+'</span>';
+   h+='<span style="color:'+scol+';font-size:.72em;font-weight:bold">'+c.status.toUpperCase()+'</span>';
+   h+='</div>';
+   h+='<div style="font-size:.68em;color:#888;margin-bottom:4px">'+cid+' | Target: '+(c.target.id||'--')+'</div>';
+   // Stage flow
+   h+='<div style="display:flex;flex-wrap:wrap;gap:1px;margin-bottom:4px">';
+   (c.stages||[]).forEach(function(s,i){
+    var arrow=i<c.stages.length-1?' →':'';
+    h+='<span class="fx-stage fx-'+s.status+'"><span class="fx-domain dom-'+s.domain+'">'+s.domain+'</span> '+s.type+'</span>';
+    if(arrow)h+='<span style="color:#333;font-size:.7em;line-height:2">→</span>';
+   });
+   h+='</div>';
+   if(c.replanned)h+='<div style="font-size:.65em;color:#ff6600">⚠ REPLANNED (cascade skip)</div>';
+   if(c.status==='ready'){
+    h+='<button class="btn" style="font-size:.68em;padding:2px 8px" onclick="execChain(\''+cid+'\')">▶ EXECUTE</button>';
+   }
+   if(c.status==='executing'){
+    h+='<button class="btn btn-red" style="font-size:.68em;padding:2px 8px" onclick="abortChain(\''+cid+'\')">✗ ABORT</button>';
+   }
+   h+='</div>';
+   return h;
+  }).join('');
+ }
+
+ // Templates
+ var tel=document.getElementById('fx-templates');
+ if(templates){
+  tel.innerHTML=Object.keys(templates).map(function(tk){
+   var t=templates[tk];
+   return '<div class="fx-tmpl" onclick="createFromTemplate(\''+tk+'\')">'+
+    '<div style="font-weight:bold;font-size:.8em;color:#00ff41">'+tk+' — '+t.name+'</div>'+
+    '<div style="font-size:.68em;color:#888;margin-top:2px">'+t.description+'</div>'+
+    '<div style="font-size:.65em;margin-top:2px">'+t.stages.map(function(s){
+     return '<span class="fx-domain dom-'+(s.split('_')[0]||s)+'">'+s+'</span>';
+    }).join(' → ')+'</div></div>';
+  }).join('');
+ }
+
+ // History
+ var hel=document.getElementById('fx-history');
+ if(!history||!history.length){hel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No completed chains</div>';
+ } else {
+  hel.innerHTML=history.slice().reverse().map(function(h){
+   var col=h.cascade_failures===0?'#00ff41':'#ffaa00';
+   return '<div style="padding:3px 0;border-bottom:1px solid #222;font-size:.72em">'+
+    '<span style="color:'+col+'">●</span> '+h.name+' | '+h.stages_completed+'/'+h.total_stages+
+    ' stages | Failures: '+h.cascade_failures+'</div>';
+  }).join('');
+ }
+}
+
+async function createFromTemplate(tk){
+ await apiPost('/api/effects/create',{template:tk,target:{id:'auto',lat:35.68,lng:51.31}});
+ refreshEffects();
+}
+
+async function execChain(cid){
+ await apiPost('/api/effects/execute/'+cid,{});
+ refreshEffects();
+}
+
+async function abortChain(cid){
+ await apiPost('/api/effects/abort/'+cid,{reason:'Manual abort'});
+ refreshEffects();
+}
+
+window.onEffectsUpdate=function(d){refreshEffects();};
+refreshEffects();setInterval(refreshEffects,3000);
+</script>
+{% endblock %}

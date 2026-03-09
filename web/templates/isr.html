@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}ISR/ATR{% endblock %}
+{% block head %}
+<style>
+.isr-tgt{padding:4px 6px;border-bottom:1px solid #222;font-size:.75em;cursor:pointer}
+.isr-tgt:hover{background:#111}
+.isr-conf{display:inline-block;width:50px;height:6px;background:#222;border-radius:2px;vertical-align:middle;margin:0 4px}
+.isr-conf-fill{height:100%;border-radius:2px}
+.isr-pat{display:inline-block;padding:1px 5px;border-radius:2px;font-size:.65em;font-weight:bold}
+.pat-STATIC{background:#1a1a1a;color:#666}.pat-ROUTINE_PATROL{background:#001a00;color:#00ff41}
+.pat-IRREGULAR{background:#222200;color:#ffaa00}.pat-EVASIVE{background:#330000;color:#ff4444}
+.pat-CONVERGING{background:#330000;color:#ff4444;animation:pulse 1s infinite}
+.pat-DISPERSING{background:#1a0033;color:#ff00ff}.pat-STAGING{background:#331a00;color:#ff6600}
+.pat-TRANSITING{background:#001a33;color:#4488ff}
+.isr-change{padding:3px 6px;border-bottom:1px solid #222;font-size:.72em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">ISR / ATR PIPELINE — INTELLIGENCE PRODUCTION</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="isr-tracked">0</div><div class="label">TRACKED TARGETS</div></div>
+  <div class="card stat"><div class="value" id="isr-hiconf" style="color:#00ff41">0</div><div class="label">HIGH CONFIDENCE</div></div>
+  <div class="card stat"><div class="value" id="isr-changes" style="color:#ff4444">0</div><div class="label">ACTIVE CHANGES</div></div>
+  <div class="card stat"><div class="value" id="isr-obs" style="color:#4488ff">0</div><div class="label">OBSERVATIONS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>ATR TRACKED TARGETS</h3>
+   <div class="scroll-box" id="isr-targets" style="max-height:400px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>PATTERN-OF-LIFE ANALYSIS</h3>
+    <div class="scroll-box" id="isr-patterns" style="max-height:200px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>CHANGE DETECTION</h3>
+    <div class="scroll-box" id="isr-changes-list" style="max-height:200px"></div>
+   </div>
+  </div>
+ </div>
+
+ <div class="grid-2" style="margin-top:8px">
+  <div class="card">
+   <h3>COLLECTION REQUIREMENTS</h3>
+   <div class="scroll-box" id="isr-coll" style="max-height:200px"></div>
+   <div style="margin-top:6px;display:flex;gap:4px">
+    <input id="isr-req-name" placeholder="Collection name" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+    <input id="isr-req-pri" type="number" value="5" min="1" max="10" style="width:50px;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+    <button class="btn" onclick="addCollection()">+ ADD</button>
+   </div>
+  </div>
+  <div class="card">
+   <h3>TARGET DETAIL</h3>
+   <div id="isr-detail" style="font-size:.8em;color:#888">Select a target to view ATR detail...</div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshISR(){
+ var targets=await apiFetch('/api/isr/targets');
+ var patterns=await apiFetch('/api/isr/patterns');
+ var changes=await apiFetch('/api/isr/changes');
+ var colls=await apiFetch('/api/isr/collections');
+
+ // Stats
+ var tkeys=targets?Object.keys(targets):[];
+ document.getElementById('isr-tracked').textContent=tkeys.length;
+ var hiconf=0,totalObs=0;
+ tkeys.forEach(function(k){
+  if(targets[k].atr_confidence>0.7)hiconf++;
+  totalObs+=targets[k].observation_count||0;
+ });
+ document.getElementById('isr-hiconf').textContent=hiconf;
+ document.getElementById('isr-obs').textContent=totalObs;
+ document.getElementById('isr-changes').textContent=(changes||[]).length;
+
+ // Targets list
+ var tel=document.getElementById('isr-targets');
+ if(!tkeys.length){tel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No targets tracked yet — ATR auto-scans every 5s</div>';
+ } else {
+  tel.innerHTML=tkeys.map(function(tid){
+   var t=targets[tid];
+   var conf=Math.round((t.atr_confidence||0)*100);
+   var ccol=conf>70?'#00ff41':conf>40?'#ffaa00':'#ff4444';
+   var cls=t.latest_class?t.latest_class.type:'unknown';
+   var pat=t.pattern?t.pattern.state:'--';
+   return '<div class="isr-tgt" onclick="loadTarget(\''+tid+'\')">'+
+    '<span style="color:#4488ff">'+tid+'</span> | '+cls+
+    ' <div class="isr-conf"><div class="isr-conf-fill" style="width:'+conf+'%;background:'+ccol+'"></div></div>'+conf+'%'+
+    ' | <span class="isr-pat pat-'+pat+'">'+pat+'</span>'+
+    ' | '+t.observation_count+' obs</div>';
+  }).join('');
+ }
+
+ // Patterns
+ var pel=document.getElementById('isr-patterns');
+ var pkeys=patterns?Object.keys(patterns):[];
+ if(!pkeys.length){pel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">Awaiting pattern data (15s intervals)...</div>';
+ } else {
+  pel.innerHTML=pkeys.map(function(tid){
+   var p=patterns[tid];
+   return '<div style="padding:3px 0;border-bottom:1px solid #222;font-size:.72em">'+
+    '<span style="color:#4488ff">'+tid+'</span> '+
+    '<span class="isr-pat pat-'+p.state+'">'+p.state+'</span>'+
+    ' | Spd: '+p.avg_speed+'m/s | Hdg Var: '+p.heading_variance+'° | Conf: '+(p.confidence*100).toFixed(0)+'%</div>';
+  }).join('');
+ }
+
+ // Changes
+ var cel=document.getElementById('isr-changes-list');
+ if(!changes||!changes.length){cel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No recent changes</div>';
+ } else {
+  cel.innerHTML=changes.slice(-20).reverse().map(function(c){
+   var scol=c.severity==='CRITICAL'?'#ff4444':'#ff6600';
+   return '<div class="isr-change"><span style="color:'+scol+'">●</span> '+c.target_id+' | '+c.type+
+    ' | '+c.details+' | '+(c.timestamp||'').substring(11,19)+'</div>';
+  }).join('');
+ }
+
+ // Collections
+ var clel=document.getElementById('isr-coll');
+ if(!colls||!colls.length){clel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No collection requirements</div>';
+ } else {
+  clel.innerHTML=colls.map(function(c){
+   var scol=c.status==='open'?'#ffaa00':c.status==='tasked'?'#00ff41':'#666';
+   return '<div style="padding:3px 0;border-bottom:1px solid #222;font-size:.72em">'+
+    '<span style="color:'+scol+'">●</span> '+c.name+' P'+c.priority+' | '+c.status+
+    (c.assigned_asset?' → '+c.assigned_asset:'')+' | '+c.id+'</div>';
+  }).join('');
+ }
+}
+
+async function loadTarget(tid){
+ var t=await apiFetch('/api/isr/atr/'+tid);
+ if(!t||!t.id){document.getElementById('isr-detail').textContent='Not found';return;}
+ var h='<div style="color:#4488ff;font-weight:bold;margin-bottom:4px">'+t.id+' ('+t.source+')</div>';
+ h+='<div>ATR Confidence: <b style="color:#00ff41">'+(t.atr_confidence*100).toFixed(1)+'%</b></div>';
+ if(t.classifications&&t.classifications.length){
+  var lc=t.classifications[t.classifications.length-1];
+  h+='<div>Latest Class: <b>'+lc.type+'</b> ('+lc.sensors_covering+' sensors)</div>';
+ }
+ if(t.pattern&&t.pattern.state!=='INSUFFICIENT_DATA'){
+  h+='<div>Pattern: <span class="isr-pat pat-'+t.pattern.state+'">'+t.pattern.state+'</span></div>';
+  h+='<div style="font-size:.8em;color:#888">Speed: '+t.pattern.avg_speed+'m/s | Dist: '+t.pattern.total_distance_m+'m</div>';
+ }
+ h+='<div style="font-size:.75em;color:#888;margin-top:4px">Observations: '+t.observations.length+' | First seen: '+(t.first_seen||'').substring(0,19)+'</div>';
+ document.getElementById('isr-detail').innerHTML=h;
+}
+
+async function addCollection(){
+ var name=document.getElementById('isr-req-name').value||'Manual Collection';
+ var pri=parseInt(document.getElementById('isr-req-pri').value)||5;
+ await apiPost('/api/isr/task',{name:name,priority:pri,target:{lat:35.68,lng:51.31}});
+ refreshISR();
+}
+
+window.onIsrUpdate=function(d){refreshISR();};
+refreshISR();setInterval(refreshISR,5000);
+</script>
+{% endblock %}

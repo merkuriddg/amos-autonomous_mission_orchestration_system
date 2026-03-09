@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Wargame{% endblock %}
+{% block head %}
+<style>
+.wg-bar{height:16px;background:#111;border:1px solid #333;border-radius:2px;overflow:hidden;margin:2px 0}
+.wg-bar-fill{height:100%;transition:width .3s}
+.wg-risk-LOW{color:#00ff41}.wg-risk-MODERATE{color:#ffaa00}.wg-risk-HIGH{color:#ff6600}.wg-risk-EXTREME{color:#ff4444;animation:pulse 1s infinite}
+.wg-hist{padding:4px 6px;border-bottom:1px solid #222;font-size:.75em;cursor:pointer}
+.wg-hist:hover{background:#111}
+.wg-form-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.wg-form-row label{font-size:.72em;color:#888;min-width:80px}
+.wg-form-row select,.wg-form-row input{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px 6px;font-family:inherit;font-size:.8em;flex:1}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">WARGAME — MONTE CARLO COA ANALYSIS</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="wg-total">0</div><div class="label">SCENARIOS</div></div>
+  <div class="card stat"><div class="value" id="wg-running" style="color:#ffaa00">0</div><div class="label">RUNNING</div></div>
+  <div class="card stat"><div class="value" id="wg-complete" style="color:#00ff41">0</div><div class="label">COMPLETE</div></div>
+  <div class="card stat"><div class="value" id="wg-auto" style="color:#4488ff">--</div><div class="label">AUTO-EVAL</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>RUN SCENARIO</h3>
+   <div class="wg-form-row"><label>NAME</label><input id="wg-name" value="Manual COA" placeholder="Scenario name"></div>
+   <div class="wg-form-row"><label>APPROACH</label>
+    <select id="wg-approach">
+     <option value="direct">Direct</option><option value="flanking">Flanking</option>
+     <option value="attrition">Attrition</option><option value="standoff">Standoff</option>
+     <option value="swarm">Swarm</option>
+    </select>
+   </div>
+   <div class="wg-form-row"><label>TEMPO</label>
+    <select id="wg-tempo">
+     <option value="deliberate">Deliberate</option><option value="hasty">Hasty</option>
+     <option value="rapid">Rapid</option>
+    </select>
+   </div>
+   <div class="wg-form-row"><label>AGGRESSION</label><input id="wg-aggr" type="number" min="0" max="1" step="0.1" value="0.6"></div>
+   <div class="wg-form-row"><label>ITERATIONS</label><input id="wg-iters" type="number" min="100" max="5000" value="1000"></div>
+   <button class="btn" onclick="runWargame()" style="width:100%;margin-top:6px">▶ RUN WARGAME</button>
+   <div id="wg-run-status" style="font-size:.72em;color:#888;margin-top:4px"></div>
+  </div>
+
+  <div class="card">
+   <h3>LATEST RESULTS</h3>
+   <div id="wg-results" style="font-size:.8em;color:#888">Run a scenario to see results...</div>
+  </div>
+ </div>
+
+ <div class="grid-2" style="margin-top:8px">
+  <div class="card">
+   <h3>SCENARIO HISTORY</h3>
+   <div class="scroll-box" id="wg-history" style="max-height:300px"></div>
+  </div>
+  <div class="card">
+   <h3>AUTO-EVALUATION</h3>
+   <div id="wg-auto-detail" style="font-size:.8em;color:#888">Auto-eval runs every 10s when forces are engaged...</div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var lastScenarioId=null;
+
+async function runWargame(){
+ document.getElementById('wg-run-status').textContent='Running simulation...';
+ var r=await apiPost('/api/wargame/run',{
+  name:document.getElementById('wg-name').value,
+  approach:document.getElementById('wg-approach').value,
+  tempo:document.getElementById('wg-tempo').value,
+  aggression:parseFloat(document.getElementById('wg-aggr').value)||0.6,
+  iterations:parseInt(document.getElementById('wg-iters').value)||1000
+ });
+ if(r&&r.id){
+  lastScenarioId=r.id;
+  document.getElementById('wg-run-status').textContent='Scenario '+r.id+' started ('+r.iterations+' iterations)...';
+  setTimeout(function(){pollResult(r.id,0);},1500);
+ }
+}
+
+async function pollResult(sid,attempt){
+ var r=await apiFetch('/api/wargame/results/'+sid);
+ if(r&&r.results){
+  renderResults(r);
+  document.getElementById('wg-run-status').textContent='Complete: '+sid;
+  refreshHistory();
+ } else if(attempt<20){
+  setTimeout(function(){pollResult(sid,attempt+1);},1000);
+ } else {
+  document.getElementById('wg-run-status').textContent='Timeout waiting for results';
+ }
+}
+
+function renderResults(sc){
+ var r=sc.results;if(!r)return;
+ var risk=r.risk_assessment||{};
+ var h='<div style="margin-bottom:6px;font-weight:bold;color:#00ff41">'+sc.name+' — '+sc.coa_params.approach+' / '+sc.coa_params.tempo+'</div>';
+ h+='<div style="margin-bottom:8px">';
+ h+='<div style="display:flex;justify-content:space-between"><span>Mission Success</span><span style="color:#00ff41;font-weight:bold">'+r.mission_success_rate+'%</span></div>';
+ h+='<div class="wg-bar"><div class="wg-bar-fill" style="width:'+r.mission_success_rate+'%;background:#00ff41"></div></div>';
+ h+='</div>';
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.85em">';
+ h+='<div>Blue Losses (mean): <b>'+r.blue_casualty_mean+'</b></div>';
+ h+='<div>Blue Losses (P95): <b style="color:#ff6600">'+r.blue_casualty_p95+'</b></div>';
+ h+='<div>Red Destroyed (mean): <b>'+r.red_destroyed_mean+'</b></div>';
+ h+='<div>Exchange Ratio: <b style="color:#4488ff">'+r.exchange_ratio+':1</b></div>';
+ h+='<div>Time to Obj (mean): <b>'+r.time_to_objective_mean+' steps</b></div>';
+ h+='<div>Time to Obj (P95): <b>'+r.time_to_objective_p95+' steps</b></div>';
+ h+='</div>';
+ h+='<div style="margin-top:8px;padding:6px;border:1px solid #333;border-radius:3px">';
+ h+='<span style="font-size:.75em">RISK:</span> <span class="wg-risk-'+risk.level+'" style="font-weight:bold">'+risk.level+'</span>';
+ h+='<div style="font-size:.72em;color:#888;margin-top:2px">'+risk.description+'</div>';
+ h+='</div>';
+ document.getElementById('wg-results').innerHTML=h;
+}
+
+async function refreshHistory(){
+ var hist=await apiFetch('/api/wargame/history');
+ var el=document.getElementById('wg-history');
+ if(!hist||!hist.length){el.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No scenarios yet</div>';return;}
+ el.innerHTML=hist.slice().reverse().map(function(h){
+  return '<div class="wg-hist" onclick="loadScenario(\''+h.id+'\')">'+
+   '<span style="color:#4488ff">'+h.id+'</span> '+h.name+
+   ' | <span style="color:#00ff41">'+h.success_rate+'%</span>'+
+   ' | '+h.approach+' | ER:'+h.exchange_ratio+'</div>';
+ }).join('');
+}
+
+async function loadScenario(sid){
+ var r=await apiFetch('/api/wargame/results/'+sid);
+ if(r&&r.results)renderResults(r);
+}
+
+async function refreshStats(){
+ var s=await apiFetch('/api/wargame/history');
+ if(!s)return;
+ var total=s.length,complete=s.length,running=0;
+ document.getElementById('wg-total').textContent=total;
+ document.getElementById('wg-complete').textContent=complete;
+}
+
+window.onWargameUpdate=function(d){
+ if(d&&d.auto_eval){
+  var ae=d.auto_eval;
+  document.getElementById('wg-auto').textContent=ae.status||'--';
+  if(ae.scenario_ids){
+   document.getElementById('wg-auto-detail').innerHTML=
+    '<div style="color:#4488ff;margin-bottom:4px">Auto-evaluating: '+ae.scenario_ids.join(', ')+'</div>'+
+    '<div style="font-size:.72em;color:#888">'+ae.timestamp+'</div>';
+  }
+ }
+};
+
+refreshHistory();refreshStats();
+setInterval(refreshHistory,8000);
+</script>
+{% endblock %}

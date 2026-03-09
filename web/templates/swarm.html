@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Swarm Intel{% endblock %}
+{% block head %}
+<style>
+.sw-card{border:1px solid #222;padding:6px;margin:4px 0;border-radius:3px;background:#0d0d0d}
+.sw-card:hover{border-color:#333}
+.sw-badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:.65em;font-weight:bold}
+.sw-active{background:#003300;color:#00ff41;border:1px solid #00ff41}
+.sw-dissolved{background:#1a1a1a;color:#666}
+.sw-health{display:inline-block;width:60px;height:8px;background:#111;border:1px solid #333;border-radius:2px;vertical-align:middle}
+.sw-health-fill{height:100%;border-radius:1px;transition:width .3s}
+.sw-form select,.sw-form input{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">SWARM INTELLIGENCE — AUTONOMOUS COORDINATION</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="sw-active">0</div><div class="label">ACTIVE SWARMS</div></div>
+  <div class="card stat"><div class="value" id="sw-assets" style="color:#4488ff">0</div><div class="label">SWARMED ASSETS</div></div>
+  <div class="card stat"><div class="value" id="sw-auctions" style="color:#ffaa00">0</div><div class="label">OPEN AUCTIONS</div></div>
+  <div class="card stat"><div class="value" id="sw-total-auc" style="color:#888">0</div><div class="label">TOTAL AUCTIONS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>ACTIVE SWARMS</h3>
+   <div class="scroll-box" id="sw-list" style="max-height:400px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>CREATE SWARM</h3>
+    <div class="sw-form">
+     <div style="display:flex;gap:4px;margin-bottom:4px">
+      <input id="sw-id" placeholder="Swarm ID" style="flex:1" value="">
+      <select id="sw-behavior">
+       <option value="scout">Scout</option><option value="assault">Assault</option>
+       <option value="defense">Defense</option><option value="pursuit">Pursuit</option>
+       <option value="overwatch">Overwatch</option>
+      </select>
+     </div>
+     <input id="sw-assets-input" placeholder="Asset IDs (comma-sep)" style="width:100%;margin-bottom:4px">
+     <button class="btn" onclick="createSwarm()" style="width:100%">+ CREATE SWARM</button>
+    </div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>TASK AUCTIONS</h3>
+    <div class="scroll-box" id="sw-auctions-list" style="max-height:200px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshSwarm(){
+ var d=await apiFetch('/api/swarm/status');
+ if(!d)return;
+ var stats=d.stats||{};
+ document.getElementById('sw-active').textContent=stats.active_swarms||0;
+ document.getElementById('sw-assets').textContent=stats.total_swarmed_assets||0;
+ document.getElementById('sw-auctions').textContent=stats.open_auctions||0;
+ document.getElementById('sw-total-auc').textContent=stats.total_auctions||0;
+
+ var swarms=d.swarms||{};
+ var el=document.getElementById('sw-list');
+ var keys=Object.keys(swarms);
+ if(!keys.length){el.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No swarms — create one above</div>';return;}
+ el.innerHTML=keys.map(function(sid){
+  var s=swarms[sid];
+  var hpct=Math.round((s.health||0)*100);
+  var hcol=hpct>70?'#00ff41':hpct>40?'#ffaa00':'#ff4444';
+  var badge=s.status==='active'?'sw-active':'sw-dissolved';
+  var h='<div class="sw-card">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+  h+='<span style="color:#4488ff;font-weight:bold;font-size:.85em">'+sid+'</span>';
+  h+='<span class="sw-badge '+badge+'">'+s.status.toUpperCase()+'</span>';
+  h+='</div>';
+  h+='<div style="font-size:.72em;color:#888;margin-bottom:3px">Behavior: <span style="color:#00ff41">'+s.behavior+'</span>';
+  if(s.emergent)h+=' | Emergent: <span style="color:#ff00ff">'+s.emergent+'</span>';
+  h+=' | Assets: <b>'+s.assets.length+'</b></div>';
+  h+='<div style="font-size:.72em;display:flex;align-items:center;gap:4px">Cohesion: ';
+  h+='<div class="sw-health"><div class="sw-health-fill" style="width:'+hpct+'%;background:'+hcol+'"></div></div>';
+  h+=' '+hpct+'%</div>';
+  if(s.status==='active'){
+   h+='<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">';
+   ['surround','funnel','pincer','screen','relay','decoy'].forEach(function(eb){
+    h+='<button class="btn" style="font-size:.62em;padding:2px 6px" onclick="setEmergent(\''+sid+'\',\''+eb+'\')">'+eb+'</button>';
+   });
+   h+='<button class="btn btn-red" style="font-size:.62em;padding:2px 6px" onclick="dissolveSwarm(\''+sid+'\')">DISSOLVE</button>';
+   h+='</div>';
+  }
+  h+='</div>';
+  return h;
+ }).join('');
+
+ var auctions=d.auctions||[];
+ var ael=document.getElementById('sw-auctions-list');
+ if(!auctions.length){ael.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No auctions</div>';return;}
+ ael.innerHTML=auctions.slice(-15).reverse().map(function(a){
+  var col=a.status==='open'?'#ffaa00':a.status==='assigned'?'#00ff41':'#666';
+  return '<div style="padding:3px 0;border-bottom:1px solid #222;font-size:.72em">'+
+   '<span style="color:'+col+'">●</span> '+a.id+' | '+a.task_type+' P'+a.priority+
+   (a.winner?' → <b style="color:#00ff41">'+a.winner+'</b>':'')+' | '+a.status+'</div>';
+ }).join('');
+}
+
+async function createSwarm(){
+ var sid=document.getElementById('sw-id').value||('SWM-'+Math.random().toString(36).substring(2,8));
+ var aids=document.getElementById('sw-assets-input').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ var beh=document.getElementById('sw-behavior').value;
+ await apiPost('/api/swarm/create',{swarm_id:sid,asset_ids:aids,behavior:beh});
+ refreshSwarm();
+}
+
+async function setEmergent(sid,eb){
+ await apiPost('/api/swarm/behavior',{swarm_id:sid,emergent:eb});
+ refreshSwarm();
+}
+
+async function dissolveSwarm(sid){
+ await apiPost('/api/swarm/dissolve',{swarm_id:sid});
+ refreshSwarm();
+}
+
+window.onSwarmUpdate=function(d){refreshSwarm();};
+refreshSwarm();setInterval(refreshSwarm,4000);
+</script>
+{% endblock %}

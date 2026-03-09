@@ -48,9 +48,9 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
 .amos-menu-wrap{position:relative}
 .amos-menu-trigger{cursor:pointer;user-select:none}
 .amos-menu-trigger:hover{color:#fff}
-.amos-menu{display:none;position:absolute;top:32px;left:0;background:#111;border:1px solid #00ff41;border-radius:0 6px 6px 6px;z-index:2000;min-width:520px;box-shadow:0 8px 32px rgba(0,255,65,.12)}
+.amos-menu{display:none;position:absolute;top:32px;left:0;background:#111;border:1px solid #00ff41;border-radius:0 6px 6px 6px;z-index:2000;min-width:780px;box-shadow:0 8px 32px rgba(0,255,65,.12)}
 .amos-menu.open{display:block}
-.amos-menu-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:10px 6px}
+.amos-menu-inner{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:0;padding:10px 6px}
 .amos-menu-col{padding:0 8px;border-right:1px solid #1a1a1a}
 .amos-menu-col:last-child{border-right:none}
 .amos-menu-hdr{color:#666;font-size:.65em;letter-spacing:2px;padding:4px 6px 2px;text-transform:uppercase}
@@ -138,15 +138,26 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <a href="/bda" class="amos-menu-item{% if request.path=='/bda' %} active{% endif %}">BDA</a>
       <a href="/killweb" class="amos-menu-item{% if request.path=='/killweb' %} active{% endif %}">Kill Web</a>
       <a href="/roe" class="amos-menu-item{% if request.path=='/roe' %} active{% endif %}">ROE</a>
+      <a href="/effects" class="amos-menu-item{% if request.path=='/effects' %} active{% endif %}">Effects Chain</a>
+      <a href="/wargame" class="amos-menu-item{% if request.path=='/wargame' %} active{% endif %}">Wargame</a>
      </div>
      <div class="amos-menu-col">
-      <div class="amos-menu-hdr">ANALYTICS</div>
+      <div class="amos-menu-hdr">AUTONOMY</div>
+      <a href="/swarm" class="amos-menu-item{% if request.path=='/swarm' %} active{% endif %}">Swarm Intel</a>
+      <a href="/isr" class="amos-menu-item{% if request.path=='/isr' %} active{% endif %}">ISR/ATR</a>
+      <a href="/hmt" class="amos-menu-item{% if request.path=='/hmt' %} active{% endif %}">HMT</a>
+      <a href="/space" class="amos-menu-item{% if request.path=='/space' %} active{% endif %}">Space/JADC2</a>
+      <a href="/mesh" class="amos-menu-item{% if request.path=='/mesh' %} active{% endif %}">Mesh Network</a>
+      <div class="amos-menu-hdr" style="margin-top:10px">ANALYTICS</div>
       {% if 'cognitive' in access %}<a href="/cognitive" class="amos-menu-item{% if request.path=='/cognitive' %} active{% endif %}">Cognitive Engine</a>{% endif %}
       {% if 'aar' in access %}<a href="/aar" class="amos-menu-item{% if request.path=='/aar' %} active{% endif %}">After Action</a>{% endif %}
       <a href="/analytics" class="amos-menu-item{% if request.path=='/analytics' %} active{% endif %}">Analytics</a>
+      <a href="/predictions" class="amos-menu-item{% if request.path=='/predictions' %} active{% endif %}">Predictions</a>
+     </div>
+     <div class="amos-menu-col">
+      <div class="amos-menu-hdr">SYSTEM</div>
       <a href="/training" class="amos-menu-item{% if request.path=='/training' %} active{% endif %}">Training</a>
       <a href="/docs" class="amos-menu-item{% if request.path=='/docs' %} active{% endif %}">Documents</a>
-      <div class="amos-menu-hdr" style="margin-top:10px">SYSTEM</div>
       <a href="/automation" class="amos-menu-item{% if request.path=='/automation' %} active{% endif %}">Automation</a>
       <a href="/readiness" class="amos-menu-item{% if request.path=='/readiness' %} active{% endif %}">Readiness</a>
       <a href="/syscmd" class="amos-menu-item{% if request.path=='/syscmd' %} active{% endif %}">Sys Command</a>
@@ -211,12 +222,19 @@ socket.on('amos_alerts',function(alerts){
 function apiFetch(u,o){return fetch(u,o).then(r=>r.json());}
 function apiPost(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());}
 // ── Phase 15: Real-time data cache ──
-window._amosData={assets:null,threats:null,sigint:[],weather:null,killweb:null};
+window._amosData={assets:null,threats:null,sigint:[],weather:null,killweb:null,wargame:null,swarm:null,isr:null,effects:null,space:null,hmt:null,mesh:null};
 socket.on('asset_update',function(d){window._amosData.assets=d;if(window.onAssetUpdate)window.onAssetUpdate(d);});
 socket.on('threat_update',function(d){window._amosData.threats=d;if(window.onThreatUpdate)window.onThreatUpdate(d);});
 socket.on('sigint_update',function(d){window._amosData.sigint=d;if(window.onSigintUpdate)window.onSigintUpdate(d);});
 socket.on('weather_update',function(d){window._amosData.weather=d;if(window.onWeatherUpdate)window.onWeatherUpdate(d);});
 socket.on('killweb_update',function(d){window._amosData.killweb=d;if(window.onKillwebUpdate)window.onKillwebUpdate(d);});
+socket.on('wargame_update',function(d){window._amosData.wargame=d;if(window.onWargameUpdate)window.onWargameUpdate(d);});
+socket.on('swarm_update',function(d){window._amosData.swarm=d;if(window.onSwarmUpdate)window.onSwarmUpdate(d);});
+socket.on('isr_update',function(d){window._amosData.isr=d;if(window.onIsrUpdate)window.onIsrUpdate(d);});
+socket.on('effects_update',function(d){window._amosData.effects=d;if(window.onEffectsUpdate)window.onEffectsUpdate(d);});
+socket.on('space_update',function(d){window._amosData.space=d;if(window.onSpaceUpdate)window.onSpaceUpdate(d);});
+socket.on('hmt_update',function(d){window._amosData.hmt=d;if(window.onHmtUpdate)window.onHmtUpdate(d);});
+socket.on('mesh_update',function(d){window._amosData.mesh=d;if(window.onMeshUpdate)window.onMeshUpdate(d);});
 // Theater selector
 function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
 function switchTheater(key){apiPost('/api/theater/switch',{key:key});}

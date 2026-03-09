@@ -31,6 +31,15 @@ from mos_core.nodes.kill_web import KillWeb
 from mos_core.nodes.roe_engine import ROEEngine
 from mos_core.nodes.threat_predictor import ThreatPredictor
 
+# Phase 16-22
+from mos_core.nodes.wargame_engine import WargameEngine
+from mos_core.nodes.swarm_intelligence import SwarmIntelligence
+from mos_core.nodes.isr_pipeline import ISRPipeline
+from mos_core.nodes.effects_chain import EffectsChain
+from mos_core.nodes.space_domain import SpaceDomain
+from mos_core.nodes.hmt_engine import HMTEngine
+from mos_core.nodes.mesh_network import MeshNetwork
+
 # Phase 3 — Document Generators
 from mos_core.docs.opord_generator import generate_opord
 from mos_core.docs.conop_generator import generate_conop
@@ -291,6 +300,15 @@ kill_web = KillWeb()
 roe_engine = ROEEngine()
 threat_predictor = ThreatPredictor()
 
+# Phase 16-22 subsystems
+wargame_engine = WargameEngine()
+swarm_intel = SwarmIntelligence()
+isr_pipeline = ISRPipeline()
+effects_chain = EffectsChain()
+space_domain = SpaceDomain()
+hmt_engine = HMTEngine()
+mesh_network = MeshNetwork()
+
 ew_active_jams, ew_intercepts = [], []
 sigint_intercepts, sigint_emitter_db = [], {}
 cyber_events, cyber_blocked_ips = [], set()
@@ -545,6 +563,23 @@ def sim_tick():
             aar_events.append({"type": "killweb", "timestamp": now_iso(),
                 "elapsed": sim_clock["elapsed_sec"], "details": kwe})
 
+        # ── Phase 16-22 ticks ──
+        wargame_engine.auto_evaluate(sim_assets, sim_threats, dt)
+        swarm_events = swarm_intel.tick(sim_assets, sim_threats, dt)
+        for se in swarm_events:
+            aar_events.append({"type": "swarm", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"], "details": se})
+        isr_pipeline.tick(sim_assets, sim_threats, _eob_units, sigint_intercepts, dt)
+        fx_events = effects_chain.tick(sim_threats, sim_assets, ew_active_jams, cyber_events, sigint_intercepts, dt)
+        for fe in fx_events:
+            aar_events.append({"type": "effects", "timestamp": now_iso(),
+                "elapsed": sim_clock["elapsed_sec"], "details": fe})
+        space_domain.tick(base_pos["lat"], base_pos["lng"], sim_assets, dt)
+        hmt_engine.tick(len(_online_ops),
+            sum(1 for r in hal_recommendations if r.get("status") == "pending"),
+            sum(1 for t in sim_threats.values() if not t.get("neutralized")), dt)
+        mesh_network.tick(sim_assets, ew_active_jams, dt)
+
         # ── Persistence flush ──
         _db_flush(cm_log, aar_events, _bda_reports, _eob_units, sigint_intercepts,
                   _supply_history, _weather, _threat_intel, _sitreps, _mission_plans,
@@ -573,7 +608,13 @@ def sim_tick():
             "killweb_active": kill_web.get_stats().get("active", 0),
             "killweb_awaiting": kill_web.get_stats().get("awaiting_approval", 0),
             "roe_posture": roe_engine.posture,
-            "predictions_count": len(threat_predictor.predictions)})
+            "predictions_count": len(threat_predictor.predictions),
+            "wargame_running": wargame_engine.get_stats().get("running", 0),
+            "swarm_active": swarm_intel.get_stats().get("active_swarms", 0),
+            "isr_tracked": isr_pipeline.get_stats().get("tracked_targets", 0),
+            "effects_active": effects_chain.get_stats().get("active", 0),
+            "satellites_visible": space_domain.get_stats().get("visible", 0),
+            "mesh_resilience": mesh_network.get_stats().get("resilience_grade", "?")})
 
         # ── Phase 15: Domain-specific WebSocket push (every ~2s) ──
         if int(sim_clock["elapsed_sec"]) % 2 < 1:
@@ -598,6 +639,14 @@ def sim_tick():
             # Kill Web push
             kw_stats = kill_web.get_stats()
             socketio.emit("killweb_update", kw_stats)
+            # Phase 16-22 push
+            socketio.emit("wargame_update", wargame_engine.get_stats())
+            socketio.emit("swarm_update", swarm_intel.get_stats())
+            socketio.emit("isr_update", isr_pipeline.get_stats())
+            socketio.emit("effects_update", effects_chain.get_stats())
+            socketio.emit("space_update", space_domain.get_stats())
+            socketio.emit("hmt_update", hmt_engine.get_stats())
+            socketio.emit("mesh_update", mesh_network.get_stats())
 
         # ── Phase 7: Rule Engine evaluation ──
         for rid, rule in list(_automation_rules.items()):
@@ -714,6 +763,7 @@ def login():
             if ok:
                 session["user"] = u
                 _audit(u, "login", "user", u)
+                hmt_engine.register_operator(u, usr.get("name", u), usr.get("role", "operator"))
                 return redirect("/field" if usr["role"] == "field_op" else "/")
         return render_template("login.html", error="Invalid credentials", users=USERS)
     return render_template("login.html", error=None, users=USERS)
@@ -1502,23 +1552,7 @@ def api_docs_briefing():
                           for e in aar_events[-10:]],
     })
 
-# ═══════════════════════════════════════════════════════════
-#  SWARM API
-# ═══════════════════════════════════════════════════════════
-@app.route("/api/swarm")
-@login_required
-def api_swarm(): return jsonify(swarms)
-
-@app.route("/api/swarm/create", methods=["POST"])
-@login_required
-def api_swarm_create():
-    d = request.json; sid = d.get("swarm_id","")
-    swarms[sid] = {"id":sid,"assets":d.get("assets",[]),"formation":d.get("formation","line"),
-                   "created":now_iso(),"status":"active"}
-    aar_events.append({"type":"swarm_created","timestamp":swarms[sid]["created"],
-        "elapsed":sim_clock["elapsed_sec"],
-        "details":f"Swarm {sid}: {len(swarms[sid]['assets'])} assets, {swarms[sid]['formation']}"})
-    return jsonify({"status":"ok","swarm":swarms[sid]})
+# (Phase 17 swarm APIs moved to Phase 16-22 section below)
 
 # ═══════════════════════════════════════════════════════════
 #  AAR API
@@ -3766,11 +3800,310 @@ def api_killweb_abort(pipeline_id):
         return jsonify({"error": "Pipeline not found"}), 404
     return jsonify({"status": "ok", "pipeline": result})
 
+# ═══════════════════════════════════════════════════════════
+#  PHASE 16: WARGAMING ENGINE APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/wargame")
+@login_required
+def wargame_page(): return render_template("wargame.html", **ctx())
+
+@app.route("/api/wargame/run", methods=["POST"])
+@login_required
+def api_wargame_run():
+    d = request.json or {}
+    blue = [{"id": a["id"], "type": a["type"], "domain": a["domain"],
+             "weapons": a.get("weapons", []), "health": a["health"]["battery_pct"]}
+            for a in sim_assets.values() if a["status"] == "operational"]
+    red = [{"id": tid, "type": t["type"],
+            "threat_level": "high" if t.get("speed_kts", 0) > 50 else "medium"}
+           for tid, t in sim_threats.items() if not t.get("neutralized") and "lat" in t]
+    coa = {"approach": d.get("approach", "direct"),
+           "aggression": d.get("aggression", 0.6),
+           "tempo": d.get("tempo", "deliberate")}
+    result = wargame_engine.run_scenario(
+        d.get("name", "Manual Scenario"), blue, red, coa,
+        iterations=d.get("iterations", 1000))
+    return jsonify(result)
+
+@app.route("/api/wargame/results/<sid>")
+@login_required
+def api_wargame_results(sid):
+    return jsonify(wargame_engine.get_scenario(sid))
+
+@app.route("/api/wargame/compare", methods=["POST"])
+@login_required
+def api_wargame_compare():
+    ids = (request.json or {}).get("scenario_ids", [])
+    return jsonify(wargame_engine.compare_coas(ids))
+
+@app.route("/api/wargame/history")
+@login_required
+def api_wargame_history():
+    return jsonify(wargame_engine.get_history())
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 17: SWARM INTELLIGENCE APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/swarm")
+@login_required
+def swarm_page(): return render_template("swarm.html", **ctx())
+
+@app.route("/api/swarm/create", methods=["POST"])
+@login_required
+def api_swarm_create():
+    d = request.json or {}
+    result = swarm_intel.create_swarm(
+        d.get("swarm_id", f"SWM-{uuid.uuid4().hex[:6]}"),
+        d.get("asset_ids", []), d.get("behavior", "scout"),
+        d.get("center_lat", base_pos["lat"]), d.get("center_lng", base_pos["lng"]),
+        d.get("target"))
+    return jsonify(result)
+
+@app.route("/api/swarm/behavior", methods=["POST"])
+@login_required
+def api_swarm_behavior():
+    d = request.json or {}
+    sid = d.get("swarm_id", "")
+    if d.get("emergent"):
+        result = swarm_intel.set_emergent_behavior(sid, d["emergent"], d.get("target"))
+    else:
+        result = swarm_intel.set_behavior(sid, d.get("behavior", "scout"))
+    return jsonify(result)
+
+@app.route("/api/swarm/auction", methods=["POST"])
+@login_required
+def api_swarm_auction():
+    d = request.json or {}
+    result = swarm_intel.create_auction(
+        d.get("task_type", "surveil"), d.get("target", {}),
+        d.get("priority", 5), d.get("required_sensors"))
+    return jsonify(result)
+
+@app.route("/api/swarm/status")
+@login_required
+def api_swarm_status():
+    return jsonify({"swarms": swarm_intel.get_swarms(),
+                    "auctions": swarm_intel.get_auctions(),
+                    "stats": swarm_intel.get_stats()})
+
+@app.route("/api/swarm/dissolve", methods=["POST"])
+@login_required
+def api_swarm_dissolve():
+    sid = (request.json or {}).get("swarm_id", "")
+    return jsonify(swarm_intel.dissolve(sid))
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 18: ISR/ATR PIPELINE APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/isr")
+@login_required
+def isr_page(): return render_template("isr.html", **ctx())
+
+@app.route("/api/isr/collections")
+@login_required
+def api_isr_collections():
+    return jsonify(isr_pipeline.get_collections())
+
+@app.route("/api/isr/atr/<target_id>")
+@login_required
+def api_isr_atr(target_id):
+    return jsonify(isr_pipeline.get_target_detail(target_id))
+
+@app.route("/api/isr/patterns")
+@login_required
+def api_isr_patterns():
+    return jsonify(isr_pipeline.get_patterns())
+
+@app.route("/api/isr/changes")
+@login_required
+def api_isr_changes():
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(isr_pipeline.get_changes(limit))
+
+@app.route("/api/isr/task", methods=["POST"])
+@login_required
+def api_isr_task():
+    d = request.json or {}
+    result = isr_pipeline.add_collection_requirement(
+        d.get("name", "Collection Req"), d.get("target", {}),
+        d.get("priority", 5), d.get("required_sensors"))
+    return jsonify(result)
+
+@app.route("/api/isr/targets")
+@login_required
+def api_isr_targets():
+    return jsonify(isr_pipeline.get_targets())
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 19: EFFECTS CHAIN APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/effects")
+@login_required
+def effects_page(): return render_template("effects.html", **ctx())
+
+@app.route("/api/effects/create", methods=["POST"])
+@login_required
+def api_effects_create():
+    d = request.json or {}
+    result = effects_chain.create_chain(
+        d.get("name", ""), d.get("target", {}),
+        stages=d.get("stages"), template=d.get("template"))
+    return jsonify(result)
+
+@app.route("/api/effects/execute/<chain_id>", methods=["POST"])
+@login_required
+def api_effects_execute(chain_id):
+    c = ctx()
+    result = effects_chain.execute_chain(chain_id, c["name"])
+    if "error" not in result:
+        aar_events.append({"type": "effects", "timestamp": now_iso(),
+            "elapsed": sim_clock["elapsed_sec"],
+            "details": f"Effects chain {chain_id} started by {c['name']}"})
+    return jsonify(result)
+
+@app.route("/api/effects/status")
+@login_required
+def api_effects_status():
+    return jsonify({"chains": effects_chain.get_chains(),
+                    "active": effects_chain.get_active(),
+                    "stats": effects_chain.get_stats()})
+
+@app.route("/api/effects/history")
+@login_required
+def api_effects_history():
+    return jsonify(effects_chain.get_history())
+
+@app.route("/api/effects/templates")
+@login_required
+def api_effects_templates():
+    return jsonify(effects_chain.get_templates())
+
+@app.route("/api/effects/abort/<chain_id>", methods=["POST"])
+@login_required
+def api_effects_abort(chain_id):
+    reason = (request.json or {}).get("reason", "Manual abort")
+    return jsonify(effects_chain.abort_chain(chain_id, reason))
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 20: SPACE DOMAIN + JADC2 APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/space")
+@login_required
+def space_page(): return render_template("space.html", **ctx())
+
+@app.route("/api/space/orbital")
+@login_required
+def api_space_orbital():
+    return jsonify(space_domain.get_orbital_status())
+
+@app.route("/api/space/satcom")
+@login_required
+def api_space_satcom():
+    return jsonify(space_domain.get_satcom_links())
+
+@app.route("/api/space/gps")
+@login_required
+def api_space_gps():
+    return jsonify(space_domain.get_gps_status())
+
+@app.route("/api/space/weather")
+@login_required
+def api_space_weather():
+    return jsonify(space_domain.get_space_weather())
+
+@app.route("/api/space/mesh")
+@login_required
+def api_space_mesh():
+    return jsonify(space_domain.get_mesh())
+
+@app.route("/api/space/gps-denial", methods=["POST"])
+@login_required
+def api_space_gps_denial():
+    d = request.json or {}
+    zone = space_domain.add_gps_denial_zone(
+        d.get("lat", base_pos["lat"]), d.get("lng", base_pos["lng"]),
+        d.get("radius_km", 20), d.get("severity", "moderate"))
+    return jsonify(zone)
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 21: HUMAN-MACHINE TEAMING APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/hmt")
+@login_required
+def hmt_page(): return render_template("hmt.html", **ctx())
+
+@app.route("/api/hmt/status")
+@login_required
+def api_hmt_status():
+    return jsonify(hmt_engine.get_status())
+
+@app.route("/api/hmt/trust")
+@login_required
+def api_hmt_trust():
+    user = request.args.get("user")
+    return jsonify(hmt_engine.get_trust_details(user))
+
+@app.route("/api/hmt/delegate", methods=["POST"])
+@login_required
+def api_hmt_delegate():
+    c = ctx()
+    d = request.json or {}
+    result = hmt_engine.delegate(c["user"], d.get("domain", "all"),
+        d.get("level", 4), d.get("target_user"))
+    return jsonify(result)
+
+@app.route("/api/hmt/workload")
+@login_required
+def api_hmt_workload():
+    user = request.args.get("user")
+    return jsonify(hmt_engine.get_workload(user))
+
+@app.route("/api/hmt/autonomy", methods=["POST"])
+@login_required
+def api_hmt_autonomy():
+    c = ctx()
+    d = request.json or {}
+    return jsonify(hmt_engine.set_global_autonomy(d.get("level", 3), c["name"]))
+
+# ═══════════════════════════════════════════════════════════
+#  PHASE 22: MESH NETWORK APIS
+# ═══════════════════════════════════════════════════════════
+@app.route("/mesh")
+@login_required
+def mesh_page(): return render_template("mesh.html", **ctx())
+
+@app.route("/api/mesh/topology")
+@login_required
+def api_mesh_topology():
+    return jsonify(mesh_network.get_topology())
+
+@app.route("/api/mesh/routes")
+@login_required
+def api_mesh_routes():
+    return jsonify(mesh_network.get_routes())
+
+@app.route("/api/mesh/bandwidth")
+@login_required
+def api_mesh_bandwidth():
+    return jsonify(mesh_network.get_bandwidth())
+
+@app.route("/api/mesh/resilience")
+@login_required
+def api_mesh_resilience():
+    return jsonify(mesh_network.get_resilience())
+
+@app.route("/api/mesh/degrade", methods=["POST"])
+@login_required
+def api_mesh_degrade():
+    d = request.json or {}
+    return jsonify(mesh_network.degrade_link(d.get("node_id", ""), d.get("amount", 30)))
+
 if __name__ == "__main__":
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     print("\n" + "=" * 58)
-    print("  AMOS — Autonomous Mission Operating System v2.0 + Phase 10")
+    print("  AMOS — Autonomous Mission Operating System v3.0")
+    print("  Phase 22: Beyond Lattice")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print("-" * 58)

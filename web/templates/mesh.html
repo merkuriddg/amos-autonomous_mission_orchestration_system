@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Mesh Network{% endblock %}
+{% block head %}
+<style>
+.mesh-node{display:inline-block;padding:3px 6px;border:1px solid #333;border-radius:3px;font-size:.68em;margin:2px}
+.mesh-node.connected{border-color:#00ff41;color:#00ff41}.mesh-node.isolated{border-color:#ff4444;color:#ff4444}
+.mesh-link{padding:3px 0;border-bottom:1px solid #222;font-size:.72em}
+.mesh-route{padding:3px 0;border-bottom:1px solid #222;font-size:.72em}
+.mesh-grade{font-size:2em;font-weight:bold;text-align:center}
+.grade-A{color:#00ff41}.grade-B{color:#88ff00}.grade-C{color:#ffaa00}.grade-D{color:#ff6600}.grade-F{color:#ff4444}
+.mesh-bw{padding:3px 6px;border-bottom:1px solid #222;font-size:.72em}
+.mesh-bar{display:inline-block;width:60px;height:6px;background:#222;border-radius:2px;vertical-align:middle;margin:0 3px}
+.mesh-bar-fill{height:100%;border-radius:2px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">MESH NETWORK — RESILIENT COMMUNICATIONS</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="mesh-nodes">0</div><div class="label">NODES</div></div>
+  <div class="card stat"><div class="value" id="mesh-links" style="color:#4488ff">0</div><div class="label">LINKS</div></div>
+  <div class="card stat"><div class="value" id="mesh-routes" style="color:#00ff41">0</div><div class="label">ROUTES</div></div>
+  <div class="card stat"><div class="value mesh-grade" id="mesh-grade" style="font-size:1.2em">--</div><div class="label">RESILIENCE</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>NETWORK TOPOLOGY</h3>
+   <div class="scroll-box" id="mesh-topo" style="max-height:350px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>RESILIENCE SCORE</h3>
+    <div id="mesh-resilience" style="font-size:.8em"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>DEGRADE NODE</h3>
+    <div style="display:flex;gap:4px">
+     <input id="mesh-deg-node" placeholder="Node ID" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+     <input id="mesh-deg-amt" type="number" value="30" style="width:50px;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+     <button class="btn btn-red" onclick="degradeNode()">DEGRADE</button>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="grid-2" style="margin-top:8px">
+  <div class="card">
+   <h3>LINK QUALITY</h3>
+   <div class="scroll-box" id="mesh-link-list" style="max-height:250px"></div>
+  </div>
+  <div class="card">
+   <h3>BANDWIDTH ALLOCATION</h3>
+   <div class="scroll-box" id="mesh-bw" style="max-height:250px"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshMesh(){
+ var topo=await apiFetch('/api/mesh/topology');
+ var resilience=await apiFetch('/api/mesh/resilience');
+ var bw=await apiFetch('/api/mesh/bandwidth');
+
+ // Stats
+ var nodes=topo&&topo.nodes?Object.keys(topo.nodes):[];
+ var links=topo&&topo.links?Object.keys(topo.links):[];
+ document.getElementById('mesh-nodes').textContent=nodes.length;
+ document.getElementById('mesh-links').textContent=links.length;
+
+ // Resilience
+ if(resilience){
+  document.getElementById('mesh-grade').textContent=resilience.grade;
+  document.getElementById('mesh-grade').className='value mesh-grade grade-'+resilience.grade;
+  document.getElementById('mesh-routes').textContent=resilience.redundant_paths||0;
+
+  var r=resilience;
+  var scol=r.score>70?'#00ff41':r.score>50?'#ffaa00':'#ff4444';
+  document.getElementById('mesh-resilience').innerHTML=
+   '<div style="text-align:center;margin-bottom:8px"><span class="mesh-grade grade-'+r.grade+'" style="font-size:2.5em">'+r.grade+'</span>'+
+   '<div style="font-size:1.1em;color:'+scol+'">'+r.score.toFixed(1)+' / 100</div></div>'+
+   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.78em">'+
+   '<div>Connected: <b>'+r.connected_pct+'%</b></div>'+
+   '<div>Avg Connections: <b>'+r.avg_connections+'</b></div>'+
+   '<div>Avg Link Quality: <b>'+(r.avg_link_quality*100).toFixed(0)+'%</b></div>'+
+   '<div>Redundant Paths: <b>'+r.redundant_paths+'</b></div>'+
+   '<div>Store-Forward: <b>'+r.store_forward_pending+'</b></div>'+
+   '<div>Total Links: <b>'+r.total_links+'</b></div></div>';
+ }
+
+ // Topology nodes
+ var tel=document.getElementById('mesh-topo');
+ if(!nodes.length){tel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No mesh nodes — nodes auto-create from assets</div>';
+ } else {
+  tel.innerHTML=nodes.map(function(nid){
+   var n=topo.nodes[nid];
+   var connected=n.connections&&n.connections.length>0;
+   var cls=connected?'connected':'isolated';
+   var qcol=n.comms_strength>70?'#00ff41':n.comms_strength>40?'#ffaa00':'#ff4444';
+   return '<div style="padding:3px 0;border-bottom:1px solid #222;font-size:.72em">'+
+    '<span class="mesh-node '+cls+'">'+nid+'</span> '+
+    n.domain+'/'+n.type+' | Band: <b>'+n.band+'</b>'+
+    ' | Comms: <span style="color:'+qcol+'">'+n.comms_strength+'%</span>'+
+    ' | Conn: <b>'+n.connections.length+'</b>'+
+    ' | Freq: '+n.hop_freq+'MHz'+
+    (n.store_queue?' | <span style="color:#ffaa00">Q:'+n.store_queue+'</span>':'')+
+    '</div>';
+  }).join('');
+ }
+
+ // Links
+ var lel=document.getElementById('mesh-link-list');
+ if(!links.length){lel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No active links</div>';
+ } else {
+  lel.innerHTML=links.slice(0,30).map(function(lk){
+   var l=topo.links[lk];
+   var qpct=Math.round(l.quality*100);
+   var qcol=qpct>70?'#00ff41':qpct>40?'#ffaa00':'#ff4444';
+   return '<div class="mesh-link">'+
+    '<span style="color:#4488ff">'+l.from+'</span> ↔ <span style="color:#4488ff">'+l.to+'</span>'+
+    ' <div class="mesh-bar"><div class="mesh-bar-fill" style="width:'+qpct+'%;background:'+qcol+'"></div></div> '+qpct+'%'+
+    ' | '+l.bandwidth_mbps+' Mbps | '+l.distance_km+'km | '+l.latency_ms+'ms</div>';
+  }).join('');
+ }
+
+ // Bandwidth
+ var bel=document.getElementById('mesh-bw');
+ var bkeys=bw?Object.keys(bw):[];
+ if(!bkeys.length){bel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No bandwidth data</div>';
+ } else {
+  bel.innerHTML=bkeys.slice(0,20).map(function(lk){
+   var b=bw[lk];
+   var pri=b.by_priority||{};
+   return '<div class="mesh-bw"><span style="color:#888">'+lk+'</span> Total: <b>'+b.total+' Mbps</b>'+
+    ' | FLASH:'+pri.FLASH+' IMM:'+pri.IMMEDIATE+' PRI:'+pri.PRIORITY+' RTN:'+pri.ROUTINE+'</div>';
+  }).join('');
+ }
+}
+
+async function degradeNode(){
+ var nid=document.getElementById('mesh-deg-node').value;
+ var amt=parseInt(document.getElementById('mesh-deg-amt').value)||30;
+ if(!nid)return;
+ await apiPost('/api/mesh/degrade',{node_id:nid,amount:amt});
+ refreshMesh();
+}
+
+window.onMeshUpdate=function(d){refreshMesh();};
+refreshMesh();setInterval(refreshMesh,5000);
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Space/JADC2{% endblock %}
+{% block head %}
+<style>
+.sp-sat{padding:4px 6px;border-bottom:1px solid #222;font-size:.75em}
+.sp-sat:hover{background:#111}
+.sp-orbit{display:inline-block;padding:1px 5px;border-radius:2px;font-size:.65em;font-weight:bold}
+.orb-LEO{background:#001a33;color:#4488ff}.orb-MEO{background:#001a00;color:#00ff41}.orb-GEO{background:#1a001a;color:#ff00ff}
+.sp-link{padding:3px 0;border-bottom:1px solid #222;font-size:.72em}
+.sp-weather{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.8em}
+.sp-kp{display:inline-block;width:100%;height:14px;background:#111;border:1px solid #333;border-radius:2px;margin-top:2px}
+.sp-kp-fill{height:100%;border-radius:1px;transition:width .3s}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">SPACE DOMAIN + JADC2 MESH</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="sp-sats">0</div><div class="label">SATELLITES</div></div>
+  <div class="card stat"><div class="value" id="sp-visible" style="color:#00ff41">0</div><div class="label">VISIBLE</div></div>
+  <div class="card stat"><div class="value" id="sp-links" style="color:#4488ff">0</div><div class="label">SATCOM LINKS</div></div>
+  <div class="card stat"><div class="value" id="sp-kp-val" style="color:#ffaa00">--</div><div class="label">Kp INDEX</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>ORBITAL ASSETS</h3>
+   <div class="scroll-box" id="sp-sats-list" style="max-height:350px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>SATCOM LINKS</h3>
+    <div class="scroll-box" id="sp-links-list" style="max-height:180px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>GPS STATUS</h3>
+    <div id="sp-gps" style="font-size:.8em"></div>
+   </div>
+  </div>
+ </div>
+
+ <div class="grid-2" style="margin-top:8px">
+  <div class="card">
+   <h3>SPACE WEATHER</h3>
+   <div id="sp-weather" class="sp-weather"></div>
+  </div>
+  <div class="card">
+   <h3>GPS DENIAL ZONES</h3>
+   <div class="scroll-box" id="sp-denial" style="max-height:120px"></div>
+   <div style="margin-top:6px;display:flex;gap:4px">
+    <input id="sp-dz-lat" type="number" step="0.01" placeholder="Lat" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+    <input id="sp-dz-lng" type="number" step="0.01" placeholder="Lng" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+    <input id="sp-dz-rad" type="number" value="20" style="width:50px;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+    <button class="btn btn-red" onclick="addDenialZone()">ADD</button>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshSpace(){
+ var orbital=await apiFetch('/api/space/orbital');
+ var satcom=await apiFetch('/api/space/satcom');
+ var gps=await apiFetch('/api/space/gps');
+ var weather=await apiFetch('/api/space/weather');
+
+ // Stats
+ var skeys=orbital?Object.keys(orbital):[];
+ document.getElementById('sp-sats').textContent=skeys.length;
+ var vis=0;skeys.forEach(function(k){if(orbital[k].visible)vis++;});
+ document.getElementById('sp-visible').textContent=vis;
+ document.getElementById('sp-links').textContent=satcom?Object.keys(satcom).length:0;
+ document.getElementById('sp-kp-val').textContent=weather?weather.kp_index:'--';
+
+ // Satellites
+ var sel=document.getElementById('sp-sats-list');
+ if(!skeys.length){sel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No satellite data</div>';
+ } else {
+  sel.innerHTML=skeys.map(function(sid){
+   var s=orbital[sid];
+   var hcol=s.health>80?'#00ff41':s.health>60?'#ffaa00':'#ff4444';
+   return '<div class="sp-sat">'+
+    '<span class="sp-orbit orb-'+s.orbit+'">'+s.orbit+'</span> '+
+    '<b>'+s.name+'</b> ('+s.id+') | '+s.type+
+    ' | <span style="color:'+hcol+'">'+Math.round(s.health)+'%</span>'+
+    ' | Alt: '+s.alt_km+'km'+
+    ' | Sig: '+(s.signal*100).toFixed(0)+'%'+
+    (s.visible?' | <span style="color:#00ff41">VIS</span>':' | <span style="color:#666">OOS</span>')+
+    ' | '+s.lat.toFixed(1)+'°,'+s.lng.toFixed(1)+'°</div>';
+  }).join('');
+ }
+
+ // SATCOM
+ var lel=document.getElementById('sp-links-list');
+ var lkeys=satcom?Object.keys(satcom):[];
+ if(!lkeys.length){lel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No active SATCOM links</div>';
+ } else {
+  lel.innerHTML=lkeys.map(function(aid){
+   var l=satcom[aid];
+   var qcol=l.quality>0.7?'#00ff41':l.quality>0.4?'#ffaa00':'#ff4444';
+   return '<div class="sp-link"><span style="color:#4488ff">'+aid+'</span> → '+l.satellite+
+    ' | Q: <span style="color:'+qcol+'">'+(l.quality*100).toFixed(0)+'%</span>'+
+    ' | '+l.bandwidth_mbps+' Mbps | '+l.latency_ms+'ms</div>';
+  }).join('');
+ }
+
+ // GPS
+ var gel=document.getElementById('sp-gps');
+ if(gps){
+  var acol=gps.accuracy_status==='NOMINAL'?'#00ff41':'#ff4444';
+  gel.innerHTML='<div>GPS Sats: <b>'+gps.total_gps+'</b> | Visible: <b>'+gps.visible+'</b> | Health: <b>'+gps.avg_health.toFixed(0)+'%</b></div>'+
+   '<div>Accuracy: <span style="color:'+acol+';font-weight:bold">'+gps.accuracy_status+'</span></div>'+
+   '<div style="font-size:.72em;color:#888">Denial Zones: '+gps.denial_zones.length+'</div>';
+ }
+
+ // Space weather
+ var wel=document.getElementById('sp-weather');
+ if(weather){
+  var kp=weather.kp_index;
+  var kpcol=kp>=7?'#ff4444':kp>=5?'#ff6600':kp>=3?'#ffaa00':'#00ff41';
+  var rocol=weather.radio_blackout==='none'?'#00ff41':weather.radio_blackout==='minor'?'#ffaa00':'#ff4444';
+  wel.innerHTML=
+   '<div>Kp Index: <b style="color:'+kpcol+'">'+kp+'/9</b><div class="sp-kp"><div class="sp-kp-fill" style="width:'+(kp/9*100)+'%;background:'+kpcol+'"></div></div></div>'+
+   '<div>Solar Flux: <b>'+weather.solar_flux.toFixed(0)+' sfu</b></div>'+
+   '<div>Proton Flux: <b>'+weather.proton_flux.toFixed(1)+'</b></div>'+
+   '<div>Storm: <b style="color:'+(weather.geomagnetic_storm?'#ff4444':'#00ff41')+'">'+(weather.geomagnetic_storm?'ACTIVE':'NONE')+'</b></div>'+
+   '<div>Radio Blackout: <b style="color:'+rocol+'">'+weather.radio_blackout.toUpperCase()+'</b></div>'+
+   '<div style="font-size:.72em;color:#888">Updated: '+(weather.last_update||'').substring(11,19)+'</div>';
+ }
+
+ // Denial zones
+ var del=document.getElementById('sp-denial');
+ if(gps&&gps.denial_zones.length){
+  del.innerHTML=gps.denial_zones.map(function(z){
+   return '<div style="padding:3px;border:1px solid #ff4444;margin:2px 0;font-size:.72em;color:#ff4444">'+
+    z.id+' | '+z.center.lat.toFixed(3)+'°,'+z.center.lng.toFixed(3)+'° | R:'+z.radius_km.toFixed(0)+'km | '+z.severity+'</div>';
+  }).join('');
+ } else {
+  del.innerHTML='<div style="color:#00ff41;padding:6px;font-size:.78em">No GPS denial zones active</div>';
+ }
+}
+
+async function addDenialZone(){
+ var lat=parseFloat(document.getElementById('sp-dz-lat').value)||35.68;
+ var lng=parseFloat(document.getElementById('sp-dz-lng').value)||51.31;
+ var rad=parseFloat(document.getElementById('sp-dz-rad').value)||20;
+ await apiPost('/api/space/gps-denial',{lat:lat,lng:lng,radius_km:rad,severity:'moderate'});
+ refreshSpace();
+}
+
+window.onSpaceUpdate=function(d){refreshSpace();};
+refreshSpace();setInterval(refreshSpace,5000);
+</script>
+{% endblock %}

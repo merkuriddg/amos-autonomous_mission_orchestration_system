@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}HMT{% endblock %}
+{% block head %}
+<style>
+.hmt-level{display:flex;gap:2px;margin:4px 0}
+.hmt-lv{flex:1;text-align:center;padding:6px 2px;background:#111;border:1px solid #333;font-size:.68em;border-radius:2px}
+.hmt-lv.active{border-color:#00ff41;background:#001a00;color:#00ff41;font-weight:bold}
+.hmt-op{border:1px solid #222;padding:8px;margin:4px 0;border-radius:3px;background:#0d0d0d}
+.hmt-trust-bar{display:inline-block;width:60px;height:6px;background:#222;border-radius:2px;vertical-align:middle;margin:0 4px}
+.hmt-trust-fill{height:100%;border-radius:2px}
+.fatigue-low{color:#00ff41}.fatigue-moderate{color:#ffaa00}.fatigue-high{color:#ff6600}.fatigue-critical{color:#ff4444;animation:pulse 1s infinite}
+.wl-low{color:#00ff41}.wl-moderate{color:#ffaa00}.wl-high{color:#ff6600}.wl-overloaded{color:#ff4444;animation:pulse 1s infinite}.wl-idle{color:#666}
+.hmt-deleg{padding:4px 6px;border-bottom:1px solid #222;font-size:.75em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">HUMAN-MACHINE TEAMING — ADAPTIVE AUTONOMY</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="hmt-ops">0</div><div class="label">OPERATORS</div></div>
+  <div class="card stat"><div class="value" id="hmt-trust" style="color:#00ff41">--</div><div class="label">AVG TRUST</div></div>
+  <div class="card stat"><div class="value" id="hmt-level" style="color:#4488ff">--</div><div class="label">GLOBAL AUTONOMY</div></div>
+  <div class="card stat"><div class="value" id="hmt-fatigued" style="color:#ff6600">0</div><div class="label">FATIGUED</div></div>
+ </div>
+
+ <!-- GLOBAL AUTONOMY CONTROL -->
+ <div class="card" style="margin-bottom:8px">
+  <h3>GLOBAL AUTONOMY LEVEL</h3>
+  <div class="hmt-level" id="hmt-global-bar"></div>
+ </div>
+
+ <div class="grid-2">
+  <div class="card">
+   <h3>OPERATORS</h3>
+   <div class="scroll-box" id="hmt-ops-list" style="max-height:400px"></div>
+  </div>
+  <div>
+   <div class="card">
+    <h3>ACTIVE DELEGATIONS</h3>
+    <div class="scroll-box" id="hmt-delegations" style="max-height:180px"></div>
+    <div style="margin-top:6px;display:flex;gap:4px">
+     <select id="hmt-del-domain" style="flex:1;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+      <option value="air">Air</option><option value="ground">Ground</option>
+      <option value="maritime">Maritime</option><option value="all">All Domains</option>
+     </select>
+     <select id="hmt-del-level" style="width:50px;background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px;font-family:inherit;font-size:.78em">
+      <option value="4">4</option><option value="5">5</option><option value="3">3</option>
+     </select>
+     <button class="btn" onclick="delegateDomain()">DELEGATE</button>
+    </div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>AUTONOMY LEVELS REFERENCE</h3>
+    <div style="font-size:.72em" id="hmt-ref"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var LEVELS={1:'Manual',2:'Advisory',3:'Consensual',4:'Monitored',5:'Autonomous'};
+
+async function refreshHMT(){
+ var status=await apiFetch('/api/hmt/status');
+ var wl=await apiFetch('/api/hmt/workload');
+
+ // Stats
+ var ops=status?Object.keys(status):[];
+ document.getElementById('hmt-ops').textContent=ops.length;
+ var totalTrust=0;ops.forEach(function(u){totalTrust+=status[u].trust||0;});
+ document.getElementById('hmt-trust').textContent=ops.length?(totalTrust/ops.length*100).toFixed(0)+'%':'--';
+
+ // Global autonomy bar
+ var gbar=document.getElementById('hmt-global-bar');
+ var gh='';
+ for(var i=1;i<=5;i++){
+  gh+='<div class="hmt-lv" style="cursor:pointer" onclick="setGlobalAutonomy('+i+')">';
+  gh+=i+'. '+LEVELS[i]+'</div>';
+ }
+ gbar.innerHTML=gh;
+
+ // Operator list
+ var oel=document.getElementById('hmt-ops-list');
+ if(!ops.length){oel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No operators registered — operators auto-register on login</div>';
+ } else {
+  oel.innerHTML=ops.map(function(u){
+   var o=status[u];
+   var tpct=Math.round((o.trust||0)*100);
+   var tcol=tpct>70?'#00ff41':tpct>40?'#ffaa00':'#ff4444';
+   var h='<div class="hmt-op">';
+   h+='<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+   h+='<span style="color:#4488ff;font-weight:bold;font-size:.85em">'+o.name+' ('+u+')</span>';
+   h+='<span style="font-size:.72em;color:#888">'+o.role+'</span>';
+   h+='</div>';
+   // Autonomy level bar
+   h+='<div class="hmt-level">';
+   for(var i=1;i<=5;i++){
+    h+='<div class="hmt-lv'+(i===o.autonomy_level?' active':'')+'">'+i+'</div>';
+   }
+   h+='</div>';
+   h+='<div style="font-size:.72em;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px">';
+   h+='<div>Autonomy: <b>'+o.autonomy_name+'</b> ('+o.autonomy_level+')</div>';
+   h+='<div>Trust: <div class="hmt-trust-bar"><div class="hmt-trust-fill" style="width:'+tpct+'%;background:'+tcol+'"></div></div> '+tpct+'%</div>';
+   h+='<div>Workload: <span class="wl-'+o.workload+'">'+o.workload.toUpperCase()+'</span></div>';
+   h+='<div>Fatigue: <span class="fatigue-'+o.fatigue+'">'+o.fatigue.toUpperCase()+'</span></div>';
+   h+='<div>Click Rate: '+o.click_rate+'/min</div>';
+   h+='<div>Session: '+o.session_hours+'h</div>';
+   h+='</div></div>';
+   return h;
+  }).join('');
+ }
+
+ // Update global level display from first operator or default
+ var globalLvl=3;
+ if(ops.length){globalLvl=status[ops[0]].autonomy_level;}
+ document.getElementById('hmt-level').textContent=LEVELS[globalLvl]||'--';
+ // Highlight active global level
+ var bars=document.getElementById('hmt-global-bar').children;
+ for(var i=0;i<bars.length;i++){
+  if(i+1===globalLvl)bars[i].classList.add('active');
+  else bars[i].classList.remove('active');
+ }
+
+ // Fatigued count
+ var fatigued=0;ops.forEach(function(u){if(status[u].fatigue==='high'||status[u].fatigue==='critical')fatigued++;});
+ document.getElementById('hmt-fatigued').textContent=fatigued;
+
+ // Delegations
+ var del=await apiFetch('/api/hmt/trust');
+ var dEl=document.getElementById('hmt-delegations');
+ // Use simple display since /api/hmt/trust returns trust, not delegations
+ dEl.innerHTML='<div style="color:#666;padding:8px;font-size:.78em">Use the form below to delegate domain authority to AI</div>';
+
+ // Reference
+ document.getElementById('hmt-ref').innerHTML=
+  '<div style="padding:2px 0">1. <b>Manual</b> — Human controls all</div>'+
+  '<div style="padding:2px 0">2. <b>Advisory</b> — AI recommends, human decides</div>'+
+  '<div style="padding:2px 0">3. <b>Consensual</b> — AI proposes, human approves</div>'+
+  '<div style="padding:2px 0">4. <b>Monitored</b> — AI acts, human can override</div>'+
+  '<div style="padding:2px 0">5. <b>Autonomous</b> — AI acts independently</div>';
+}
+
+async function setGlobalAutonomy(lvl){
+ await apiPost('/api/hmt/autonomy',{level:lvl});
+ refreshHMT();
+}
+
+async function delegateDomain(){
+ var dom=document.getElementById('hmt-del-domain').value;
+ var lvl=parseInt(document.getElementById('hmt-del-level').value);
+ await apiPost('/api/hmt/delegate',{domain:dom,level:lvl});
+ refreshHMT();
+}
+
+window.onHmtUpdate=function(d){refreshHMT();};
+refreshHMT();setInterval(refreshHMT,5000);
+</script>
+{% endblock %}
