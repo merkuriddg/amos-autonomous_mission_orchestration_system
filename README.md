@@ -15,7 +15,7 @@ AMOS is a **multi-domain command-and-control platform** that enables small teams
 
 Instead of controlling individual robots, operators define **mission intent** and AMOS orchestrates assets, sensors, autonomy engines, and communications to execute those missions.
 
-**v0.5.2** — Open Core Release
+**v0.5.2** — Open Core Release | [**merkuri.one/amos**](https://merkuri.one/amos/)
 
 ---
 
