@@ -84,8 +84,6 @@ Per-feature overrides let you enable individual enterprise modules in open mode 
 
 ## System Architecture
 
-![AMOS Architecture](docs/images/amos_architecture.png)
-
 ```
 Applications
   Mission Packs • Analytics • Operator Tools
@@ -189,18 +187,6 @@ amos/
 
 ## Features by Phase
 
-### Phase 10 — Core Platform
-- 25 simulated assets (air/ground/maritime) with real-time movement
-- 22 threats with autonomous detection and tracking
-- C2 console with Leaflet map, asset control, threat engagement
-- Digital twin dashboard, AWACS view, field 3D view
-- EW warfare, SIGINT analysis, cyber ops
-- Countermeasures, swarm formation control (6 patterns)
-- HAL autonomy engine, voice commands (18 types)
-- NLP mission parser, cognitive engine with OODA + COA
-- Contested environment with GPS denial + mesh networking
-- Red force AI, sensor fusion, commander support, learning engine
-
 ### Phase 1 — Defense-Grade Foundation
 - MariaDB persistence (9 tables), hashed password auth
 - Asset CRUD with write-through, audit trail on all API writes
@@ -221,6 +207,18 @@ amos/
 - Link 16 TADIL J simulation (J2.2/J3.2/J7.0 messages)
 - Unified integration hub, mission analytics dashboard
 - Real-time metrics: threat progress, fleet health, COA decisions, risk trend
+
+### Phase 10 — Core Platform
+- 25 simulated assets (air/ground/maritime) with real-time movement
+- 22 threats with autonomous detection and tracking
+- C2 console with Leaflet map, asset control, threat engagement
+- Digital twin dashboard, AWACS view, field 3D view
+- EW warfare, SIGINT analysis, cyber ops
+- Countermeasures, swarm formation control (6 patterns)
+- HAL autonomy engine, voice commands (18 types)
+- NLP mission parser, cognitive engine with OODA + COA
+- Contested environment with GPS denial + mesh networking
+- Red force AI, sensor fusion, commander support, learning engine
 
 ### Phases 11–15 — Kill Chain & Readiness
 - F2T2EA kill web pipeline with human-approval gate at ENGAGE
