@@ -57,10 +57,14 @@ def set_swarm_formation():
     domain = (d.get("domain") or "ground").lower().strip()
     formation = (d.get("formation") or d.get("pattern") or "LINE").upper().strip()
 
+    theater = (d.get("theater") or "").lower().strip()
+
     domain_assets = []
     for aid, a in sim_assets.items():
         a_domain = str(a.get("domain", "")).lower().strip()
-        if a_domain == domain or domain == "all":
+        a_theater = str(a.get("theater", "tehran")).lower().strip()
+        if (a_domain == domain or domain == "all") and \
+           (not theater or a_theater == theater):
             domain_assets.append((aid, a))
 
     if not domain_assets:
@@ -153,13 +157,16 @@ def clear_swarm_formation():
     """Clear formation, return to patrol."""
     d = request.get_json() or {}
     domain = d.get("domain", "ground").lower().strip()
+    theater = (d.get("theater") or "").lower().strip()
     count = 0
     for aid, a in sim_assets.items():
         a_domain = str(a.get("domain", "")).lower().strip()
-        if a_domain == domain or domain == "all":
+        a_theater = str(a.get("theater", "tehran")).lower().strip()
+        if (a_domain == domain or domain == "all") and \
+           (not theater or a_theater == theater):
             count += 1
     return jsonify({"success": True, "count": count,
-                    "message": f"{count} {domain} assets returned to patrol"})
+                    "message": f"{count} {domain} assets in {theater or 'all theaters'} returned to patrol"})
 
 
 @bp.route("/swarm/debug")

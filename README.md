@@ -21,6 +21,13 @@ AMOS orchestrates assets, sensors, autonomy engines, and communications to execu
 <td align="center"><a href="docs/images/telemetry.png"><img src="docs/images/telemetry.png" width="180" alt="Telemetry"/></a><br/><sub><b>Telemetry</b></sub></td>
 <td align="center"><a href="docs/images/plugins.png"><img src="docs/images/plugins.png" width="180" alt="Integrations"/></a><br/><sub><b>Integrations</b></sub></td>
 </tr>
+<tr>
+<td align="center"><a href="docs/images/predictions.png"><img src="docs/images/predictions.png" width="180" alt="Threat Predictions"/></a><br/><sub><b>Threat Predictions</b></sub></td>
+<td align="center"><a href="docs/images/killweb.png"><img src="docs/images/killweb.png" width="180" alt="Kill Web"/></a><br/><sub><b>Kill Web</b></sub></td>
+<td align="center"><a href="docs/images/swarm.png"><img src="docs/images/swarm.png" width="180" alt="Swarm Control"/></a><br/><sub><b>Swarm Control</b></sub></td>
+<td align="center"><a href="docs/images/sigint.png"><img src="docs/images/sigint.png" width="180" alt="SIGINT"/></a><br/><sub><b>SIGINT</b></sub></td>
+<td align="center"><a href="docs/images/wargame.png"><img src="docs/images/wargame.png" width="180" alt="Wargaming"/></a><br/><sub><b>Wargaming</b></sub></td>
+</tr>
 </table>
 
 ---

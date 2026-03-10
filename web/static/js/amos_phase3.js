@@ -484,6 +484,8 @@ var formationMarkers = [];
 A.setFormation = function(pattern){
     var domain = document.getElementById('swarm-domain') || document.getElementById('c2-domain-filter');
     var domVal = domain ? domain.value : 'all';
+    var theaterSel = document.getElementById('theater-sel');
+    var theater = theaterSel ? theaterSel.value : '';
     var statusEl = document.getElementById('swarm-status') || document.getElementById('c2-status');
     if(statusEl) statusEl.textContent = 'Setting ' + pattern.toUpperCase() + '...';
 
@@ -495,7 +497,7 @@ A.setFormation = function(pattern){
     fetch('/api/swarm/formation', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({pattern: pattern, domain: domVal})
+        body: JSON.stringify({pattern: pattern, domain: domVal, theater: theater})
     })
     .then(function(r){ return r.json() })
     .then(function(data){
@@ -523,7 +525,15 @@ A.setFormation = function(pattern){
 };
 
 A.clearFormation = function(){
-    fetch('/api/swarm/formation/clear', {method:'POST'})
+    var domain = document.getElementById('swarm-domain') || document.getElementById('c2-domain-filter');
+    var domVal = domain ? domain.value : 'all';
+    var theaterSel = document.getElementById('theater-sel');
+    var theater = theaterSel ? theaterSel.value : '';
+    fetch('/api/swarm/formation/clear', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({domain: domVal, theater: theater})
+    })
     .then(function(r){return r.json()})
     .then(function(d){
         A.toast('Formation cleared', 'info');

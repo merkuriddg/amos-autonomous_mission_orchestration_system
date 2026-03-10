@@ -241,7 +241,7 @@ def _generate_theater_forces():
     generated_threats = 0
 
     for key, loc in loc_data.get("locations", {}).items():
-        if key == primary or key == "tehran":  # Tehran already has YAML assets
+        if key == "tehran":  # Tehran already has YAML assets from config
             continue
         prefix = _THEATER_PREFIX.get(key)
         if not prefix:

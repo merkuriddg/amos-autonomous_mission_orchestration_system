@@ -90,6 +90,7 @@
       <optgroup label="SWARM"><option value="swarm:create">⬡ CREATE</option><option value="swarm:clear">✕ CLEAR</option></optgroup>
      </select>
      <button onclick="c2Execute()" style="flex:1;background:#00ff41;color:#000;border:none;padding:4px 10px;border-radius:3px;font-weight:bold;cursor:pointer;font-size:.75em;font-family:inherit">▶ EXEC</button>
+     <button id="c2-cancel-btn" onclick="c2Cancel()" style="flex:.6;background:#ff4444;color:#fff;border:none;padding:4px 6px;border-radius:3px;font-weight:bold;cursor:pointer;font-size:.75em;font-family:inherit;display:none">✕ CANCEL</button>
     </div>
     <div id="c2-status" style="color:#888;font-size:.68em;padding:1px 2px">Ready</div>
    </div>
@@ -314,12 +315,14 @@ setInterval(function(){for(var k in _ovActive){if(_ovActive[k])refreshOverlay(k)
 async function clearFormation() {
     var domainEl = document.getElementById('swarm-domain');
     var domain = (domainEl && domainEl.value) ? domainEl.value.toLowerCase() : 'ground';
+    var theaterSel = document.getElementById('theater-sel');
+    var theater = theaterSel ? theaterSel.value : '';
     var statusEl = document.getElementById('swarm-status');
     try {
         var resp = await fetch('/api/v1/swarm/clear', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({domain: domain})
+            body: JSON.stringify({domain: domain, theater: theater})
         });
         var data = await resp.json();
         if (statusEl) { statusEl.textContent = data.message || 'Cleared'; statusEl.style.color = '#00ff88'; }
@@ -334,6 +337,12 @@ async function clearFormation() {
 // ── C2 Command Panel ──
 var c2Selected = {};
 var c2Assets = {};
+var c2Abort = null;  // AbortController for in-flight C2 requests
+
+function c2ActiveTheater(){
+    var sel=document.getElementById('theater-sel');
+    return sel ? sel.value : '';
+}
 
 function c2LoadAssets(){
     fetch('/api/v1/assets').then(function(r){return r.json()}).then(function(data){
@@ -349,11 +358,14 @@ function c2RenderList(){
     var dom = filt ? filt.value : 'all';
     var h = '';
     var ids = Object.keys(c2Assets).sort();
+    var activeTheater = c2ActiveTheater();
     for(var i=0; i<ids.length; i++){
         var id = ids[i];
         var a = c2Assets[id];
         var ad = (a.domain||'').toLowerCase();
+        var at = (a.theater||'tehran').toLowerCase();
         if(dom !== 'all' && ad !== dom) continue;
+        if(activeTheater && at !== activeTheater) continue;
         var chk = c2Selected[id] ? ' checked' : '';
         var col = ad==='air'?'#4fc3f7':ad==='maritime'?'#29b6f6':'#66bb6a';
         h += '<label style="display:block;padding:2px 6px;font-size:.7em;cursor:pointer;color:#ccc">' +
@@ -400,10 +412,46 @@ function c2ToggleDropdown(){
 
 function c2FilterAssets(){ c2RenderList(); }
 
+function c2ShowCancel(show){
+    var btn = document.getElementById('c2-cancel-btn');
+    if(btn) btn.style.display = show ? 'inline-block' : 'none';
+}
+
+function c2Done(statusEl, msg, color){
+    statusEl.textContent = msg;
+    statusEl.style.color = color;
+    c2Abort = null;
+    c2ShowCancel(false);
+}
+
+function c2Cancel(){
+    var statusEl = document.getElementById('c2-status');
+    // Abort any in-flight fetches
+    if(c2Abort){ try{ c2Abort.abort(); }catch(e){} c2Abort = null; }
+    // Send clear to server for active theater
+    var domEl = document.getElementById('c2-domain-filter');
+    var domain = domEl ? domEl.value : 'all';
+    fetch('/api/v1/swarm/clear',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({domain: domain, theater: c2ActiveTheater()})
+    }).then(function(){ console.log('[C2] Cancel: clear sent'); });
+    // Clear formation lines on map
+    if(window.AMOS && typeof AMOS._clearFormationLines === 'function') AMOS._clearFormationLines();
+    if(statusEl){ statusEl.textContent = '⊘ CANCELLED'; statusEl.style.color = '#ff8800'; }
+    c2ShowCancel(false);
+    console.log('[C2] Command cancelled');
+}
+
 function c2Execute(){
     var actionEl = document.getElementById('c2-action');
     var statusEl = document.getElementById('c2-status');
     if(!actionEl){ console.error('[C2] No action select'); return; }
+
+    // Abort any previous in-flight request
+    if(c2Abort){ try{ c2Abort.abort(); }catch(e){} }
+    c2Abort = new AbortController();
+    var signal = c2Abort.signal;
 
     var val = actionEl.value;
     var parts = val.split(':');
@@ -414,6 +462,7 @@ function c2Execute(){
     var selected = Object.keys(c2Selected);
 
     console.log('[C2] Execute:', type, action, 'domain:', domain, 'selected:', selected.length);
+    c2ShowCancel(true);
 
     if(type === 'form'){
         // Sync hidden swarm-domain
@@ -441,42 +490,49 @@ function c2Execute(){
         fetch('/api/v1/swarm/formation', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({formation: action, domain: domain})
-        }).then(function(r){return r.json()}).then(function(data){
-            if(data.error){
-                statusEl.textContent = '✕ ' + data.error;
-                statusEl.style.color = '#ff4444';
-                return;
-            }
-            statusEl.textContent = '✓ ' + action.toUpperCase() + ' (' + (data.count||0) + ' assets)';
-            statusEl.style.color = '#00ff41';
+            body: JSON.stringify({formation: action, domain: domain, theater: c2ActiveTheater()}),
+            signal: signal
+        }).then(function(r){ return r.json(); }).then(function(data){
+            if(data.error){ c2Done(statusEl, '✕ ' + data.error, '#ff4444'); return; }
+            c2Done(statusEl, '✓ ' + action.toUpperCase() + ' (' + (data.count||0) + ' assets)', '#00ff41');
         }).catch(function(e){
-            statusEl.textContent = '✕ ' + e.message;
-            statusEl.style.color = '#ff4444';
+            if(e.name === 'AbortError'){ return; }
+            c2Done(statusEl, '✕ ' + e.message, '#ff4444');
         });
     }
     else if(type === 'cmd'){
         if(selected.length === 0){
             statusEl.textContent = '⚠ Select assets first';
             statusEl.style.color = '#ffaa00';
+            c2ShowCancel(false);
             return;
         }
         statusEl.textContent = '⏳ ' + action + '...';
         Promise.all(selected.map(function(id){
             return fetch('/api/v1/phase3/asset/'+encodeURIComponent(id)+'/task',{
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({task:action})
+                body:JSON.stringify({task:action}),
+                signal: signal
             });
         })).then(function(){
-            statusEl.textContent = '✓ ' + action.toUpperCase() + ' → ' + selected.length;
-            statusEl.style.color = '#00ff41';
+            c2Done(statusEl, '✓ ' + action.toUpperCase() + ' → ' + selected.length, '#00ff41');
+        }).catch(function(e){
+            if(e.name === 'AbortError'){ return; }
+            c2Done(statusEl, '✕ ' + e.message, '#ff4444');
         });
     }
     else if(type === 'swarm'){
         if(action === 'clear'){
-            fetch('/api/v1/swarm/clear',{method:'POST'}).then(function(){
-                statusEl.textContent = '✓ Cleared';
-                statusEl.style.color = '#00ff41';
+            fetch('/api/v1/swarm/clear',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({domain: domain, theater: c2ActiveTheater()}),
+                signal: signal
+            }).then(function(){
+                c2Done(statusEl, '✓ Cleared', '#00ff41');
+            }).catch(function(e){
+                if(e.name === 'AbortError'){ return; }
+                c2Done(statusEl, '✕ ' + e.message, '#ff4444');
             });
         }
     }
