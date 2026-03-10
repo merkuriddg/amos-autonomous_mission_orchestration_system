@@ -55,18 +55,37 @@ _FALLBACK_USERS = {
 }
 
 
+def _sync_db_passwords():
+    """Ensure DB password hashes match _FALLBACK_USERS (source of truth)."""
+    try:
+        if not db_check():
+            return
+        from werkzeug.security import generate_password_hash
+        for username, info in _FALLBACK_USERS.items():
+            db_execute(
+                "UPDATE users SET password_hash=%s WHERE username=%s",
+                (generate_password_hash(info["password"]), username)
+            )
+    except Exception:
+        pass  # best-effort
+
+
 def _load_users_from_db():
     """Load users from MariaDB. Falls back to hardcoded dict."""
     try:
         if not db_check():
             raise Exception("DB offline")
+        _sync_db_passwords()  # keep DB hashes in sync with fallback
         rows = fetchall("SELECT * FROM users WHERE active=1")
         if not rows:
             raise Exception("No users in DB")
         users = {}
         for r in rows:
-            users[r["username"]] = {
+            uname = r["username"]
+            fb = _FALLBACK_USERS.get(uname, {})
+            users[uname] = {
                 "password_hash": r["password_hash"],
+                "password": fb.get("password", ""),  # for login page display
                 "role": r["role"], "name": r["name"],
                 "domain": r["domain"], "access": from_json(r["access"])
             }
