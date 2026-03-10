@@ -137,7 +137,7 @@ def sim_tick():
         sensor_fusion.tick(sim_assets, sim_threats, dt)
         mesh_network.tick(sim_assets, ew_active_jams, dt)
 
-        # ── Enterprise subsystem ticks (conditional) ──
+        # ── Enterprise subsystem ticks (conditional on edition + availability) ──
         if cognitive_engine:
             cognitive_engine.tick(sim_assets, sim_threats, dt)
         if contested_env:

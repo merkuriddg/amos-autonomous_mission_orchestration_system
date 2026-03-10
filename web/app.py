@@ -79,7 +79,7 @@ def not_found_error(e):
 if __name__ == "__main__":
     from web.state import (
         adapter_mgr, plugin_loader, event_bus,
-        comsec_channel, USERS, db_check,
+        comsec_channel, USERS, db_check, AMOS_EDITION,
     )
 
     threading.Thread(target=sim_tick, daemon=True, name="sim_tick").start()
@@ -87,16 +87,17 @@ if __name__ == "__main__":
     db_ok = "✓ Connected" if db_check() else "✗ Offline"
     adapter_count = len(adapter_mgr.get_all_status())
     ps = plugin_loader.registry.get_summary()
+    comsec_str = comsec_channel.get_status()["cipher"] if comsec_channel else "N/A (open edition)"
 
     print("\n" + "=" * 58)
     print("  AMOS — Autonomous Mission Orchestration System v5.0")
-    print("  Modular Blueprint Architecture")
+    print(f"  Edition: {AMOS_EDITION.upper()}")
     print("  http://localhost:2600")
     print(f"  Database: {db_ok}")
     print(f"  Adapters: {adapter_count} registered")
     print(f"  Plugins:  {ps['active']} active / {ps['total']} discovered")
     print(f"  EventBus: {event_bus.get_stats()['subscribers']} subscribers")
-    print(f"  COMSEC:   {comsec_channel.get_status()['cipher']}")
+    print(f"  COMSEC:   {comsec_str}")
     print("-" * 58)
     for u, i in USERS.items():
         print(f"  {u:12s} [{i.get('role','')}]")

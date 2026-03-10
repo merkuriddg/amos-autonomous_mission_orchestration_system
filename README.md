@@ -1,11 +1,12 @@
 # AMOS — Autonomous Mission Orchestration System
 
 Multi-domain C2 platform for autonomous robotic platoon operations.
-**v4.0 — Phase 29: Full Data Integration Stack**
+**v5.0 — Modular Blueprint Architecture + Open-Core/Enterprise Split**
 
 ## Quick Start
 
 ```bash
+cp .env.example .env          # configure edition (open or enterprise)
 source .venv/bin/activate
 python3 web/app.py
 ```
@@ -31,23 +32,36 @@ AMOS manages a **25-asset autonomous robotic platoon** across air, ground, and m
 
 AMOS goes beyond sensor-fusion-and-fire-control platforms by integrating Monte Carlo wargaming, autonomous swarm intelligence, cross-domain effects orchestration, space domain awareness, adaptive human-machine teaming, and resilient mesh networking into a single unified C2 system.
 
+## Editions
+
+AMOS ships in two editions controlled by `AMOS_EDITION` in `.env`:
+
+- **Open** (`AMOS_EDITION=open`) — Core C2 platform: 200+ API routes, map, assets, threats, EW, SIGINT, cyber, ROE, waypoints, sensor fusion, mesh networking, voice commands, plugin system. Free and open-source.
+- **Enterprise** (`AMOS_EDITION=enterprise`) — Full platform: 300+ API routes. Adds cognitive engine (OODA/COA), NLP mission parser, Monte Carlo wargaming, swarm intelligence, kill web, ISR/ATR, effects chain, space domain, human-machine teaming, COMSEC, TAK/Link 16/VMF/STANAG integrations, OPORD/CONOP generation, and more.
+
+Per-feature overrides let you enable individual enterprise modules in open mode (e.g. `AMOS_ENABLE_COGNITIVE=true`). See `.env.example` for all flags.
+
 ## Architecture
 
 ```
 amos/
-├── core/                    — Mission engine: data model, adapters, COMSEC, geo utilities
-├── services/                — Autonomous subsystems: planners, AI, sensor fusion (36 modules)
-├── integrations/            — External system bridges (PX4, TAK, Link 16, MQTT, DDS, Kafka)
-├── simulator/               — Scenario management and simulation utilities
-├── plugins/                 — Extensible plugin system (see Plugin SDK docs)
-│   ├── px4_adapter/         — PX4 Autopilot asset adapter
-│   ├── ros2_adapter/        — ROS 2 transport bridge
-│   └── example_drone/       — Reference plugin implementation
-├── web/                     — Flask + SocketIO server, 30+ HTML views
-│   ├── app.py               — Main server (~4500 lines, 100+ API routes)
-│   └── templates/           — Terminal-aesthetic UI templates
-├── db/                      — MariaDB persistence layer (36 tables)
-├── config/                  — Platoon config + locations
+├── web/
+│   ├── app.py               — Slim orchestrator (registers blueprints)
+│   ├── extensions.py        — Flask app factory, config, login
+│   ├── state.py             — Shared mutable state + subsystem init
+│   ├── edition.py           — AMOS_EDITION feature flags
+│   ├── simulation_engine.py — Background sim tick loop
+│   ├── websockets.py        — Socket.IO event handlers
+│   ├── routes/              — 9 core blueprints (auth, assets, ops, etc.)
+│   ├── enterprise/          — 4 enterprise blueprints (intelligence, warfare, security, defense)
+│   └── templates/           — Terminal-aesthetic UI (30+ views)
+├── core/                    — Data model, adapters, COMSEC, geo utilities
+├── services/                — 36 autonomous subsystems
+├── integrations/            — PX4, TAK, Link 16, MQTT, DDS, Kafka bridges
+├── plugins/                 — Plugin system (PX4, ROS 2, example drone)
+├── enterprise/              — Overlay installer for private enterprise repo
+├── db/                      — MariaDB persistence (36 tables)
+├── config/                  — Platoon config + theater locations
 └── docs/                    — Architecture, SDK, simulation, API docs
 ```
 

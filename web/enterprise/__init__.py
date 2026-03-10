@@ -1,12 +1,19 @@
 """AMOS Enterprise Route Blueprints.
 
-Always registered — individual routes guard themselves with 'if not subsystem' checks.
-When the open-core/enterprise split ships, gate registration via is_enterprise().
+Gated by AMOS_EDITION: only registers when edition is 'enterprise'.
+In open-core mode, enterprise APIs simply don't exist (404).
 """
+
+from web.edition import is_enterprise
 
 
 def register_enterprise_blueprints(app):
-    """Register all enterprise blueprints."""
+    """Register enterprise blueprints (only when AMOS_EDITION=enterprise)."""
+    if not is_enterprise():
+        print("[AMOS] Edition: OPEN — enterprise blueprints skipped")
+        return
+
+    print("[AMOS] Edition: ENTERPRISE — loading enterprise blueprints")
 
     try:
         from web.enterprise.intelligence import bp as intel_bp

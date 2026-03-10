@@ -12,7 +12,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
 
 from web.extensions import config, base_pos, platoon
-from web.edition import feature_enabled
+from web.edition import feature_enabled, is_enterprise, AMOS_EDITION
 
 from db.connection import fetchall, fetchone, execute as db_execute, to_json, from_json, check as db_check
 from db.persistence import (flush_periodic as db_flush, persist_engagement, persist_bda,
@@ -255,115 +255,131 @@ key_mgr = None
 security_audit = None
 
 # Bundle 1 — Mission Intelligence Suite
-try:
-    from services.cognitive_engine import CognitiveEngine
-    cognitive_engine = CognitiveEngine()
-except ImportError:
-    pass
+if feature_enabled("cognitive"):
+    try:
+        from services.cognitive_engine import CognitiveEngine
+        cognitive_engine = CognitiveEngine()
+    except ImportError:
+        pass
 
-try:
-    from services.nlp_mission_parser import NLPMissionParser
-    nlp_parser = NLPMissionParser(sim_assets)
-except ImportError:
-    pass
+if feature_enabled("nlp"):
+    try:
+        from services.nlp_mission_parser import NLPMissionParser
+        nlp_parser = NLPMissionParser(sim_assets)
+    except ImportError:
+        pass
 
-try:
-    from services.commander_support import CommanderSupport
-    commander_support = CommanderSupport()
-except ImportError:
-    pass
+if feature_enabled("commander"):
+    try:
+        from services.commander_support import CommanderSupport
+        commander_support = CommanderSupport()
+    except ImportError:
+        pass
 
-try:
-    from services.learning_engine import LearningEngine
-    learning_engine = LearningEngine()
-except ImportError:
-    pass
+if feature_enabled("learning"):
+    try:
+        from services.learning_engine import LearningEngine
+        learning_engine = LearningEngine()
+    except ImportError:
+        pass
 
-try:
-    from services.red_force_ai import RedForceAI
-    red_force_ai = RedForceAI(base_pos["lat"], base_pos["lng"])
-except ImportError:
-    pass
+if feature_enabled("redforce"):
+    try:
+        from services.red_force_ai import RedForceAI
+        red_force_ai = RedForceAI(base_pos["lat"], base_pos["lng"])
+    except ImportError:
+        pass
 
-try:
-    from services.wargame_engine import WargameEngine
-    wargame_engine = WargameEngine()
-except ImportError:
-    pass
+if feature_enabled("wargame"):
+    try:
+        from services.wargame_engine import WargameEngine
+        wargame_engine = WargameEngine()
+    except ImportError:
+        pass
 
-try:
-    from services.threat_predictor import ThreatPredictor
-    threat_predictor = ThreatPredictor()
-except ImportError:
-    pass
+if feature_enabled("predictions"):
+    try:
+        from services.threat_predictor import ThreatPredictor
+        threat_predictor = ThreatPredictor()
+    except ImportError:
+        pass
 
 # Bundle 2 — Advanced Swarm & Autonomy
-try:
-    from services.swarm_intelligence import SwarmIntelligence
-    swarm_intel = SwarmIntelligence()
-except ImportError:
-    pass
+if feature_enabled("swarm"):
+    try:
+        from services.swarm_intelligence import SwarmIntelligence
+        swarm_intel = SwarmIntelligence()
+    except ImportError:
+        pass
 
 # Bundle 4 — Secure Operations
 ClassificationMarker = None
-try:
-    from core.comsec import SecureChannel, ClassificationMarker as _CM
-    from core.key_manager import KeyManager
-    from core.security_audit import SecurityAudit
-    ClassificationMarker = _CM
-    comsec_channel = SecureChannel(channel_id="AMOS-PRIMARY")
-    key_mgr = KeyManager()
-    security_audit = SecurityAudit()
-except ImportError:
-    pass
+if feature_enabled("comsec"):
+    try:
+        from core.comsec import SecureChannel, ClassificationMarker as _CM
+        from core.key_manager import KeyManager
+        from core.security_audit import SecurityAudit
+        ClassificationMarker = _CM
+        comsec_channel = SecureChannel(channel_id="AMOS-PRIMARY")
+        key_mgr = KeyManager()
+        security_audit = SecurityAudit()
+    except ImportError:
+        pass
 
 # Bundle 6 — Advanced Simulation & Effects
-try:
-    from services.environment_effects import ContestedEnvironment
-    contested_env = ContestedEnvironment(base_pos)
-except ImportError:
-    pass
+if feature_enabled("contested"):
+    try:
+        from services.environment_effects import ContestedEnvironment
+        contested_env = ContestedEnvironment(base_pos)
+    except ImportError:
+        pass
 
-try:
-    from services.kill_web import KillWeb
-    kill_web = KillWeb()
-except ImportError:
-    pass
+if feature_enabled("killweb"):
+    try:
+        from services.kill_web import KillWeb
+        kill_web = KillWeb()
+    except ImportError:
+        pass
 
-try:
-    from services.isr_pipeline import ISRPipeline
-    isr_pipeline = ISRPipeline()
-except ImportError:
-    pass
+if feature_enabled("isr"):
+    try:
+        from services.isr_pipeline import ISRPipeline
+        isr_pipeline = ISRPipeline()
+    except ImportError:
+        pass
 
-try:
-    from services.effects_chain import EffectsChain
-    effects_chain = EffectsChain()
-except ImportError:
-    pass
+if feature_enabled("effects"):
+    try:
+        from services.effects_chain import EffectsChain
+        effects_chain = EffectsChain()
+    except ImportError:
+        pass
 
-try:
-    from services.space_domain import SpaceDomain
-    space_domain = SpaceDomain()
-except ImportError:
-    pass
+if feature_enabled("space"):
+    try:
+        from services.space_domain import SpaceDomain
+        space_domain = SpaceDomain()
+    except ImportError:
+        pass
 
-try:
-    from services.hmt_engine import HMTEngine
-    hmt_engine = HMTEngine()
-except ImportError:
-    pass
+if feature_enabled("hmt"):
+    try:
+        from services.hmt_engine import HMTEngine
+        hmt_engine = HMTEngine()
+    except ImportError:
+        pass
 
 # Document generators
 generate_opord = None
 generate_conop = None
-try:
-    from core.docs.opord_generator import generate_opord as _gen_opord
-    from core.docs.conop_generator import generate_conop as _gen_conop
-    generate_opord = _gen_opord
-    generate_conop = _gen_conop
-except ImportError:
-    pass
+if feature_enabled("docs_gen"):
+    try:
+        from core.docs.opord_generator import generate_opord as _gen_opord
+        from core.docs.conop_generator import generate_conop as _gen_conop
+        generate_opord = _gen_opord
+        generate_conop = _gen_conop
+    except ImportError:
+        pass
 
 # ═══════════════════════════════════════════════════════════
 #  INTEGRATION ADAPTERS (conditional)
@@ -407,58 +423,65 @@ except Exception as e:
     print(f"[AMOS] DDS Adapter: Not available ({e})")
 
 # Enterprise integrations
-try:
-    from tak_bridge import TAKBridge
-    _tak = TAKBridge()
-    print("[AMOS] TAK Bridge: Ready")
-except Exception as e:
-    print(f"[AMOS] TAK Bridge: Not available ({e})")
+if feature_enabled("tak"):
+    try:
+        from tak_bridge import TAKBridge
+        _tak = TAKBridge()
+        print("[AMOS] TAK Bridge: Ready")
+    except Exception as e:
+        print(f"[AMOS] TAK Bridge: Not available ({e})")
 
-try:
-    from link16_sim import Link16Network
-    _link16 = Link16Network(net_id="AMOS-SHADOW-NET")
-    print("[AMOS] Link 16: Network initialized")
-except Exception as e:
-    print(f"[AMOS] Link 16: Not available ({e})")
+if feature_enabled("link16"):
+    try:
+        from link16_sim import Link16Network
+        _link16 = Link16Network(net_id="AMOS-SHADOW-NET")
+        print("[AMOS] Link 16: Network initialized")
+    except Exception as e:
+        print(f"[AMOS] Link 16: Not available ({e})")
 
-try:
-    from integrations.kafka_adapter import KafkaAdapter
-    _kafka_adapter = KafkaAdapter()
-    adapter_mgr.register(_kafka_adapter)
-    print("[AMOS] Kafka Adapter: Registered")
-except Exception as e:
-    print(f"[AMOS] Kafka Adapter: Not available ({e})")
+if feature_enabled("kafka"):
+    try:
+        from integrations.kafka_adapter import KafkaAdapter
+        _kafka_adapter = KafkaAdapter()
+        adapter_mgr.register(_kafka_adapter)
+        print("[AMOS] Kafka Adapter: Registered")
+    except Exception as e:
+        print(f"[AMOS] Kafka Adapter: Not available ({e})")
 
-try:
-    from integrations.vmf_adapter import VMFAdapter
-    _vmf_adapter = VMFAdapter()
-    adapter_mgr.register(_vmf_adapter)
-    print("[AMOS] VMF Adapter: Registered")
-except Exception as e:
-    print(f"[AMOS] VMF Adapter: Not available ({e})")
+if feature_enabled("vmf"):
+    try:
+        from integrations.vmf_adapter import VMFAdapter
+        _vmf_adapter = VMFAdapter()
+        adapter_mgr.register(_vmf_adapter)
+        print("[AMOS] VMF Adapter: Registered")
+    except Exception as e:
+        print(f"[AMOS] VMF Adapter: Not available ({e})")
 
-try:
-    from integrations.stanag4586_adapter import STANAG4586Adapter
-    _stanag4586 = STANAG4586Adapter()
-    adapter_mgr.register(_stanag4586)
-    print("[AMOS] STANAG 4586: Registered")
-except Exception as e:
-    print(f"[AMOS] STANAG 4586: Not available ({e})")
+if feature_enabled("stanag"):
+    try:
+        from integrations.stanag4586_adapter import STANAG4586Adapter
+        _stanag4586 = STANAG4586Adapter()
+        adapter_mgr.register(_stanag4586)
+        print("[AMOS] STANAG 4586: Registered")
+    except Exception as e:
+        print(f"[AMOS] STANAG 4586: Not available ({e})")
 
-try:
-    from integrations.nffi_adapter import NFFIAdapter
-    _nffi_adapter = NFFIAdapter()
-    adapter_mgr.register(_nffi_adapter)
-    print("[AMOS] NFFI Adapter: Registered")
-except Exception as e:
-    print(f"[AMOS] NFFI Adapter: Not available ({e})")
+if feature_enabled("nffi"):
+    try:
+        from integrations.nffi_adapter import NFFIAdapter
+        _nffi_adapter = NFFIAdapter()
+        adapter_mgr.register(_nffi_adapter)
+        print("[AMOS] NFFI Adapter: Registered")
+    except Exception as e:
+        print(f"[AMOS] NFFI Adapter: Not available ({e})")
 
-try:
-    from integrations.ogc_client import OGCClient
-    _ogc_client = OGCClient()
-    print("[AMOS] OGC WMS/WFS: Ready")
-except Exception as e:
-    print(f"[AMOS] OGC Client: Not available ({e})")
+if feature_enabled("ogc"):
+    try:
+        from integrations.ogc_client import OGCClient
+        _ogc_client = OGCClient()
+        print("[AMOS] OGC WMS/WFS: Ready")
+    except Exception as e:
+        print(f"[AMOS] OGC Client: Not available ({e})")
 
 # ═══════════════════════════════════════════════════════════
 #  HELPER
@@ -485,6 +508,7 @@ _ent_loaded = [n for n, v in [
     ("killweb", kill_web), ("contested", contested_env),
     ("threat_pred", threat_predictor),
 ] if v is not None]
+print(f"[AMOS]  Edition:    {AMOS_EDITION.upper()}")
 print(f"[AMOS]  Enterprise: {len(_ent_loaded)} modules loaded")
 if _ent_loaded:
     print(f"[AMOS]              {', '.join(_ent_loaded)}")
