@@ -163,7 +163,7 @@ async function refreshStatus(){
  var ch='';
  Object.values(uniq).forEach(function(f){
   var checked=_selectedFiles.has(f.file)?'checked':'';
-  ch+='<div class="file-row"><input type="checkbox" '+checked+' onchange="toggleFile(\''+f.file+'\',this.checked)"><span class="file-status">'+f.status+'</span><span style="color:#ccc">'+f.file+'</span></div>';
+  ch+='<div class="file-row"><input type="checkbox" data-file="'+f.file+'" '+checked+' onchange="toggleFile(this.dataset.file,this.checked)"><span class="file-status">'+f.status+'</span><span style="color:#ccc">'+f.file+'</span></div>';
  });
  document.getElementById('sc-commit-files').innerHTML=ch||'<div style="color:#666;padding:8px">No files to commit</div>';
 }
@@ -174,7 +174,7 @@ async function previewDiff(file){
 }
 
 function toggleFile(f,checked){if(checked)_selectedFiles.add(f);else _selectedFiles.delete(f);}
-function selectAllFiles(){document.querySelectorAll('#sc-commit-files input[type=checkbox]').forEach(function(cb){cb.checked=true;toggleFile(cb.parentElement.querySelector('span:last-child').textContent,true);});}
+function selectAllFiles(){document.querySelectorAll('#sc-commit-files input[type=checkbox]').forEach(function(cb){cb.checked=true;toggleFile(cb.dataset.file,true);});}
 function deselectAllFiles(){_selectedFiles.clear();document.querySelectorAll('#sc-commit-files input[type=checkbox]').forEach(function(cb){cb.checked=false;});}
 
 async function doCommit(){

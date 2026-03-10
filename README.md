@@ -3,6 +3,32 @@
 Multi-domain C2 platform for autonomous robotic platoon operations.
 **v5.1 — API Versioning, CI/CD, System Scripts, Edition Dashboard**
 
+
+## Platform Overview
+
+### Mission Console
+AMOS provides a unified operational interface for supervising autonomous missions across multiple robotic assets.
+![Mission Console](docs/images/mission_console.png)
+
+### Mission Planning
+Operators define mission intent and assign assets. AMOS translates mission plans into executable task graphs.
+![Mission Planning](docs/images/mission_planning.png)
+
+### Simulation Environment
+AMOS includes a built-in simulation environment for testing mission scenarios, autonomy behaviors, and swarm coordination.
+![Simulation](docs/images/simulation.png)
+
+### Telemetry and Event Stream
+AMOS uses an event-driven architecture to track mission state and coordinate autonomous responses.
+![Telemetry](docs/images/telemetry.png)
+
+
+### Extensible Plugin Architecture
+AMOS supports asset adapters, sensor integrations, mission packs, and autonomy modules through a plugin system.
+![Plugins](docs/images/plugins.png)
+
+
+
 ## Quick Start
 
 ```bash

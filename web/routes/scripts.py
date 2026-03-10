@@ -73,11 +73,11 @@ def git_status():
 
     modified, staged, untracked = [], [], []
     for line in stdout.strip().split("\n"):
-        if not line:
+        if not line or len(line) < 4:
             continue
         index_status = line[0]
         work_status = line[1]
-        filepath = line[3:]
+        filepath = line[3:]  # XY<space>PATH — path starts at col 3
 
         if index_status in ("M", "A", "D", "R"):
             staged.append({"file": filepath, "status": index_status})
