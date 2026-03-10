@@ -151,13 +151,22 @@ amos/
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
 ├── services/                — 36 autonomous subsystems
 ├── integrations/            — 21 protocol bridges (see below)
-├── plugins/                 — 8 plugins (asset, sensor, mission pack adapters)
 ├── examples/                — Demo scenarios + quickstart code samples
 │   ├── border_intrusion/    — Border patrol demo
 │   ├── swarm_recon/         — Swarm reconnaissance demo
 │   ├── disaster_response/   — Earthquake SAR demo
 │   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
+├── plugins/                 — 9 plugins (ADS-B, APRS, ATAK, AIS, Meshtastic + examples)
+│   ├── adsb_adapter/        — ADS-B aircraft surveillance
+│   ├── aprs_adapter/        — APRS amateur radio position tracking
+│   ├── atak_adapter/        — ATAK/TAK blue force & CoT
+│   ├── ais_adapter/         — AIS maritime vessel tracking
+│   ├── meshtastic_adapter/  — Meshtastic/LoRa off-grid mesh
+│   ├── example_sensor/      — Reference sensor plugin
+│   └── example_mission_pack/ — Reference mission template
 ├── sdk/                     — Developer SDK (Python package + docs)
+│   ├── python/amos_sdk/     — Installable SDK (contracts, helpers, testing)
+│   └── docs/                — Plugin tutorial, contracts ref, integration patterns
 ├── tools/                   — CLI tools (plugin scaffolding)
 ├── demo/                    — Legacy demo scenarios
 ├── db/                      — MariaDB schema + setup script (36 tables)
@@ -197,10 +206,14 @@ amos/
 | `docs/platform/` | System architecture, simulation guide, API versioning |
 | `docs/platform/AMOS_Plugin_SDK.md` | Plugin SDK — build asset adapters and integrations |
 | `docs/platform/INTEGRATION_GUIDE.md` | Integration bridge development |
+| `sdk/docs/PLUGIN_TUTORIAL.md` | Step-by-step plugin building tutorial |
+| `sdk/docs/CONTRACTS.md` | Data contract reference (events, types) |
+| `sdk/docs/INTEGRATION_PATTERNS.md` | Bridge architecture and patterns |
+| `sdk/python/README.md` | SDK quickstart and API reference |
 | `ENTERPRISE.md` | Enterprise edition features and licensing |
 | `SECURITY.md` | Security policy and vulnerability disclosure |
-|| `CONTRIBUTING.md` | Contribution guidelines and code style |
-|| `TRADEMARK.md` | Trademark policy and usage guidelines |
+| `CONTRIBUTING.md` | Contribution guidelines and code style |
+| `TRADEMARK.md` | Trademark policy and usage guidelines |
 
 ---
 
@@ -231,7 +244,20 @@ python3 tools/create_plugin.py my_sensor --type sensor_adapter
 
 Supports 6 plugin types: `asset_adapter`, `sensor_adapter`, `mission_pack`, `planner`, `analytics`, `transport`
 
-See `docs/platform/AMOS_Plugin_SDK.md` for the full SDK guide. Copy `plugins/example_drone/` to start.
+See the [Plugin Tutorial](sdk/docs/PLUGIN_TUTORIAL.md) for a step-by-step guide, or browse `plugins/example_sensor/` for a reference implementation.
+
+The SDK also provides typed data contracts and a test harness:
+
+```bash
+pip install -e sdk/python     # install AMOS SDK locally
+```
+
+```python
+from amos_sdk import PluginBase, SensorReading
+from amos_sdk.testing import PluginTestHarness
+```
+
+See [SDK README](sdk/python/README.md) and [Data Contracts](sdk/docs/CONTRACTS.md) for full reference.
 
 ---
 

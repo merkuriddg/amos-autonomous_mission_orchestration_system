@@ -1,0 +1,21 @@
+name: atak_adapter
+version: "1.0"
+type: asset_adapter
+description: >
+  Bridges ATAK / WinTAK into AMOS via Cursor-on-Target (CoT) XML.
+  Publishes blue-force and hostile markers over TAK multicast or TCP.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:AtakAdapterPlugin
+requires:
+  - integrations.tak_bridge
+capabilities:
+  - telemetry
+  - cot_publish
+  - health
+config:
+  tak_host: "239.2.3.1"
+  tak_port: 6969
+  transport: "udp"          # udp | tcp | ssl
+  callsign_prefix: "AMOS"
+  stale_seconds: 120

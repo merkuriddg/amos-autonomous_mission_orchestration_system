@@ -1,0 +1,12 @@
+name: adsb_adapter
+version: "1.0"
+type: sensor_adapter
+domain: air
+author: AMOS Team
+enabled: true
+entry_point: AdsbAdapterPlugin
+description: >
+  ADS-B sensor adapter — receives aircraft surveillance data from
+  dump1090/readsb for airspace awareness and drone deconfliction.
+dependencies:
+  - amos-core >=1.0

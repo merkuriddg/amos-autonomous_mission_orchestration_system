@@ -1,0 +1,12 @@
+name: aprs_adapter
+version: "1.0"
+type: transport
+domain: multi
+author: AMOS Team
+enabled: true
+entry_point: AprsAdapterPlugin
+description: >
+  APRS transport adapter — position tracking and messaging via
+  amateur radio APRS-IS network.
+dependencies:
+  - amos-core >=1.0

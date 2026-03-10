@@ -1,0 +1,23 @@
+name: meshtastic_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  Bridges Meshtastic mesh-radio nodes into AMOS for off-grid, low-
+  bandwidth communications.  Publishes node positions, telemetry, and
+  text messages.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:MeshtasticAdapterPlugin
+requires:
+  - integrations.lora_bridge
+capabilities:
+  - mesh_tracking
+  - text_relay
+  - telemetry
+  - health
+config:
+  connection_type: "serial"   # serial | tcp | ble
+  serial_device: "/dev/ttyACM0"
+  tcp_host: "meshtastic.local"
+  tcp_port: 4403
+  channel_index: 0

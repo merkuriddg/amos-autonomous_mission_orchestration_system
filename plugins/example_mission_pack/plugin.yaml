@@ -1,0 +1,13 @@
+name: example_mission_pack
+version: "1.0"
+type: mission_pack
+domain: multi
+author: AMOS Team
+enabled: true
+entry_point: ExampleMissionPackPlugin
+description: >
+  Example mission pack — reference implementation showing how to
+  create domain-specific mission templates and task workflows.
+  Includes perimeter patrol and area search templates.
+dependencies:
+  - amos-core >=1.0

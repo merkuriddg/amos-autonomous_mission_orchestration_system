@@ -1,0 +1,13 @@
+name: example_sensor
+version: "1.0"
+type: sensor_adapter
+domain: air
+author: AMOS Team
+enabled: true
+entry_point: ExampleSensorPlugin
+description: >
+  Example sensor plugin — reference implementation showing how to
+  integrate an external sensor feed (ADS-B) with AMOS.  Use this
+  as a starting point for your own sensor adapter.
+dependencies:
+  - amos-core >=1.0

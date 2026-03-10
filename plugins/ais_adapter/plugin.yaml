@@ -1,0 +1,22 @@
+name: ais_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  Ingests AIS vessel traffic data via NMEA-0183 / AIVDM sentences.
+  Publishes decoded positions and vessel metadata to the AMOS event bus
+  for maritime domain awareness.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:AisAdapterPlugin
+requires:
+  - integrations.ais_receiver
+capabilities:
+  - vessel_tracking
+  - nmea_decode
+  - health
+config:
+  ais_host: "127.0.0.1"
+  ais_port: 10110
+  protocol: "tcp"           # tcp | udp | serial
+  serial_device: "/dev/ttyUSB0"
+  baud_rate: 38400

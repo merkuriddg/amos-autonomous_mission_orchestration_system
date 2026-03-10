@@ -96,6 +96,71 @@ picture = l16.get_tactical_picture()
 
 **Messages:** J2.2 (air track), J3.2 (surface track), J7.0 (command)
 
+## ADS-B (Air Traffic Surveillance)
+
+```python
+from integrations.adsb_receiver import ADSBReceiver
+
+adsb = ADSBReceiver(host="localhost", port=30003, protocol="sbs")
+adsb.connect()
+track = adsb.receive()  # returns decoded aircraft dict
+adsb.sync_to_amos(sim_assets)
+```
+
+**Sources:** dump1090, readsb, Beast binary, SBS-1 BaseStation
+**Requirements:** RTL-SDR dongle + dump1090 (or network feed)
+
+## APRS (Amateur Packet Reporting)
+
+```python
+from integrations.aprs_bridge import APRSBridge
+
+aprs = APRSBridge(callsign="AMOS-1", passcode="-1")
+aprs.connect()  # connects to APRS-IS
+packet = aprs.receive()
+aprs.sync_to_amos(sim_assets)
+```
+
+**Requirements:** APRS-IS account (read-only with passcode -1)
+
+## AIS (Maritime Vessel Tracking)
+
+```python
+from integrations.ais_receiver import AISReceiver
+
+ais = AISReceiver(host="localhost", port=10110)
+ais.connect()
+vessel = ais.receive()  # AIVDM sentence → decoded dict
+ais.sync_to_amos(sim_assets)
+```
+
+**Requirements:** AIS receiver or network feed (NMEA-0183)
+
+## Meshtastic / LoRa (Off-Grid Mesh)
+
+```python
+from integrations.lora_bridge import LoRaBridge
+
+lora = LoRaBridge(connection_type="serial", device="/dev/ttyACM0")
+lora.connect()
+packet = lora.receive()
+lora.send_message("SITREP: all clear", destination="^all")
+```
+
+**Requirements:** Meshtastic radio node (serial, TCP, or BLE)
+
+## FAA RemoteID (Drone Identification)
+
+```python
+from integrations.remoteid_bridge import RemoteIDBridge
+
+rid = RemoteIDBridge()
+rid.connect()
+beacon = rid.receive()  # Bluetooth/WiFi beacon → dict
+```
+
+**Requirements:** BLE adapter for passive monitoring
+
 ## General Pattern
 
 All bridges follow the same pattern:
@@ -104,3 +169,11 @@ All bridges follow the same pattern:
 3. **Register** AMOS assets to hardware IDs
 4. **Send** commands (waypoints, modes, etc.)
 5. **Sync** real telemetry back into `sim_assets` via `sync_to_amos()`
+
+## Plugin SDK & Documentation
+
+For building plugins that consume bridge data, see:
+- [Plugin Tutorial](../../sdk/docs/PLUGIN_TUTORIAL.md)
+- [Data Contracts](../../sdk/docs/CONTRACTS.md)
+- [Integration Patterns](../../sdk/docs/INTEGRATION_PATTERNS.md)
+- [SDK README](../../sdk/python/README.md)
