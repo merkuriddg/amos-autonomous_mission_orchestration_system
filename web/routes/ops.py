@@ -15,7 +15,7 @@ from web.state import (
     cyber_events, cyber_blocked_ips, supply_history,
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
-    _adsb, _aprs, _ais, _lora, _remoteid,
+    _adsb, _aprs, _ais, _lora, _remoteid, _dragonos,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -222,6 +222,7 @@ def api_bridge_all():
         "ros2": ros2_bridge.get_status() if ros2_bridge else {"available": False},
         "adsb": _ss(_adsb), "aprs": _ss(_aprs), "ais": _ss(_ais),
         "lora": _ss(_lora), "remoteid": _ss(_remoteid),
+        "dragonos": _ss(_dragonos),
     })
 
 # ── PX4 ──
@@ -388,6 +389,7 @@ def api_sensor_bridges_all():
         "ais": _status(_ais, "AIS"),
         "lora": _status(_lora, "Meshtastic"),
         "remoteid": _status(_remoteid, "RemoteID"),
+        "dragonos": _status(_dragonos, "DragonOS"),
     })
 
 # ── ADS-B ──
@@ -565,6 +567,73 @@ def api_remoteid_beacons():
     if not _remoteid or not _remoteid.connected:
         return jsonify({})
     return jsonify(getattr(_remoteid, "beacons", {}))
+
+
+# ── DragonOS / WarDragon ──
+@bp.route("/bridge/dragonos/status")
+@login_required
+def api_dragonos_status():
+    if not _dragonos:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_dragonos.get_status())
+
+@bp.route("/bridge/dragonos/connect", methods=["POST"])
+@login_required
+def api_dragonos_connect():
+    if not _dragonos:
+        return jsonify({"error": "DragonOS bridge not loaded"}), 503
+    d = request.json or {}
+    _dragonos.node_id = d.get("node_id", _dragonos.node_id)
+    _dragonos.mqtt_host = d.get("mqtt_host", _dragonos.mqtt_host)
+    _dragonos.mqtt_port = int(d.get("mqtt_port", _dragonos.mqtt_port))
+    if d.get("mqtt_user"): _dragonos.mqtt_user = d["mqtt_user"]
+    if d.get("mqtt_pass"): _dragonos.mqtt_pass = d["mqtt_pass"]
+    if d.get("kismet_url"): _dragonos.kismet_url = d["kismet_url"]
+    if d.get("topic_prefix"): _dragonos.topic_prefix = d["topic_prefix"]
+    ok = _dragonos.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _dragonos.connected})
+
+@bp.route("/bridge/dragonos/disconnect", methods=["POST"])
+@login_required
+def api_dragonos_disconnect():
+    if _dragonos:
+        _dragonos.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/dragonos/drones")
+@login_required
+def api_dragonos_drones():
+    if not _dragonos or not _dragonos.connected:
+        return jsonify([])
+    return jsonify(_dragonos.get_drone_detections())
+
+@bp.route("/bridge/dragonos/remoteid")
+@login_required
+def api_dragonos_remoteid():
+    if not _dragonos or not _dragonos.connected:
+        return jsonify([])
+    return jsonify(_dragonos.get_remoteid_decodes())
+
+@bp.route("/bridge/dragonos/spectrum")
+@login_required
+def api_dragonos_spectrum():
+    if not _dragonos or not _dragonos.connected:
+        return jsonify([])
+    return jsonify(_dragonos.get_spectrum_events())
+
+@bp.route("/bridge/dragonos/df")
+@login_required
+def api_dragonos_df():
+    if not _dragonos or not _dragonos.connected:
+        return jsonify([])
+    return jsonify(_dragonos.get_df_bearings())
+
+@bp.route("/bridge/dragonos/kismet")
+@login_required
+def api_dragonos_kismet():
+    if not _dragonos or not _dragonos.connected:
+        return jsonify({})
+    return jsonify(_dragonos.get_kismet_devices())
 
 
 # ═══════════════════════════════════════════════════════════

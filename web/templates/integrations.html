@@ -130,6 +130,21 @@
       <button class="btn btn-red" onclick="ridDisconnect()">STOP</button>
     </div>
   </div>
+  <!-- DragonOS / WarDragon -->
+  <div class="bridge-card" id="dragon-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="dragon-dot"></span><span class="bridge-name">DragonOS</span></div>
+      <span class="badge badge-cyan">SDR</span>
+    </div>
+    <div id="dragon-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="dragon-host" placeholder="MQTT Host" value="localhost" style="width:100px">
+      <input type="number" id="dragon-port" placeholder="Port" value="1883" style="width:70px">
+      <button class="btn" onclick="dragonConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="dragonDisconnect()">STOP</button>
+    </div>
+    <div style="margin-top:4px;font-size:.7em;color:#555">Kismet URL (opt): <input type="text" id="dragon-kismet" placeholder="http://dragon:2501" style="width:160px"></div>
+  </div>
 </div>
 
 <!-- Link 16 Detail -->
@@ -200,6 +215,14 @@ async function refreshBridges(){
     _info('rid-info',ri.connected
         ?_stat('Beacons',ri.beacon_count||ri.beacons||0)+_stat('UAS detected',ri.uas_count||0)
         :(ri.available?'<div style="color:#888">Ready — click SCAN to start</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // DragonOS
+    const dg=d.dragonos||{};
+    _dot('dragon-dot',dg.connected);
+    const ds=dg.stats||{};
+    const db=dg.buffers||{};
+    _info('dragon-info',dg.connected
+        ?_stat('Drones',db.drone_detections||0)+_stat('RemoteID',db.remoteid_decodes||0)+_stat('Spectrum',db.spectrum_events||0)+_stat('DF',db.df_bearings||0)+_stat('Kismet',db.kismet_devices||0)+_stat('MQTT msgs',ds.mqtt_messages||0)
+        :(dg.available?'<div style="color:#888">Ready — enter MQTT broker below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
 }
 
 async function refreshL16(){
@@ -270,6 +293,14 @@ async function loraSend(){
 }
 async function ridConnect(){await apiPost('/api/v1/bridge/remoteid/connect',{});refreshBridges();}
 async function ridDisconnect(){await apiPost('/api/v1/bridge/remoteid/disconnect',{});refreshBridges();}
+async function dragonConnect(){
+    await apiPost('/api/v1/bridge/dragonos/connect',{
+        mqtt_host:document.getElementById('dragon-host').value,
+        mqtt_port:parseInt(document.getElementById('dragon-port').value),
+        kismet_url:document.getElementById('dragon-kismet').value||''
+    }); refreshBridges();
+}
+async function dragonDisconnect(){await apiPost('/api/v1/bridge/dragonos/disconnect',{});refreshBridges();}
 
 refreshBridges(); refreshL16();
 setInterval(refreshBridges,5000);

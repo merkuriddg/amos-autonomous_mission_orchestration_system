@@ -24,6 +24,9 @@ Comms & Tactical:
   - lora_bridge      : LoRa / Meshtastic mesh networking
   - sdr_bridge       : Software-Defined Radio (GNU Radio / HackRF)
 
+SDR Platform:
+  - dragonos_bridge  : DragonOS / WarDragon SDR (MQTT + Kismet)
+
 Data Transport:
   - mqtt_adapter     : MQTT pub/sub
   - dds_adapter      : DDS (Data Distribution Service)

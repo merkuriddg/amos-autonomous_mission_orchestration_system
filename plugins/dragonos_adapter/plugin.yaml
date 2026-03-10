@@ -1,0 +1,31 @@
+name: dragonos_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  DragonOS / WarDragon SDR sensor adapter — ingests drone detections,
+  RemoteID decodes, spectrum data, direction-finding bearings, and
+  Kismet wireless observations from DragonOS nodes deployed on
+  air, ground, or maritime assets.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:DragonOSAdapterPlugin
+requires:
+  - integrations.dragonos_bridge
+capabilities:
+  - drone_detection
+  - remoteid_decode
+  - spectrum_monitoring
+  - direction_finding
+  - kismet_wireless
+  - rf_events
+  - node_health
+  - health
+config:
+  node_id: "dragon-01"
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_user: ""
+  mqtt_pass: ""
+  kismet_url: ""
+  kismet_api_key: ""
+  topic_prefix: "wardragon"

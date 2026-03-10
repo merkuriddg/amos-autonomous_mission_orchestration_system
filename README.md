@@ -156,11 +156,12 @@ amos/
 │   ├── swarm_recon/         — Swarm reconnaissance demo
 │   ├── disaster_response/   — Earthquake SAR demo
 │   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
-├── plugins/                 — 14 plugins (adapters, mission packs, examples)
+├── plugins/                 — 15 plugins (adapters, mission packs, examples)
 │   ├── adsb_adapter/        — ADS-B aircraft surveillance
 │   ├── aprs_adapter/        — APRS amateur radio position tracking
 │   ├── atak_adapter/        — ATAK/TAK blue force & CoT
 │   ├── ais_adapter/         — AIS maritime vessel tracking
+│   ├── dragonos_adapter/    — DragonOS/WarDragon SDR sensor platform
 │   ├── meshtastic_adapter/  — Meshtastic/LoRa off-grid mesh
 │   ├── px4_adapter/         — PX4 MAVLink autopilot bridge
 │   ├── ros2_adapter/        — ROS 2 middleware bridge
@@ -218,6 +219,7 @@ amos/
 | `sdk/docs/CONTRACTS.md` | Data contract reference (events, types) |
 | `sdk/docs/INTEGRATION_PATTERNS.md` | Bridge architecture and patterns |
 | `sdk/python/README.md` | SDK quickstart and API reference |
+| `docs/hardware/DRAGONOS_SETUP.md` | DragonOS / WarDragon SDR integration guide |
 | `ENTERPRISE.md` | Enterprise edition features and licensing |
 | `SECURITY.md` | Security policy and vulnerability disclosure |
 | `CONTRIBUTING.md` | Contribution guidelines and code style |
@@ -231,7 +233,7 @@ amos/
 - **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB (optional — runs in-memory without it)
 - **Testing:** pytest (209 tests), GitHub Actions CI (Python 3.11 + 3.12)
-- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA
+- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR
 - **Security:** AES-256-GCM encryption, HMAC, key lifecycle management
 
 ## Testing

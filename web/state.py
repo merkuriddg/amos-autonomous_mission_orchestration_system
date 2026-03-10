@@ -559,6 +559,7 @@ _aprs = None
 _ais = None
 _lora = None
 _remoteid = None
+_dragonos = None
 _mqtt_adapter = None
 _dds_adapter = None
 _kafka_adapter = None
@@ -645,6 +646,13 @@ try:
     print("[AMOS] RemoteID: Ready")
 except Exception as e:
     print(f"[AMOS] RemoteID: Not available ({e})")
+
+try:
+    from integrations.dragonos_bridge import DragonOSBridge
+    _dragonos = DragonOSBridge()
+    print("[AMOS] DragonOS/WarDragon: Ready")
+except Exception as e:
+    print(f"[AMOS] DragonOS/WarDragon: Not available ({e})")
 
 if feature_enabled("kafka"):
     try:
