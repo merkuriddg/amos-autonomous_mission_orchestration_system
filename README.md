@@ -4,6 +4,11 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/Tests-209_passing-brightgreen.svg)](tests/)
 
+> *"The LORD roars from Zion … the shepherd watches, and what he sees he declares."*
+> — inspired by the Book of Amos
+
+In the Hebrew Bible, **Amos** was a shepherd called to be a watchman — scanning the horizon, seeing threats others missed, and speaking truth when it mattered most. That is exactly what this platform does: it watches across every domain, fuses what it sees, and orchestrates autonomous forces to protect and respond. The name isn't a coincidence.
+
 **Mission Operating System for Autonomous Systems**
 
 AMOS is a **multi-domain command-and-control platform** that enables small teams of human operators to supervise and coordinate autonomous robotic assets across **air, ground, maritime, cyber, and space domains**.
@@ -33,6 +38,10 @@ Browser opens automatically. Login: `commander` / `amos_op1` — watch the missi
 - `./run_demo.sh disaster_response` — Earthquake SAR: drones map damage, robots inspect structures, AMOS prioritizes rescue tasks
 
 Each scenario runs ~2 minutes with timed mission events, autonomous coordination, and human-in-the-loop checkpoints.
+
+![AMOS Demo](docs/images/demo.gif)
+
+> *Replace this placeholder after recording: `Cmd+Shift+5` → screen record → convert with `gifski` → save to `docs/images/demo.gif`*
 
 ---
 
