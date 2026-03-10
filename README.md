@@ -64,9 +64,9 @@ Open **http://localhost:2600** — Login: `commander` / `amos_op1`
 
 ## What AMOS Does
 
-AMOS coordinates a 25-asset autonomous robotic platoon operating across multiple domains.
+AMOS coordinates autonomous robotic forces — from small platoons to formations of hundreds or thousands of assets — operating across multiple domains.
 
-A small team of human operators defines mission objectives while autonomous systems execute the operational workload.
+A small team of human operators defines mission objectives while autonomous systems execute the operational workload. The default configuration ships with a 25-asset platoon, but the platform scales to arbitrary force sizes across unlimited theaters.
 
 Core capabilities include:
 - multi-robot coordination
