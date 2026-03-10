@@ -13,7 +13,7 @@ bp = Blueprint("ent_security", __name__)
 # ═══════════════════════════════════════════════════════════
 #  COMSEC
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/comsec/status")
+@bp.route("/comsec/status")
 @login_required
 def api_comsec_status():
     return jsonify({
@@ -21,12 +21,12 @@ def api_comsec_status():
         "key_manager": key_mgr.get_status(),
     })
 
-@bp.route("/api/comsec/keys")
+@bp.route("/comsec/keys")
 @login_required
 def api_comsec_keys():
     return jsonify(key_mgr.list_keys())
 
-@bp.route("/api/comsec/generate-key", methods=["POST"])
+@bp.route("/comsec/generate-key", methods=["POST"])
 @login_required
 def api_comsec_gen_key():
     d = request.json or {}
@@ -34,7 +34,7 @@ def api_comsec_gen_key():
     security_audit.log_crypto("KEY_GENERATE", rec.get("key_id", ""))
     return jsonify(rec)
 
-@bp.route("/api/comsec/rotate-key", methods=["POST"])
+@bp.route("/comsec/rotate-key", methods=["POST"])
 @login_required
 def api_comsec_rotate_key():
     d = request.json or {}
@@ -46,7 +46,7 @@ def api_comsec_rotate_key():
 # ═══════════════════════════════════════════════════════════
 #  SECURITY AUDIT
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/security/audit")
+@bp.route("/security/audit")
 @login_required
 def api_security_audit():
     cat = request.args.get("category")
@@ -54,7 +54,7 @@ def api_security_audit():
     lim = request.args.get("limit", 50, type=int)
     return jsonify(security_audit.get_events(category=cat, severity=sev, limit=lim))
 
-@bp.route("/api/security/audit/status")
+@bp.route("/security/audit/status")
 @login_required
 def api_security_audit_status():
     return jsonify(security_audit.get_status())
@@ -63,7 +63,7 @@ def api_security_audit_status():
 # ═══════════════════════════════════════════════════════════
 #  CLASSIFICATION MARKING
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/security/classify", methods=["POST"])
+@bp.route("/security/classify", methods=["POST"])
 @login_required
 def api_security_classify():
     if not ClassificationMarker:

@@ -56,7 +56,7 @@ function barHTML(label,pct,cls){
         '<div style="color:#888;font-size:.7em;text-align:right">'+pct.toFixed(1)+'%</div>';
 }
 async function refreshHAL(){
-    const recs=await apiFetch('/api/hal/recommendations');
+    const recs=await apiFetch('/api/v1/hal/recommendations');
     const div=document.getElementById('hal-pending'); div.innerHTML='';
     const all=Array.isArray(recs)?recs:[];
     const pending=all.filter(function(r){return r.status==='pending';});
@@ -101,9 +101,9 @@ async function refreshHAL(){
         div.innerHTML+=html;
     });
 }
-async function halAct(id,action){await apiPost('/api/hal/action',{id:id,action:action});refreshHAL();}
+async function halAct(id,action){await apiPost('/api/v1/hal/action',{id:id,action:action});refreshHAL();}
 async function genCOA(){
-    const coas=await apiPost('/api/coa/generate',{});
+    const coas=await apiPost('/api/v1/coa/generate',{});
     const div=document.getElementById('coa-results');
     const arr=Array.isArray(coas)?coas:[];
     document.getElementById('hal-coa-count').textContent=arr.length;
@@ -129,7 +129,7 @@ async function genCOA(){
 }
 async function loadHistory(){
     document.getElementById('history-section').style.display='block';
-    const hist=await apiFetch('/api/coa/history');
+    const hist=await apiFetch('/api/v1/coa/history');
     const div=document.getElementById('hal-history');
     const arr=Array.isArray(hist)?hist:[];
     if(arr.length===0){div.innerHTML='<div style="color:#666;padding:10px">No COA decisions yet</div>';return;}

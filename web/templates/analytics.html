@@ -73,7 +73,7 @@ function pctBar(label,pct,color){
 }
 
 async function refreshAnalytics(){
-    const d=await apiFetch('/api/analytics/summary');
+    const d=await apiFetch('/api/v1/analytics/summary');
     // Elapsed
     var mins=Math.floor(d.mission_elapsed_sec/60);
     var secs=Math.floor(d.mission_elapsed_sec%60);

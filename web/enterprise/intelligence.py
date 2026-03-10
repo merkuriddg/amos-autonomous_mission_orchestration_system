@@ -20,7 +20,7 @@ bp = Blueprint("ent_intelligence", __name__)
 # ═══════════════════════════════════════════════════════════
 #  HAL / COA / COGNITIVE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/hal/recommendations")
+@bp.route("/hal/recommendations")
 @login_required
 def api_hal_recs():
     if not cognitive_engine:
@@ -45,7 +45,7 @@ def api_hal_recs():
         merged.append(r)
     return jsonify(merged)
 
-@bp.route("/api/hal/approve", methods=["POST"])
+@bp.route("/hal/approve", methods=["POST"])
 @login_required
 def api_hal_approve():
     if not cognitive_engine:
@@ -60,7 +60,7 @@ def api_hal_approve():
             "details": f"COA {rid} approved by {c['name']}"})
     return jsonify(result or {"error": "Recommendation not found"})
 
-@bp.route("/api/hal/reject", methods=["POST"])
+@bp.route("/hal/reject", methods=["POST"])
 @login_required
 def api_hal_reject():
     if not cognitive_engine:
@@ -71,14 +71,14 @@ def api_hal_reject():
     result = cognitive_engine.reject(rid, c["name"], d.get("reason", ""))
     return jsonify(result or {"error": "Recommendation not found"})
 
-@bp.route("/api/hal/risk")
+@bp.route("/hal/risk")
 @login_required
 def api_hal_risk():
     if not commander_support:
         return jsonify({})
     return jsonify(commander_support.get_risk())
 
-@bp.route("/api/hal/risk-trend")
+@bp.route("/hal/risk-trend")
 @login_required
 def api_hal_risk_trend():
     if not commander_support:
@@ -89,7 +89,7 @@ def api_hal_risk_trend():
 # ═══════════════════════════════════════════════════════════
 #  NLP COMMANDER
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/nlp/parse", methods=["POST"])
+@bp.route("/nlp/parse", methods=["POST"])
 @login_required
 def api_nlp_parse():
     if not nlp_parser:
@@ -97,7 +97,7 @@ def api_nlp_parse():
     text = (request.json or {}).get("text", "")
     return jsonify(nlp_parser.parse_command(text))
 
-@bp.route("/api/nlp/intent-history")
+@bp.route("/nlp/intent-history")
 @login_required
 def api_nlp_intent_history():
     if not nlp_parser:
@@ -108,14 +108,14 @@ def api_nlp_intent_history():
 # ═══════════════════════════════════════════════════════════
 #  LEARNING ENGINE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/learning/patterns")
+@bp.route("/learning/patterns")
 @login_required
 def api_learning_patterns():
     if not learning_engine:
         return jsonify([])
     return jsonify(learning_engine.get_patterns())
 
-@bp.route("/api/learning/metrics")
+@bp.route("/learning/metrics")
 @login_required
 def api_learning_metrics():
     if not learning_engine:
@@ -126,28 +126,28 @@ def api_learning_metrics():
 # ═══════════════════════════════════════════════════════════
 #  PREDICTIONS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/predict/threats")
+@bp.route("/predict/threats")
 @login_required
 def api_predict_threats():
     if not threat_predictor:
         return jsonify([])
     return jsonify(threat_predictor.get_predictions())
 
-@bp.route("/api/predict/heatmap")
+@bp.route("/predict/heatmap")
 @login_required
 def api_predict_heatmap():
     if not threat_predictor:
         return jsonify([])
     return jsonify(threat_predictor.get_heatmap())
 
-@bp.route("/api/predict/intercepts")
+@bp.route("/predict/intercepts")
 @login_required
 def api_predict_intercepts():
     if not threat_predictor:
         return jsonify([])
     return jsonify(threat_predictor.get_intercepts(sim_assets, sim_threats))
 
-@bp.route("/api/predict/patterns")
+@bp.route("/predict/patterns")
 @login_required
 def api_predict_patterns():
     if not threat_predictor:
@@ -158,7 +158,7 @@ def api_predict_patterns():
 # ═══════════════════════════════════════════════════════════
 #  WARGAMING ENGINE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/wargame/run", methods=["POST"])
+@bp.route("/wargame/run", methods=["POST"])
 @login_required
 def api_wargame_run():
     if not wargame_engine:
@@ -178,14 +178,14 @@ def api_wargame_run():
         iterations=d.get("iterations", 1000))
     return jsonify(result)
 
-@bp.route("/api/wargame/results/<sid>")
+@bp.route("/wargame/results/<sid>")
 @login_required
 def api_wargame_results(sid):
     if not wargame_engine:
         return jsonify({}), 503
     return jsonify(wargame_engine.get_scenario(sid))
 
-@bp.route("/api/wargame/compare", methods=["POST"])
+@bp.route("/wargame/compare", methods=["POST"])
 @login_required
 def api_wargame_compare():
     if not wargame_engine:
@@ -193,7 +193,7 @@ def api_wargame_compare():
     ids = (request.json or {}).get("scenario_ids", [])
     return jsonify(wargame_engine.compare_coas(ids))
 
-@bp.route("/api/wargame/history")
+@bp.route("/wargame/history")
 @login_required
 def api_wargame_history():
     if not wargame_engine:
@@ -204,7 +204,7 @@ def api_wargame_history():
 # ═══════════════════════════════════════════════════════════
 #  HAL ACTION
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/hal/action", methods=["POST"])
+@bp.route("/hal/action", methods=["POST"])
 @login_required
 def api_hal_action():
     d = request.json
@@ -242,7 +242,7 @@ def api_hal_action():
 # ═══════════════════════════════════════════════════════════
 #  COA GENERATION
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/coa/generate", methods=["POST"])
+@bp.route("/coa/generate", methods=["POST"])
 @login_required
 def api_coa():
     """Return real COA analysis from the cognitive engine."""
@@ -262,7 +262,7 @@ def api_coa():
     results.sort(key=lambda x: x["score"], reverse=True)
     return jsonify(results[:12])
 
-@bp.route("/api/coa/current")
+@bp.route("/coa/current")
 @login_required
 def api_coa_current():
     """All active COA recommendations from the cognitive engine."""
@@ -272,7 +272,7 @@ def api_coa_current():
     pending = [r for r in recs if r.get("status") == "pending"]
     return jsonify(pending)
 
-@bp.route("/api/coa/history")
+@bp.route("/coa/history")
 @login_required
 def api_coa_history():
     """Past COA decisions (approved/rejected)."""
@@ -286,21 +286,21 @@ def api_coa_history():
 # ═══════════════════════════════════════════════════════════
 #  COGNITIVE ENGINE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/cognitive/ooda")
+@bp.route("/cognitive/ooda")
 @login_required
 def api_cognitive_ooda():
     if not cognitive_engine:
         return jsonify([])
     return jsonify(cognitive_engine.get_loops())
 
-@bp.route("/api/cognitive/coa")
+@bp.route("/cognitive/coa")
 @login_required
 def api_cognitive_coa():
     if not cognitive_engine:
         return jsonify({})
     return jsonify(cognitive_engine.get_coas())
 
-@bp.route("/api/cognitive/reasoning")
+@bp.route("/cognitive/reasoning")
 @login_required
 def api_cognitive_reasoning():
     if not cognitive_engine:
@@ -311,7 +311,7 @@ def api_cognitive_reasoning():
 # ═══════════════════════════════════════════════════════════
 #  NLP EXECUTE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/nlp/execute", methods=["POST"])
+@bp.route("/nlp/execute", methods=["POST"])
 @login_required
 def api_nlp_execute():
     if not nlp_parser:
@@ -338,14 +338,14 @@ def api_nlp_execute():
 # ═══════════════════════════════════════════════════════════
 #  CONTESTED ENVIRONMENT
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/contested/status")
+@bp.route("/contested/status")
 @login_required
 def api_contested_status():
     if not contested_env:
         return jsonify({})
     return jsonify(contested_env.get_status())
 
-@bp.route("/api/contested/gps-denial/add", methods=["POST"])
+@bp.route("/contested/gps-denial/add", methods=["POST"])
 @login_required
 def api_contested_gps_add():
     if not contested_env:
@@ -356,7 +356,7 @@ def api_contested_gps_add():
         d.get("radius_nm", 5), d.get("js_ratio_db", 20))
     return jsonify({"status": "ok", "zones": len(contested_env.gps_denial_zones)})
 
-@bp.route("/api/contested/gps-denial/remove", methods=["POST"])
+@bp.route("/contested/gps-denial/remove", methods=["POST"])
 @login_required
 def api_contested_gps_remove():
     if not contested_env:
@@ -366,7 +366,7 @@ def api_contested_gps_remove():
         z for z in contested_env.gps_denial_zones if z.get("id") != zid]
     return jsonify({"status": "ok"})
 
-@bp.route("/api/contested/mesh")
+@bp.route("/contested/mesh")
 @login_required
 def api_contested_mesh():
     if not contested_env:
@@ -377,21 +377,21 @@ def api_contested_mesh():
 # ═══════════════════════════════════════════════════════════
 #  RED FORCE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/redforce/status")
+@bp.route("/redforce/status")
 @login_required
 def api_redforce_status():
     if not red_force_ai:
         return jsonify({})
     return jsonify(red_force_ai.get_stats())
 
-@bp.route("/api/redforce/units")
+@bp.route("/redforce/units")
 @login_required
 def api_redforce_units():
     if not red_force_ai:
         return jsonify([])
     return jsonify(red_force_ai.get_units())
 
-@bp.route("/api/redforce/spawn", methods=["POST"])
+@bp.route("/redforce/spawn", methods=["POST"])
 @login_required
 def api_redforce_spawn():
     if not red_force_ai:
@@ -412,21 +412,21 @@ def api_redforce_spawn():
 # ═══════════════════════════════════════════════════════════
 #  COMMANDER SUPPORT
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/commander/risk")
+@bp.route("/commander/risk")
 @login_required
 def api_commander_risk():
     if not commander_support:
         return jsonify({})
     return jsonify(commander_support.get_risk())
 
-@bp.route("/api/commander/risk/trend")
+@bp.route("/commander/risk/trend")
 @login_required
 def api_commander_risk_trend():
     if not commander_support:
         return jsonify([])
     return jsonify(commander_support.get_risk_trend())
 
-@bp.route("/api/commander/resources")
+@bp.route("/commander/resources")
 @login_required
 def api_commander_resources():
     if not commander_support:
@@ -434,21 +434,21 @@ def api_commander_resources():
     mins = request.args.get("minutes", 60, type=int)
     return jsonify(commander_support.get_resources(sim_assets, mins))
 
-@bp.route("/api/commander/contingencies")
+@bp.route("/commander/contingencies")
 @login_required
 def api_commander_contingencies():
     if not commander_support:
         return jsonify([])
     return jsonify(commander_support.get_contingency_plans())
 
-@bp.route("/api/commander/triggered")
+@bp.route("/commander/triggered")
 @login_required
 def api_commander_triggered():
     if not commander_support:
         return jsonify([])
     return jsonify(commander_support.get_triggered_plans())
 
-@bp.route("/api/commander/contingency/add", methods=["POST"])
+@bp.route("/commander/contingency/add", methods=["POST"])
 @login_required
 def api_commander_contingency_add():
     if not commander_support:
@@ -460,7 +460,7 @@ def api_commander_contingency_add():
         d.get("priority", 5))
     return jsonify({"status": "ok", "plan": plan})
 
-@bp.route("/api/commander/contingency/cancel", methods=["POST"])
+@bp.route("/commander/contingency/cancel", methods=["POST"])
 @login_required
 def api_commander_contingency_cancel():
     if not commander_support:
@@ -473,35 +473,35 @@ def api_commander_contingency_cancel():
 # ═══════════════════════════════════════════════════════════
 #  LEARNING ENGINE (extended)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/learning/anomalies")
+@bp.route("/learning/anomalies")
 @login_required
 def api_learning_anomalies():
     if not learning_engine:
         return jsonify([])
     return jsonify(learning_engine.get_anomalies())
 
-@bp.route("/api/learning/engagements")
+@bp.route("/learning/engagements")
 @login_required
 def api_learning_engagements():
     if not learning_engine:
         return jsonify([])
     return jsonify(learning_engine.get_recent_engagements())
 
-@bp.route("/api/learning/engagement-stats")
+@bp.route("/learning/engagement-stats")
 @login_required
 def api_learning_engagement_stats():
     if not learning_engine:
         return jsonify({})
     return jsonify(learning_engine.get_engagement_stats())
 
-@bp.route("/api/learning/swarm-params")
+@bp.route("/learning/swarm-params")
 @login_required
 def api_learning_swarm_params():
     if not learning_engine:
         return jsonify({})
     return jsonify(learning_engine.get_swarm_params())
 
-@bp.route("/api/learning/swarm/tune", methods=["POST"])
+@bp.route("/learning/swarm/tune", methods=["POST"])
 @login_required
 def api_learning_swarm_tune():
     if not learning_engine:
@@ -511,14 +511,14 @@ def api_learning_swarm_tune():
         d.get("metric", ""), d.get("score", 0.5), d.get("weight", 1.0))
     return jsonify({"status": "ok", "params": params})
 
-@bp.route("/api/learning/aar")
+@bp.route("/learning/aar")
 @login_required
 def api_learning_aar():
     if not learning_engine:
         return jsonify({})
     return jsonify(learning_engine.generate_aar())
 
-@bp.route("/api/learning/events")
+@bp.route("/learning/events")
 @login_required
 def api_learning_events():
     if not learning_engine:
@@ -531,7 +531,7 @@ def api_learning_events():
 # ═══════════════════════════════════════════════════════════
 #  DOCUMENT GENERATION
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/docs/opord", methods=["POST"])
+@bp.route("/docs/opord", methods=["POST"])
 @login_required
 def api_docs_opord():
     """Generate a 5-paragraph OPORD from current mission state."""
@@ -543,7 +543,7 @@ def api_docs_opord():
         classification=d.get("classification", "UNCLASSIFIED"))
     return jsonify(opord)
 
-@bp.route("/api/docs/conop", methods=["POST"])
+@bp.route("/docs/conop", methods=["POST"])
 @login_required
 def api_docs_conop():
     """Generate a CONOP summary from current mission state."""
@@ -555,7 +555,7 @@ def api_docs_conop():
         classification=d.get("classification", "UNCLASSIFIED"))
     return jsonify(conop)
 
-@bp.route("/api/docs/briefing", methods=["POST"])
+@bp.route("/docs/briefing", methods=["POST"])
 @login_required
 def api_docs_briefing():
     """Quick mission briefing — combines key data from OPORD + CONOP."""

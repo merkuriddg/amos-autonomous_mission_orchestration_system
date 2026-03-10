@@ -26,7 +26,7 @@
 {% block scripts %}
 <script>
 async function refreshContested(){
-    const s=await apiFetch('/api/contested/status');
+    const s=await apiFetch('/api/v1/contested/status');
     if(!s)return;
     document.getElementById('gps-denied').textContent=s.stats.gps_denied_assets||0;
     document.getElementById('comms-denied').textContent=s.stats.comms_denied_assets||0;
@@ -61,7 +61,7 @@ async function addGPS(){
  const lat=parseFloat(document.getElementById('gps-lat').value)||35.689;
  const lng=parseFloat(document.getElementById('gps-lng').value)||51.312;
  const rad=parseFloat(document.getElementById('gps-rad').value)||5;
- await apiPost('/api/contested/gps-zone',{lat:lat,lng:lng,radius_nm:rad});
+ await apiPost('/api/v1/contested/gps-zone',{lat:lat,lng:lng,radius_nm:rad});
  refreshContested();
 }
 refreshContested(); setInterval(refreshContested,3000);

@@ -86,7 +86,7 @@ function dmgClass(d){return 'dmg-'+(d||'moderate');}
 function dmgIcon(d){return d==='destroyed'?'💥':d==='severe'?'🔥':d==='moderate'?'⚠️':d==='light'?'✓':'○';}
 
 async function refreshTimeline(){
- var list=await apiFetch('/api/bda/list');
+ var list=await apiFetch('/api/v1/bda/list');
  list.sort(function(a,b){return b.timestamp.localeCompare(a.timestamp);});
  var h='';
  list.forEach(function(r){
@@ -103,7 +103,7 @@ async function refreshTimeline(){
 }
 
 async function refreshAnalytics(){
- var a=await apiFetch('/api/bda/analytics');
+ var a=await apiFetch('/api/v1/bda/analytics');
  document.getElementById('bd-total').textContent=a.total;
  document.getElementById('bd-fk').textContent=a.fk_rate+'%';
  document.getElementById('bd-dest').textContent=a.by_damage.destroyed||0;
@@ -147,7 +147,7 @@ async function submitBDA(){
   imagery_available:document.getElementById('bf-img').checked,
   remarks:document.getElementById('bf-rem').value
  };
- var res=await apiFetch('/api/bda/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ var res=await apiFetch('/api/v1/bda/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  document.getElementById('bf-msg').textContent=res.status==='ok'?'BDA Report Submitted: '+res.report.id:'Error';
  refreshTimeline();refreshAnalytics();
 }

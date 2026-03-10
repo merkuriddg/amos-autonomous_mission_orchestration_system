@@ -112,8 +112,8 @@ function renderPipe(p){
 }
 
 async function refreshKW(){
- var pipes=await apiFetch('/api/killweb/pipelines');
- var stats=await apiFetch('/api/killweb/stats');
+ var pipes=await apiFetch('/api/v1/killweb/pipelines');
+ var stats=await apiFetch('/api/v1/killweb/stats');
  // Stats
  document.getElementById('kw-active').textContent=stats.active||0;
  document.getElementById('kw-await').textContent=stats.awaiting_approval||0;
@@ -136,11 +136,11 @@ async function refreshKW(){
 }
 
 async function approveKW(pid){
- await apiPost('/api/killweb/approve/'+pid,{});
+ await apiPost('/api/v1/killweb/approve/'+pid,{});
  refreshKW();
 }
 async function abortKW(pid){
- await apiPost('/api/killweb/abort/'+pid,{});
+ await apiPost('/api/v1/killweb/abort/'+pid,{});
  refreshKW();
 }
 

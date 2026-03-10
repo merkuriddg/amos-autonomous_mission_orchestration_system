@@ -48,9 +48,9 @@
 {% block scripts %}
 <script>
 async function refreshEffects(){
- var status=await apiFetch('/api/effects/status');
- var templates=await apiFetch('/api/effects/templates');
- var history=await apiFetch('/api/effects/history');
+ var status=await apiFetch('/api/v1/effects/status');
+ var templates=await apiFetch('/api/v1/effects/templates');
+ var history=await apiFetch('/api/v1/effects/history');
  if(!status)return;
 
  var stats=status.stats||{};
@@ -122,17 +122,17 @@ async function refreshEffects(){
 }
 
 async function createFromTemplate(tk){
- await apiPost('/api/effects/create',{template:tk,target:{id:'auto',lat:35.68,lng:51.31}});
+ await apiPost('/api/v1/effects/create',{template:tk,target:{id:'auto',lat:35.68,lng:51.31}});
  refreshEffects();
 }
 
 async function execChain(cid){
- await apiPost('/api/effects/execute/'+cid,{});
+ await apiPost('/api/v1/effects/execute/'+cid,{});
  refreshEffects();
 }
 
 async function abortChain(cid){
- await apiPost('/api/effects/abort/'+cid,{reason:'Manual abort'});
+ await apiPost('/api/v1/effects/abort/'+cid,{reason:'Manual abort'});
  refreshEffects();
 }
 

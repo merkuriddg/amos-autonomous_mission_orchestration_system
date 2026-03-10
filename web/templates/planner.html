@@ -24,7 +24,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var planMap=L.map('plan-map',{zoomControl:false}).setView([34.0,-118.0],10);
+var planMap=L.map('plan-map',{zoomControl:false}).setView([_amosTheater.lat,_amosTheater.lng],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(planMap);
 var planLayer=L.layerGroup().addTo(planMap);
 // ── Planner with checkbox persistence ──
@@ -34,7 +34,7 @@ async function refreshPlanner(){
     document.querySelectorAll('.asset-cb:checked').forEach(function(cb){
         _checkedAssets.add(cb.value);
     });
-    var assets = await apiFetch('/api/assets');
+    var assets = await apiFetch('/api/v1/assets');
     var div = document.getElementById('sw-assets');
     div.innerHTML = '<div style="color:#888;margin-bottom:4px">Select assets:</div>';
     for(var id of Object.keys(assets)){
@@ -43,7 +43,7 @@ async function refreshPlanner(){
             '<input type="checkbox" class="asset-cb" value="' + id + '"' + checked + '> ' +
             id + '</label>';
     }
-    var swarms = await apiFetch('/api/swarm');
+    var swarms = await apiFetch('/api/v1/swarm');
     var list = document.getElementById('swarm-list');
     list.innerHTML = '';
     planLayer.clearLayers();
@@ -79,7 +79,7 @@ async function createSwarm(){
     var cbs = document.querySelectorAll('.asset-cb:checked');
     var assets = Array.from(cbs).map(function(c){ return c.value; });
     if(!id || assets.length === 0){ alert('Need swarm ID and assets'); return; }
-    await apiPost('/api/swarm/create', {swarm_id: id, assets: assets, formation: form});
+    await apiPost('/api/v1/swarm/create', {swarm_id: id, assets: assets, formation: form});
     refreshPlanner();
 }
 

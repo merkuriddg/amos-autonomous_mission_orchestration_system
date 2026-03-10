@@ -24,7 +24,7 @@
 <script>
 const PHASE_COL={OBSERVE:'#00ff41',ORIENT:'#00ccff',DECIDE:'#ffa500',ACT:'#ff4444'};
 async function refreshCog(){
-    const loops=await apiFetch('/api/cognitive/ooda');
+    const loops=await apiFetch('/api/v1/cognitive/ooda');
     const entries=Object.entries(loops||{});
     document.getElementById('ooda-loops').textContent=entries.length;
     const lDiv=document.getElementById('ooda-list');
@@ -33,7 +33,7 @@ async function refreshCog(){
         return '<div style="border-left:3px solid '+(PHASE_COL[l.phase]||'#333')+';padding:6px;margin:4px 0;background:#0a0a0a"><strong style="color:'+(PHASE_COL[l.phase]||'#fff')+'">'+l.phase+'</strong> | Threat: '+e[0]+' | Loop #'+l.loop_count+'<br><small>Pressure: '+((l.time_pressure||0)*100).toFixed(0)+'% | Since: '+l.time_in_phase_sec.toFixed(0)+'s</small></div>';
     }).join('');
 
-    const recs=await apiFetch('/api/cognitive/reasoning');
+    const recs=await apiFetch('/api/v1/cognitive/reasoning');
     const pending=(recs||[]).filter(function(r){return r.status==='pending';});
     document.getElementById('recs-pending').textContent=pending.length;
     const rDiv=document.getElementById('recs-list');
@@ -42,7 +42,7 @@ async function refreshCog(){
         return '<div style="border:1px solid '+sc+';padding:6px;margin:3px 0"><strong style="color:'+sc+'">'+r.id+'</strong> ['+r.status.toUpperCase()+']<br>Threat: '+r.threat_id+' ('+r.threat_type+') | Assets: '+(r.recommended_assets||[]).join(', ')+'<br><small>'+(r.reasoning_chain||[]).slice(0,2).map(function(rc){return rc.step+': '+rc.detail;}).join(' → ')+'</small></div>';
     }).join('');
 
-    const coas=await apiFetch('/api/cognitive/coa');
+    const coas=await apiFetch('/api/v1/cognitive/coa');
     const coaEntries=typeof coas==='object'?Object.entries(coas):[]; 
     let total=0;
     const cDiv=document.getElementById('coa-list');
@@ -59,7 +59,7 @@ refreshCog(); setInterval(refreshCog,3000);
 
 /* ── Threat Intel ── */
 async function refreshThreatIntel(){
-    const ti=await apiFetch('/api/threat-intel');
+    const ti=await apiFetch('/api/v1/threat-intel');
     const entries=Object.entries(ti||{});
     document.getElementById('ti-count').textContent=entries.length;
     if(!entries.length){
@@ -76,7 +76,7 @@ async function refreshThreatIntel(){
 }
 var _tiData={};
 async function showThreatDetail(ttype){
-    const ti=await apiFetch('/api/threat-intel');
+    const ti=await apiFetch('/api/v1/threat-intel');
     var t=ti[ttype]; if(!t){document.getElementById('ti-detail').innerHTML='Not found';return;}
     var npct=t.count?Math.round(t.neutralized/t.count*100):0;
     var h='<h3 style="color:#ff4444;font-size:1em;margin-bottom:8px">'+ttype.toUpperCase()+'</h3>';

@@ -24,16 +24,16 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var sigMap=L.map('sig-map',{zoomControl:false}).setView([34.0,-118.0],10);
+var sigMap=L.map('sig-map',{zoomControl:false}).setView([_amosTheater.lat,_amosTheater.lng],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(sigMap);
 var sigLayer=L.layerGroup().addTo(sigMap);
 async function refreshSIGINT(){
-    var summary=await apiFetch('/api/sigint/summary');
+    var summary=await apiFetch('/api/v1/sigint/summary');
     document.getElementById('sig-total').textContent=summary.total_intercepts||0;
     document.getElementById('sig-emitters').textContent=summary.unique_emitters||0;
     document.getElementById('sig-hostile').textContent=(summary.by_classification||{}).HOSTILE||0;
     document.getElementById('sig-suspect').textContent=(summary.by_classification||{}).SUSPECT||0;
-    var intercepts=await apiFetch('/api/sigint');
+    var intercepts=await apiFetch('/api/v1/sigint');
     var tbody=document.getElementById('sig-tbody'); tbody.innerHTML='';
     var arr=Array.isArray(intercepts)?intercepts:[];
     arr.slice(-50).reverse().forEach(function(i){
@@ -41,7 +41,7 @@ async function refreshSIGINT(){
         tbody.innerHTML+='<tr><td>'+(i.timestamp||'').substring(11,19)+'</td><td>'+(i.collector||'')+'</td><td>'+(i.freq_mhz||0).toFixed(1)+'</td><td>'+(i.power_dbm||'')+'</td><td>'+(i.modulation||'')+'</td><td>'+(i.bearing_deg||'')+'</td><td><span class="badge '+cls+'">'+(i.classification||'')+'</span></td></tr>';
     });
     sigLayer.clearLayers();
-    var eob=await apiFetch('/api/eob/map');
+    var eob=await apiFetch('/api/v1/eob/map');
     (eob.features||[]).forEach(function(f){
         var c=f.affiliation==='hostile'?'#ff4444':f.affiliation==='friendly'?'#00ff41':'#ffaa00';
         L.circleMarker([f.lat,f.lng],{radius:6,color:c,fillColor:c,fillOpacity:.7}).addTo(sigLayer)
@@ -49,7 +49,7 @@ async function refreshSIGINT(){
     });
     arr.slice(-20).forEach(function(i){
         if(i.bearing_deg!=null&&i.collector){
-            var lat=34.0+Math.random()*0.1-0.05,lng=-118.0+Math.random()*0.1-0.05;
+            var lat=_amosTheater.lat+Math.random()*0.1-0.05,lng=_amosTheater.lng+Math.random()*0.1-0.05;
             var rad=i.bearing_deg*Math.PI/180;
             var endLat=lat+Math.cos(rad)*0.05,endLng=lng+Math.sin(rad)*0.05;
             var lc=i.classification==='HOSTILE'?'#ff4444':'#ffaa00';
@@ -57,7 +57,7 @@ async function refreshSIGINT(){
         }
     });
     sigMap.invalidateSize();
-    var emitters=await apiFetch('/api/sigint/emitters');
+    var emitters=await apiFetch('/api/v1/sigint/emitters');
     var etbody=document.getElementById('emitter-tbody'); etbody.innerHTML='';
     for(var[freq,e]of Object.entries(emitters)){
         etbody.innerHTML+='<tr><td>'+e.freq_mhz.toFixed(1)+' MHz</td><td>'+e.count+'</td><td>'+(e.first_seen||'').substring(11,19)+'</td><td>'+(e.last_seen||'').substring(11,19)+'</td></tr>';

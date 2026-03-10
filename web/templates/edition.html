@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Edition Management{% endblock %}
+{% block head %}
+<style>
+.edition-banner{padding:12px;text-align:center;font-size:1.2em;letter-spacing:4px;margin-bottom:12px;border:1px solid}
+.edition-open{background:#001a00;border-color:#00ff41;color:#00ff41}
+.edition-enterprise{background:#1a0033;border-color:#aa44ff;color:#aa44ff}
+.bundle-card{background:#111;border:1px solid #222;padding:12px;margin-bottom:8px}
+.bundle-card h3{font-size:.9em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.feature-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #111;font-size:.82em}
+.feature-name{color:#ccc}
+.feature-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.toggle{position:relative;display:inline-block;width:36px;height:20px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;border-radius:10px;transition:.3s}
+.toggle-slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+.toggle input:checked+.toggle-slider{background:#00441a}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px);background:#00ff41}
+.toggle input:disabled+.toggle-slider{opacity:.4;cursor:not-allowed}
+.restart-badge{font-size:.65em;color:#ffaa00;border:1px solid #ffaa00;padding:1px 4px;border-radius:2px;margin-left:6px}
+.warn-bar{background:#1a1100;border:1px solid #ffaa00;padding:8px;margin-bottom:12px;color:#ffaa00;font-size:.82em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">⚙ EDITION MANAGEMENT</h2>
+
+ <div id="ed-banner" class="edition-banner edition-open">LOADING...</div>
+
+ <div class="warn-bar">
+  ⚠ Feature flag changes are runtime-only — restart reloads from environment variables.
+  Edition changes (open↔enterprise) require restart and valid enterprise package.
+ </div>
+
+ <div class="grid-4" style="margin-bottom:12px">
+  <div class="card stat"><div class="value" id="ed-total" style="color:#4488ff">--</div><div class="label">TOTAL FEATURES</div></div>
+  <div class="card stat"><div class="value" id="ed-enabled" style="color:#00ff41">--</div><div class="label">ENABLED</div></div>
+  <div class="card stat"><div class="value" id="ed-disabled" style="color:#ff4444">--</div><div class="label">DISABLED</div></div>
+  <div class="card stat"><div class="value" id="ed-edition" style="color:#aa44ff">--</div><div class="label">EDITION</div></div>
+ </div>
+
+ <div id="ed-bundles"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshEdition(){
+ var s=await apiFetch('/api/v1/edition/status');
+ // Banner
+ var banner=document.getElementById('ed-banner');
+ if(s.is_enterprise){banner.className='edition-banner edition-enterprise';banner.textContent='ENTERPRISE EDITION';}
+ else{banner.className='edition-banner edition-open';banner.textContent='OPEN EDITION';}
+ // Stats
+ document.getElementById('ed-total').textContent=s.total_features;
+ document.getElementById('ed-enabled').textContent=s.enabled_count;
+ document.getElementById('ed-disabled').textContent=s.total_features-s.enabled_count;
+ document.getElementById('ed-edition').textContent=s.edition.toUpperCase();
+}
+
+async function refreshBundles(){
+ var bundles=await apiFetch('/api/v1/edition/bundles');
+ var h='';
+ bundles.forEach(function(b){
+  h+='<div class="bundle-card">';
+  h+='<h3><span>'+b.name+' <span class="badge badge-blue">'+b.enabled_count+'/'+b.total_count+'</span></span></h3>';
+  h+='<div style="font-size:.75em;color:#666;margin-bottom:8px">'+b.description+'</div>';
+  b.features.forEach(function(f){
+   var dotColor=f.enabled?'#00ff41':'#ff4444';
+   var checked=f.enabled?'checked':'';
+   var disabled=f.restart_required?'disabled':'';
+   var restartBadge=f.restart_required?'<span class="restart-badge">RESTART REQ</span>':'';
+   h+='<div class="feature-row">';
+   h+='<span><span class="feature-dot" style="background:'+dotColor+'"></span><span class="feature-name">'+f.name+'</span>'+restartBadge+'</span>';
+   h+='<label class="toggle"><input type="checkbox" '+checked+' '+disabled+' onchange="toggleFeature(\''+f.name+'\',this.checked)"><span class="toggle-slider"></span></label>';
+   h+='</div>';
+  });
+  h+='</div>';
+ });
+ document.getElementById('ed-bundles').innerHTML=h;
+}
+
+async function toggleFeature(name,enabled){
+ var d=await apiPost('/api/v1/edition/toggle',{feature:name,enabled:enabled});
+ if(!d.success){alert(d.message||'Toggle failed');refreshBundles();return;}
+ refreshEdition();refreshBundles();
+}
+
+refreshEdition();refreshBundles();
+</script>
+{% endblock %}

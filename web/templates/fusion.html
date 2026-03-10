@@ -19,7 +19,7 @@
 <script>
 const KC_COLORS={DETECT:'#00ff41',IDENTIFY:'#00ccff',DECIDE:'#ffa500',ENGAGE:'#ff4444',ASSESS:'#ff00ff'};
 async function refreshFusion(){
-    const tracks=await apiFetch('/api/fusion/tracks');
+    const tracks=await apiFetch('/api/v1/fusion/tracks');
     const tDiv=document.getElementById('tracks-list');
     const entries=Object.entries(tracks||{});
     document.getElementById('fused-tracks').textContent=entries.length;
@@ -29,7 +29,7 @@ async function refreshFusion(){
         return '<div style="border:1px solid '+col+';padding:6px;margin:3px 0"><strong style="color:'+col+'">'+t.id+'</strong> '+t.classification+' | conf: '+(t.confidence*100).toFixed(0)+'% | sources: '+t.source_count+' | KC: <span style="color:'+KC_COLORS[t.kill_chain.phase]+'">'+t.kill_chain.phase+'</span><br><small>'+t.lat.toFixed(4)+', '+t.lng.toFixed(4)+' | age: '+t.age_sec.toFixed(0)+'s</small></div>';
     }).join('');
 
-    const kc=await apiFetch('/api/fusion/killchain');
+    const kc=await apiFetch('/api/v1/fusion/killchain');
     const kcDiv=document.getElementById('kc-phases');
     kcDiv.innerHTML=Object.entries(kc.phase_counts||{}).map(function(e){
         return '<div style="flex:1;text-align:center;padding:8px;background:#111;border:1px solid '+(KC_COLORS[e[0]]||'#333')+'"><div style="font-size:22px;color:'+(KC_COLORS[e[0]]||'#fff')+'">'+e[1]+'</div><small>'+e[0]+'</small></div>';
@@ -39,7 +39,7 @@ async function refreshFusion(){
         return '<div style="padding:3px 0;border-bottom:1px solid #222"><span style="color:'+(KC_COLORS[l.phase]||'#ccc')+'">'+l.phase+'</span> '+l.track_id+' | '+l.total_elapsed_sec+'s | '+l.operator+'</div>';
     }).join('');
 
-    const gaps=await apiFetch('/api/fusion/gaps');
+    const gaps=await apiFetch('/api/v1/fusion/gaps');
     document.getElementById('coverage-gaps').textContent=gaps.length;
     document.getElementById('kill-chain-active').textContent=entries.length;
     const gDiv=document.getElementById('gaps-list');

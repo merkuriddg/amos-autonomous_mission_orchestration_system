@@ -59,7 +59,7 @@
 var cnMap, cnMarkers={}, cnLinkLines=[], cnHeatLayer=null;
 
 function initMap(){
- cnMap=L.map('cn-map',{zoomControl:true}).setView([35.689,51.312],9);
+ cnMap=L.map('cn-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],9);
  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(cnMap);
  setTimeout(function(){cnMap.invalidateSize();},300);
 }
@@ -67,7 +67,7 @@ function initMap(){
 function statusColor(s){return s==='good'?'#00ff41':s==='degraded'?'#ffaa00':'#ff4444';}
 
 async function refreshMap(){
- var topo=await apiFetch('/api/commsnet/topology');
+ var topo=await apiFetch('/api/v1/commsnet/topology');
  var showLinks=document.getElementById('cn-show-links').checked;
  var showHeat=document.getElementById('cn-show-heatmap').checked;
 
@@ -111,7 +111,7 @@ async function refreshMap(){
 
  // Heatmap
  if(showHeat){
-  var hm=await apiFetch('/api/commsnet/heatmap');
+  var hm=await apiFetch('/api/v1/commsnet/heatmap');
   if(hm.points&&hm.points.length){
    var hData=hm.points.map(function(p){return[p.lat,p.lng,p.intensity];});
    cnHeatLayer=L.heatLayer(hData,{radius:30,blur:20,maxZoom:17,gradient:{0.2:'#ffaa00',0.5:'#ff6600',0.8:'#ff4444',1.0:'#ff0000'}}).addTo(cnMap);
@@ -141,7 +141,7 @@ function showRelayFor(assetId,topo){
 }
 
 async function refreshBudget(){
- var links=await apiFetch('/api/commsnet/links');
+ var links=await apiFetch('/api/v1/commsnet/links');
  var h='';
  links.forEach(function(l){
   var snrCol=l.snr_db>20?'#00ff41':l.snr_db>10?'#ffaa00':'#ff4444';
@@ -161,7 +161,7 @@ async function refreshBudget(){
 }
 
 async function refreshRelay(){
- var topo=await apiFetch('/api/commsnet/topology');
+ var topo=await apiFetch('/api/v1/commsnet/topology');
  var h='<div style="font-size:.72em;color:#666;margin-bottom:4px">Click a node on the map to see its relay chain</div>';
  // Show nodes with relay hops
  var relayed=topo.nodes.filter(function(n){return n.relay_hops>0;});

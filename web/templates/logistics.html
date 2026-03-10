@@ -58,7 +58,7 @@ var lgChart=null;
 function barCol(pct){return pct>50?'#00ff41':pct>20?'#ffaa00':'#ff4444';}
 
 async function refreshGrid(){
- var rows=await apiFetch('/api/logistics/status');
+ var rows=await apiFetch('/api/v1/logistics/status');
  document.getElementById('lg-assets').textContent=rows.length;
  var totalFuel=0,totalAmmo=0,redCount=0;
  var sel=document.getElementById('rs-asset');
@@ -89,7 +89,7 @@ async function refreshGrid(){
 }
 
 async function refreshChart(){
- var hist=await apiFetch('/api/logistics/history');
+ var hist=await apiFetch('/api/v1/logistics/history');
  if(!hist.length) return;
  var labels=hist.map(function(h){return h.ts.split('T')[1].substr(0,8);});
  var fuels=hist.map(function(h){return h.avg_fuel;});
@@ -110,7 +110,7 @@ async function refreshChart(){
 async function doResupply(){
  var aid=document.getElementById('rs-asset').value;
  if(!aid){document.getElementById('rs-msg').textContent='Select an asset';return;}
- var res=await apiFetch('/api/logistics/resupply',{method:'POST',headers:{'Content-Type':'application/json'},
+ var res=await apiFetch('/api/v1/logistics/resupply',{method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({asset_id:aid,fuel:parseFloat(document.getElementById('rs-fuel').value),
    ammo:parseInt(document.getElementById('rs-ammo').value),
    water:parseFloat(document.getElementById('rs-water').value),

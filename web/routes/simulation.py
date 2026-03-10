@@ -20,28 +20,28 @@ bp = Blueprint("simulation", __name__)
 # ═══════════════════════════════════════════════════════════
 #  SIM CONTROL
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/sim/speed", methods=["POST"])
+@bp.route("/sim/speed", methods=["POST"])
 @login_required
 def api_speed():
     sim_clock["speed"] = max(0.1, min(20, request.json.get("speed", 1.0)))
     return jsonify({"status": "ok", "speed": sim_clock["speed"]})
 
-@bp.route("/api/sim/status")
+@bp.route("/sim/status")
 @login_required
 def api_sim(): return jsonify(sim_clock)
 
-@bp.route("/api/user/role")
+@bp.route("/user/role")
 @login_required
 def api_role(): return jsonify(ctx())
 
-@bp.route("/api/users")
+@bp.route("/users")
 @login_required
 def api_users():
     c = ctx()
     if c["role"] != "commander": return jsonify({"error": "Denied"}), 403
     return jsonify({k: {"name": v["name"], "role": v["role"], "domain": v["domain"]} for k, v in USERS.items()})
 
-@bp.route("/api/ros2/status")
+@bp.route("/ros2/status")
 @login_required
 def api_ros2(): return jsonify(ros2_bridge.get_status())
 
@@ -49,11 +49,11 @@ def api_ros2(): return jsonify(ros2_bridge.get_status())
 # ═══════════════════════════════════════════════════════════
 #  AUTOMATION RULES
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/automation/rules")
+@bp.route("/automation/rules")
 @login_required
 def api_automation_rules(): return jsonify(automation_rules)
 
-@bp.route("/api/automation/rules/create", methods=["POST"])
+@bp.route("/automation/rules/create", methods=["POST"])
 @login_required
 def api_automation_rules_create():
     d = request.json or {}
@@ -68,7 +68,7 @@ def api_automation_rules_create():
         "created_at": now_iso(), "created_by": ctx()["name"]}
     return jsonify({"status": "ok", "rule": automation_rules[rid]})
 
-@bp.route("/api/automation/rules/toggle", methods=["POST"])
+@bp.route("/automation/rules/toggle", methods=["POST"])
 @login_required
 def api_automation_rules_toggle():
     rid = (request.json or {}).get("rule_id", "")
@@ -77,7 +77,7 @@ def api_automation_rules_toggle():
         return jsonify({"status": "ok", "enabled": automation_rules[rid]["enabled"]})
     return jsonify({"error": "Rule not found"}), 404
 
-@bp.route("/api/automation/rules/delete", methods=["POST"])
+@bp.route("/automation/rules/delete", methods=["POST"])
 @login_required
 def api_automation_rules_delete():
     rid = (request.json or {}).get("rule_id", "")
@@ -88,11 +88,11 @@ def api_automation_rules_delete():
 # ═══════════════════════════════════════════════════════════
 #  EXERCISE MODE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/exercise/status")
+@bp.route("/exercise/status")
 @login_required
 def api_exercise_status(): return jsonify(exercise)
 
-@bp.route("/api/exercise/start", methods=["POST"])
+@bp.route("/exercise/start", methods=["POST"])
 @login_required
 def api_exercise_start():
     d = request.json or {}
@@ -109,7 +109,7 @@ def api_exercise_start():
         "details": f"Exercise '{exercise['name']}' started with {len(exercise['injects'])} injects"})
     return jsonify({"status": "ok", "exercise": exercise})
 
-@bp.route("/api/exercise/stop", methods=["POST"])
+@bp.route("/exercise/stop", methods=["POST"])
 @login_required
 def api_exercise_stop():
     exercise["active"] = False
@@ -129,7 +129,7 @@ def api_exercise_stop():
         "timestamp": now_iso()})
     return jsonify({"status": "ok", "results": final})
 
-@bp.route("/api/exercise/presets")
+@bp.route("/exercise/presets")
 @login_required
 def api_exercise_presets():
     return jsonify([
@@ -159,7 +159,7 @@ def api_exercise_presets():
 # ═══════════════════════════════════════════════════════════
 #  RECORDING
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/recording/start", methods=["POST"])
+@bp.route("/recording/start", methods=["POST"])
 @login_required
 def api_recording_start():
     if recording["active"]:
@@ -174,7 +174,7 @@ def api_recording_start():
     recording["frame_seq"] = 0
     return jsonify({"status": "ok", "session_id": sid})
 
-@bp.route("/api/recording/stop", methods=["POST"])
+@bp.route("/recording/stop", methods=["POST"])
 @login_required
 def api_recording_stop():
     if not recording["active"]:
@@ -187,14 +187,14 @@ def api_recording_stop():
     recording["frame_seq"] = 0
     return jsonify({"status": "ok", "session_id": sid})
 
-@bp.route("/api/recording/sessions")
+@bp.route("/recording/sessions")
 @login_required
 def api_recording_sessions():
     rows = fetchall("SELECT * FROM recording_sessions ORDER BY started_at DESC LIMIT 50")
     return jsonify([{**r, "started_at": str(r["started_at"]),
                      "stopped_at": str(r["stopped_at"]) if r.get("stopped_at") else None} for r in rows])
 
-@bp.route("/api/recording/<session_id>/frames")
+@bp.route("/recording/<session_id>/frames")
 @login_required
 def api_recording_frames(session_id):
     rows = fetchall(
@@ -208,7 +208,7 @@ def api_recording_frames(session_id):
 # ═══════════════════════════════════════════════════════════
 #  OVERLAYS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/overlays/heatmap")
+@bp.route("/overlays/heatmap")
 @login_required
 def api_overlays_heatmap():
     points = []
@@ -220,7 +220,7 @@ def api_overlays_heatmap():
             points.append({"lat": p["lat"], "lng": p["lng"], "intensity": 0.4})
     return jsonify({"points": points, "count": len(points)})
 
-@bp.route("/api/overlays/sectors")
+@bp.route("/overlays/sectors")
 @login_required
 def api_overlays_sectors():
     sectors = []
@@ -235,7 +235,7 @@ def api_overlays_sectors():
             "center": {"lat": sum(lats) / len(lats), "lng": sum(lngs) / len(lngs)}})
     return jsonify(sectors)
 
-@bp.route("/api/overlays/engagement-zones")
+@bp.route("/overlays/engagement-zones")
 @login_required
 def api_overlays_engagement_zones():
     zones = []
@@ -247,7 +247,7 @@ def api_overlays_engagement_zones():
             "radius_deg": rng, "weapons": a["weapons"]})
     return jsonify(zones)
 
-@bp.route("/api/overlays/sensor-coverage")
+@bp.route("/overlays/sensor-coverage")
 @login_required
 def api_overlays_sensor_coverage():
     _SENSOR_PROFILES = {
@@ -280,7 +280,7 @@ def api_overlays_sensor_coverage():
 # ═══════════════════════════════════════════════════════════
 #  SITREP
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/sitrep/generate", methods=["POST"])
+@bp.route("/sitrep/generate", methods=["POST"])
 @login_required
 def api_sitrep_generate():
     from web.extensions import platoon
@@ -308,7 +308,7 @@ def api_sitrep_generate():
     persist_sitrep(sitrep)
     return jsonify(sitrep)
 
-@bp.route("/api/sitrep/history")
+@bp.route("/sitrep/history")
 @login_required
 def api_sitrep_history(): return jsonify(sitreps[-20:])
 
@@ -316,11 +316,11 @@ def api_sitrep_history(): return jsonify(sitreps[-20:])
 # ═══════════════════════════════════════════════════════════
 #  AAR
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/aar/events")
+@bp.route("/aar/events")
 @login_required
 def api_aar_events(): return jsonify(aar_events[-200:])
 
-@bp.route("/api/aar/export")
+@bp.route("/aar/export")
 @login_required
 def api_aar_export():
     from web.extensions import platoon
@@ -332,7 +332,7 @@ def api_aar_export():
         "events": aar_events, "countermeasures": cm_log, "swarms": swarms,
         "sigint_count": len(sigint_intercepts), "cyber_count": len(cyber_events)})
 
-@bp.route("/api/aar/timeline")
+@bp.route("/aar/timeline")
 @login_required
 def api_aar_timeline():
     etype = request.args.get("type")
@@ -356,7 +356,7 @@ def api_aar_timeline():
 # ═══════════════════════════════════════════════════════════
 #  ANALYTICS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/analytics/summary")
+@bp.route("/analytics/summary")
 @login_required
 def api_analytics_summary():
     at = sum(1 for t in sim_threats.values() if not t.get("neutralized"))
@@ -405,7 +405,7 @@ def api_analytics_summary():
 # ═══════════════════════════════════════════════════════════
 #  SYSCMD
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/syscmd/health")
+@bp.route("/syscmd/health")
 @login_required
 def api_syscmd_health():
     import platform
@@ -422,7 +422,7 @@ def api_syscmd_health():
         "aar_events": len(aar_events), "sim_speed": sim_clock["speed"],
         "uptime_history": uptime_pings[-60:]})
 
-@bp.route("/api/syscmd/metrics")
+@bp.route("/syscmd/metrics")
 @login_required
 def api_syscmd_metrics():
     top = sorted(api_metrics["by_endpoint"].items(), key=lambda x: x[1]["count"], reverse=True)[:30]
@@ -433,7 +433,7 @@ def api_syscmd_metrics():
     return jsonify({"total_requests": api_metrics["requests"], "total_errors": api_metrics["errors"],
                     "unique_endpoints": len(api_metrics["by_endpoint"]), "top_endpoints": endpoints})
 
-@bp.route("/api/syscmd/logs")
+@bp.route("/syscmd/logs")
 @login_required
 def api_syscmd_logs():
     lines = []
@@ -444,7 +444,7 @@ def api_syscmd_logs():
         lines = ["(Log file not available)\n"]
     return jsonify({"lines": [l.rstrip() for l in lines], "count": len(lines)})
 
-@bp.route("/api/syscmd/diagnostics")
+@bp.route("/syscmd/diagnostics")
 @login_required
 def api_syscmd_diagnostics():
     from web.state import online_ops
@@ -471,7 +471,7 @@ def api_syscmd_diagnostics():
 # ═══════════════════════════════════════════════════════════
 #  REPORTS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/reports/mission")
+@bp.route("/reports/mission")
 @login_required
 def api_reports_mission():
     from web.extensions import platoon

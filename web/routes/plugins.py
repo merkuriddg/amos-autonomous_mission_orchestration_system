@@ -15,12 +15,12 @@ bp = Blueprint("plugins", __name__)
 # ═══════════════════════════════════════════════════════════
 #  ADAPTER MANAGER
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/adapters/status")
+@bp.route("/adapters/status")
 @login_required
 def api_adapters_status():
     return jsonify(adapter_mgr.get_all_status())
 
-@bp.route("/api/adapters/connect", methods=["POST"])
+@bp.route("/adapters/connect", methods=["POST"])
 @login_required
 def api_adapters_connect():
     d = request.json or {}
@@ -29,7 +29,7 @@ def api_adapters_connect():
     security_audit.log_config("ADAPTER_CONNECT", session.get("user", "unknown"), aid)
     return jsonify({"adapter_id": aid, "connected": ok})
 
-@bp.route("/api/adapters/disconnect", methods=["POST"])
+@bp.route("/adapters/disconnect", methods=["POST"])
 @login_required
 def api_adapters_disconnect():
     d = request.json or {}
@@ -41,7 +41,7 @@ def api_adapters_disconnect():
 # ═══════════════════════════════════════════════════════════
 #  INTEGRATION HUB
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/integration/hub")
+@bp.route("/integration/hub")
 @login_required
 def api_integration_hub():
     """Aggregate status for the Integration Hub dashboard."""
@@ -60,7 +60,7 @@ def api_integration_hub():
 # ═══════════════════════════════════════════════════════════
 #  PLUGIN APIs
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/plugins")
+@bp.route("/plugins")
 @login_required
 def api_plugins():
     """List all plugins with status."""
@@ -70,7 +70,7 @@ def api_plugins():
         "capabilities": plugin_loader.get_capability_registry(),
     })
 
-@bp.route("/api/plugins/<name>")
+@bp.route("/plugins/<name>")
 @login_required
 def api_plugin_detail(name):
     """Get detailed status for a single plugin."""
@@ -79,7 +79,7 @@ def api_plugin_detail(name):
         return jsonify(status)
     return jsonify({"error": f"Plugin '{name}' not found"}), 404
 
-@bp.route("/api/plugins/health")
+@bp.route("/plugins/health")
 @login_required
 def api_plugins_health():
     """Health check across all plugins."""
@@ -89,7 +89,7 @@ def api_plugins_health():
 # ═══════════════════════════════════════════════════════════
 #  EVENT BUS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/events/recent")
+@bp.route("/events/recent")
 @login_required
 def api_events_recent():
     """Return recent events from the event bus."""
@@ -101,7 +101,7 @@ def api_events_recent():
         "topics": event_bus.get_topics(),
     })
 
-@bp.route("/api/events/publish", methods=["POST"])
+@bp.route("/events/publish", methods=["POST"])
 @login_required
 def api_events_publish():
     """Publish an event to the bus (for operator-initiated events)."""

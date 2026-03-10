@@ -45,16 +45,16 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var predMap=L.map('pred-map',{zoomControl:true}).setView([35.68,51.39],11);
+var predMap=L.map('pred-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],11);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(predMap);
 var heatLayer=L.layerGroup().addTo(predMap);
 var predLayer=L.layerGroup().addTo(predMap);
 
 async function refreshPred(){
- var preds=await apiFetch('/api/predict/threats');
- var heatmap=await apiFetch('/api/predict/heatmap');
- var patterns=await apiFetch('/api/predict/patterns');
- var intercepts=await apiFetch('/api/predict/intercepts');
+ var preds=await apiFetch('/api/v1/predict/threats');
+ var heatmap=await apiFetch('/api/v1/predict/heatmap');
+ var patterns=await apiFetch('/api/v1/predict/patterns');
+ var intercepts=await apiFetch('/api/v1/predict/intercepts');
  // Stats
  document.getElementById('pr-tracked').textContent=preds.length;
  document.getElementById('pr-patterns').textContent=patterns.length;

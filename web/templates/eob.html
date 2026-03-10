@@ -56,7 +56,7 @@
 var eobMap, eobMarkers={}, eobTrackLines=[];
 
 function initMap(){
- eobMap=L.map('eob-map',{zoomControl:true}).setView([35.689,51.312],9);
+ eobMap=L.map('eob-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],9);
  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(eobMap);
  setTimeout(function(){eobMap.invalidateSize();},300);
 }
@@ -64,7 +64,7 @@ function initMap(){
 function affCol(a){return a==='hostile'?'#ff4444':a==='neutral'?'#ffaa00':'#00ff41';}
 
 async function refreshList(){
- var units=await apiFetch('/api/eob/units');
+ var units=await apiFetch('/api/v1/eob/units');
  document.getElementById('eob-total').textContent=units.length;
  var actCount=units.filter(function(u){return u.status==='active';}).length;
  var hosCount=units.filter(function(u){return u.affiliation==='hostile';}).length;
@@ -92,7 +92,7 @@ async function refreshList(){
 async function refreshMap(){
  eobTrackLines.forEach(function(l){eobMap.removeLayer(l);});eobTrackLines=[];
  for(var k in eobMarkers){eobMap.removeLayer(eobMarkers[k]);}eobMarkers={};
- var mapData=await apiFetch('/api/eob/map');
+ var mapData=await apiFetch('/api/v1/eob/map');
  mapData.features.forEach(function(f){
   var col=affCol(f.affiliation);
   var op=f.status==='active'?0.9:0.4;
@@ -105,7 +105,7 @@ async function refreshMap(){
 }
 
 async function showDossier(uid){
- var u=await apiFetch('/api/eob/unit/'+uid);
+ var u=await apiFetch('/api/v1/eob/unit/'+uid);
  if(u.error){document.getElementById('eob-detail').innerHTML='<div style="color:#ff4444">'+u.error+'</div>';return;}
  var hc='eob-'+u.affiliation;
  var h='<div style="margin-bottom:6px"><span class="'+hc+'" style="font-weight:bold;font-size:1.1em">'+u.name+'</span> <span style="color:#888">('+u.id+')</span></div>';

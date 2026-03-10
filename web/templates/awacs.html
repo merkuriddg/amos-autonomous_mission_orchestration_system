@@ -19,11 +19,11 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var awMap=L.map('aw-map',{zoomControl:false}).setView([34.0,-118.0],9);
+var awMap=L.map('aw-map',{zoomControl:false}).setView([_amosTheater.lat,_amosTheater.lng],9);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(awMap);
 var awLayer=L.layerGroup().addTo(awMap);
 async function refreshAWACS(){
-    var assets=await apiFetch('/api/assets');
+    var assets=await apiFetch('/api/v1/assets');
     var div=document.getElementById('awacs-cards'); div.innerHTML='';
     awLayer.clearLayers();
     var count=0,totalAlt=0,totalBatt=0;

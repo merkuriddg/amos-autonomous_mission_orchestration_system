@@ -112,7 +112,7 @@ function togglePanel(hdr){
  if(chev)chev.classList.toggle('collapsed');
 }
 
-const map=L.map('map',{zoomControl:false}).setView([35.689,51.312],10);
+const map=L.map('map',{zoomControl:false}).setView([_amosTheater.lat,_amosTheater.lng],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(map);
 window._amosMap=map;
 // Cursor sharing — broadcast on mousemove (throttled)
@@ -134,18 +134,18 @@ function toggleWP(){
 }
 function clearWP(){
  const a=document.getElementById('wp-asset').value;
- apiPost('/api/waypoints/clear',a?{asset_id:a}:{});
+ apiPost('/api/v1/waypoints/clear',a?{asset_id:a}:{});
 }
 map.on('click',function(e){
  if(!wpMode)return;
  const a=document.getElementById('wp-asset').value;
  if(!a){alert('Select an asset first');return;}
- apiPost('/api/waypoints/add',{asset_id:a,lat:e.latlng.lat,lng:e.latlng.lng});
+ apiPost('/api/v1/waypoints/add',{asset_id:a,lat:e.latlng.lat,lng:e.latlng.lng});
 });
 
 // Populate asset dropdown
 async function loadAssetSelect(){
- const assets=await apiFetch('/api/assets');
+ const assets=await apiFetch('/api/v1/assets');
  const sel=document.getElementById('wp-asset');
  const cur=sel.value;sel.innerHTML='<option value="">-- select --</option>';
  for(const id of Object.keys(assets).sort())sel.innerHTML+='<option value="'+id+'">'+id+'</option>';
@@ -155,7 +155,7 @@ loadAssetSelect();
 
 // Refresh
 async function refresh(){
- const assets=await apiFetch('/api/assets');
+ const assets=await apiFetch('/api/v1/assets');
  const tb=document.getElementById('a-tb');tb.innerHTML='';
  for(const[id,a]of Object.entries(assets)){
   const c=DC[a.domain]||'#888';
@@ -168,7 +168,7 @@ async function refresh(){
   if(aM[id]){aM[id].setLatLng(p);aM[id].setTooltipContent(tip);}else aM[id]=L.marker(p,{icon:mkI(c)}).bindTooltip(tip).addTo(map);
  }
  document.getElementById('asset-count-badge').textContent=Object.keys(assets).length;
- const threats=await apiFetch('/api/threats');
+ const threats=await apiFetch('/api/v1/threats');
  const ttb=document.getElementById('t-tb');ttb.innerHTML='';
  var activeThreatCount=0;
  for(const[id,t]of Object.entries(threats)){
@@ -180,7 +180,7 @@ async function refresh(){
  }
  document.getElementById('threat-count-badge').textContent=activeThreatCount;
  // Waypoints
- const wps=await apiFetch('/api/waypoints');
+ const wps=await apiFetch('/api/v1/waypoints');
  for(const[aid,ms]of Object.entries(wpM)){ms.forEach(function(m){map.removeLayer(m);});}
  for(const[aid,l]of Object.entries(wpL)){map.removeLayer(l);}
  wpM={};wpL={};
@@ -197,7 +197,7 @@ async function refresh(){
  // Geofences
  for(const[id,l]of Object.entries(gfL)){map.removeLayer(l);}
  gfL={};
- const gfs=await apiFetch('/api/geofences');
+ const gfs=await apiFetch('/api/v1/geofences');
  const gc={operational:'#00ff41',restricted:'#ff4444',alert:'#ffaa00'};
  for(const[id,gf]of Object.entries(gfs)){
   const clr=gc[gf.type]||'#888';let layer;
@@ -206,7 +206,7 @@ async function refresh(){
   if(layer){layer.bindTooltip(gf.name+' ['+gf.type.toUpperCase()+']');layer.addTo(map);gfL[id]=layer;}
  }
  // GF Alerts
- const alerts=await apiFetch('/api/geofences/alerts');
+ const alerts=await apiFetch('/api/v1/geofences/alerts');
  document.getElementById('gf-count-badge').textContent=alerts.length;
  const ad=document.getElementById('gf-alerts');
  if(alerts.length===0)ad.innerHTML='<div style="color:#666;padding:6px">No alerts</div>';
@@ -223,7 +223,7 @@ window.onSimUpdate=function(d){
  document.getElementById('s-gf').textContent=d.gf_alerts;
  document.getElementById('sim-clk').textContent='T+'+Math.round(d.clock.elapsed_sec)+'s ('+d.clock.speed+'x)';
 };
-function setSpd(s){apiPost('/api/sim/speed',{speed:s});}
+function setSpd(s){apiPost('/api/v1/sim/speed',{speed:s});}
 refresh();setInterval(refresh,2500);
 
 // ═══ Phase 8: Map Overlays ═══
@@ -239,20 +239,20 @@ async function refreshOverlay(key){
  clearOvLayer(key);
  if(!_ovActive[key])return;
  if(key==='heat'){
-  var d=await apiFetch('/api/overlays/heatmap');
+  var d=await apiFetch('/api/v1/overlays/heatmap');
   if(d.points&&d.points.length&&typeof L.heatLayer==='function'){
    var pts=d.points.map(function(p){return[p.lat,p.lng,p.intensity||0.5];});
    _heatLayer=L.heatLayer(pts,{radius:25,blur:20,maxZoom:14,gradient:{0.2:'blue',0.4:'cyan',0.6:'yellow',0.8:'orange',1.0:'red'}}).addTo(map);
   }
  } else if(key==='engage'){
-  var zones=await apiFetch('/api/overlays/engagement-zones');
+  var zones=await apiFetch('/api/v1/overlays/engagement-zones');
   var dc={air:'#ff444466',ground:'#00ff4166',maritime:'#ff44ff66'};
   zones.forEach(function(z){
    var c=L.circle([z.center.lat,z.center.lng],{radius:z.radius_deg*111000,color:dc[z.domain]||'#ff444466',fillOpacity:0.08,weight:1,dashArray:'4,4'}).bindTooltip(z.asset_id+' — '+z.weapons.join(', ')).addTo(map);
    _ovLayers.engage.push(c);
   });
  } else if(key==='sensor'){
-  var arcs=await apiFetch('/api/overlays/sensor-coverage');
+  var arcs=await apiFetch('/api/v1/overlays/sensor-coverage');
   arcs.forEach(function(a){
    var pts=[];
    var lat=a.center.lat,lng=a.center.lng,r=a.range_deg,arc=a.arc_deg,brg=a.bearing;
@@ -265,14 +265,14 @@ async function refreshOverlay(key){
    _ovLayers.sensor.push(poly);
   });
  } else if(key==='sector'){
-  var secs=await apiFetch('/api/overlays/sectors');
+  var secs=await apiFetch('/api/v1/overlays/sectors');
   var dc2={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
   secs.forEach(function(s){
    var rect=L.rectangle([[s.bounds.south,s.bounds.west],[s.bounds.north,s.bounds.east]],{color:dc2[s.domain]||'#888',fillOpacity:0.04,weight:1,dashArray:'6,4'}).bindTooltip(s.domain.toUpperCase()+' sector ('+s.asset_count+' assets)').addTo(map);
    _ovLayers.sector.push(rect);
   });
  } else if(key==='weather'){
-  var ov=await apiFetch('/api/weather/overlay');
+  var ov=await apiFetch('/api/v1/weather/overlay');
   (ov.points||[]).forEach(function(p){
    var ic=L.divIcon({className:'',html:'<div style="font-size:12px;color:rgba(102,204,255,.6);transform:rotate('+p.wind_dir+'deg)">\u2191</div>',iconSize:[14,14]});
    var m=L.marker([p.lat,p.lng],{icon:ic}).bindTooltip('Wind:'+p.wind_speed+'kt Vis:'+p.visibility+'km',{direction:'top'}).addTo(map);
@@ -316,7 +316,7 @@ async function clearFormation() {
     var domain = (domainEl && domainEl.value) ? domainEl.value.toLowerCase() : 'ground';
     var statusEl = document.getElementById('swarm-status');
     try {
-        var resp = await fetch('/api/swarm/clear', {
+        var resp = await fetch('/api/v1/swarm/clear', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({domain: domain})
@@ -336,7 +336,7 @@ var c2Selected = {};
 var c2Assets = {};
 
 function c2LoadAssets(){
-    fetch('/api/assets').then(function(r){return r.json()}).then(function(data){
+    fetch('/api/v1/assets').then(function(r){return r.json()}).then(function(data){
         c2Assets = data;
         c2RenderList();
     }).catch(function(e){ console.warn('[C2] load error', e); });
@@ -438,7 +438,7 @@ function c2Execute(){
         }
 
         // Fallback direct API
-        fetch('/api/swarm/formation', {
+        fetch('/api/v1/swarm/formation', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({formation: action, domain: domain})
@@ -463,7 +463,7 @@ function c2Execute(){
         }
         statusEl.textContent = '⏳ ' + action + '...';
         Promise.all(selected.map(function(id){
-            return fetch('/api/phase3/asset/'+encodeURIComponent(id)+'/task',{
+            return fetch('/api/v1/phase3/asset/'+encodeURIComponent(id)+'/task',{
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body:JSON.stringify({task:action})
             });
@@ -474,7 +474,7 @@ function c2Execute(){
     }
     else if(type === 'swarm'){
         if(action === 'clear'){
-            fetch('/api/swarm/clear',{method:'POST'}).then(function(){
+            fetch('/api/v1/swarm/clear',{method:'POST'}).then(function(){
                 statusEl.textContent = '✓ Cleared';
                 statusEl.style.color = '#00ff41';
             });

@@ -258,7 +258,7 @@ document.querySelector('.tab-btn.active').style.color='#000';
 var locMap=null,locMarker=null,locData={};
 function initLocMap(){
  if(locMap)return;
- locMap=L.map('loc-map',{zoomControl:true}).setView([35.689,51.312],6);
+ locMap=L.map('loc-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],6);
  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(locMap);
  locMap.on('click',function(e){
   document.getElementById('loc-lat').value=e.latlng.lat.toFixed(4);
@@ -269,7 +269,7 @@ function initLocMap(){
  setTimeout(function(){locMap.invalidateSize();},200);
 }
 function refreshLocs(){
- apiFetch('/api/settings/locations').then(function(d){
+ apiFetch('/api/v1/settings/locations').then(function(d){
   locData=d;
   var h='';
   var locs=d.locations||{};
@@ -296,7 +296,7 @@ function saveLoc(){
  var key=document.getElementById('loc-key').value.trim();
  var name=document.getElementById('loc-name').value.trim();
  if(!key||!name){showMsg('loc-msg','Key and name required','#ff4444');return;}
- apiPost('/api/settings/locations/save',{
+ apiPost('/api/v1/settings/locations/save',{
   key:key,name:name,
   lat:parseFloat(document.getElementById('loc-lat').value)||0,
   lng:parseFloat(document.getElementById('loc-lng').value)||0,
@@ -335,10 +335,10 @@ function editLoc(k){
 }
 function deleteLoc(k){
  if(!confirm('Delete location "'+k+'"?'))return;
- apiPost('/api/settings/locations/delete',{key:k}).then(function(){refreshLocs();});
+ apiPost('/api/v1/settings/locations/delete',{key:k}).then(function(){refreshLocs();});
 }
 function activateLoc(k){
- apiPost('/api/settings/locations/activate',{key:k}).then(function(r){
+ apiPost('/api/v1/settings/locations/activate',{key:k}).then(function(r){
   if(r.status==='ok'){showMsg('loc-msg','Activated: '+r.location.name+'. Map center updated.','#00ff41');refreshLocs();}
   else showMsg('loc-msg',r.error||'Error','#ff4444');
  });
@@ -354,7 +354,7 @@ function clearLocForm(){
 function saveProfile(){
  var n=document.getElementById('prof-name').value.trim();
  if(!n){showMsg('prof-msg','Name required','#ff4444');return;}
- apiPost('/api/settings/profile',{name:n}).then(function(r){
+ apiPost('/api/v1/settings/profile',{name:n}).then(function(r){
   if(r.status==='ok'){showMsg('prof-msg','Name updated to: '+r.name,'#00ff41');document.getElementById('prof-current').textContent=r.name;}
   else showMsg('prof-msg',r.error||'Error','#ff4444');
  });
@@ -365,7 +365,7 @@ function changePW(){
  var cf=document.getElementById('pw-confirm').value;
  if(!cur||!nw){showMsg('pw-msg','All fields required','#ff4444');return;}
  if(nw!==cf){showMsg('pw-msg','Passwords do not match','#ff4444');return;}
- apiPost('/api/settings/password',{current:cur,new:nw}).then(function(r){
+ apiPost('/api/v1/settings/password',{current:cur,new:nw}).then(function(r){
   if(r.status==='ok'){showMsg('pw-msg','Password changed','#00ff41');document.getElementById('pw-current').value='';document.getElementById('pw-new').value='';document.getElementById('pw-confirm').value='';}
   else showMsg('pw-msg',r.error||'Error','#ff4444');
  });
@@ -373,7 +373,7 @@ function changePW(){
 
 /* ── SYSTEM ── */
 function refreshSystem(){
- apiFetch('/api/settings/system').then(function(s){
+ apiFetch('/api/v1/settings/system').then(function(s){
   document.getElementById('sys-assets').textContent=s.assets;
   document.getElementById('sys-threats').textContent=s.threats;
   var m=Math.floor(s.uptime_sec/60);var h=Math.floor(m/60);
@@ -385,7 +385,7 @@ function refreshSystem(){
    '<div>ROS 2: <span style="color:'+(s.ros2?'#00ff41':'#ff4444')+'">'+(s.ros2?'Connected':'Standalone')+'</span></div>'+
    '<div>Sim Speed: <span style="color:#fff">'+s.sim_speed+'x</span></div>';
  });
- apiFetch('/api/users').then(function(u){
+ apiFetch('/api/v1/users').then(function(u){
   var h='';
   for(var k in u){h+='<div style="padding:3px 0;border-bottom:1px solid #222">'+u[k].name+' <span style="color:#666">('+u[k].role+')</span> <span class="badge badge-blue">'+u[k].domain+'</span></div>';}
   document.getElementById('sys-users').innerHTML=h||'<div style="color:#666">Access denied</div>';
@@ -398,7 +398,7 @@ function showMsg(id,msg,color){var el=document.getElementById(id);el.style.color
 var fleetFilter='all';
 function filterFleet(d){fleetFilter=d;refreshFleet();}
 function refreshFleet(){
- apiFetch('/api/settings/assets').then(function(assets){
+ apiFetch('/api/v1/settings/assets').then(function(assets){
   var keys=Object.keys(assets).sort();
   var filtered=fleetFilter==='all'?keys:keys.filter(function(k){return assets[k].domain===fleetFilter;});
   document.getElementById('fleet-count').textContent=keys.length;
@@ -426,7 +426,7 @@ function saveAsset(){
  if(!id){showMsg('asset-msg','Asset ID required','#ff4444');return;}
  var sensors=document.getElementById('a-sensors').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
  var weapons=document.getElementById('a-weapons').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
- apiPost('/api/settings/assets/save',{
+ apiPost('/api/v1/settings/assets/save',{
   id:id,
   domain:document.getElementById('a-domain').value,
   type:document.getElementById('a-type').value.trim(),
@@ -445,7 +445,7 @@ function saveAsset(){
  });
 }
 function editAsset(id){
- apiFetch('/api/assets/'+id).then(function(a){
+ apiFetch('/api/v1/assets/'+id).then(function(a){
   if(a.error)return;
   document.getElementById('a-id').value=id;
   document.getElementById('a-domain').value=a.domain||'ground';
@@ -465,7 +465,7 @@ function editAsset(id){
 }
 function deleteAsset(id){
  if(!confirm('Delete asset '+id+'?'))return;
- apiPost('/api/settings/assets/delete',{id:id}).then(function(){refreshFleet();});
+ apiPost('/api/v1/settings/assets/delete',{id:id}).then(function(){refreshFleet();});
 }
 function clearAssetForm(){
  ['a-id','a-type','a-sensors','a-weapons','a-endurance','a-lat','a-lng','a-bridge-addr'].forEach(function(x){document.getElementById(x).value='';});
@@ -479,7 +479,7 @@ function clearAssetForm(){
 
 /* ── USERS (Admin CRUD) ── */
 function refreshUsers(){
- apiFetch('/api/settings/users').then(function(users){
+ apiFetch('/api/v1/settings/users').then(function(users){
   var keys=Object.keys(users).sort();
   document.getElementById('user-count').textContent=keys.length;
   var h='';
@@ -508,20 +508,20 @@ function saveUser(){
  var domain=document.getElementById('u-domain').value;
  var access=document.getElementById('u-access').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
  if(_editingUser){
-  apiPost('/api/settings/users/update',{username:_editingUser,name:name||undefined,role:role,domain:domain,access:access,password:password||undefined}).then(function(r){
+  apiPost('/api/v1/settings/users/update',{username:_editingUser,name:name||undefined,role:role,domain:domain,access:access,password:password||undefined}).then(function(r){
    if(r.status==='ok'){showMsg('user-msg','User updated','#00ff41');clearUserForm();refreshUsers();}
    else showMsg('user-msg',r.error||'Error','#ff4444');
   });
  }else{
   if(!username){showMsg('user-msg','Username required','#ff4444');return;}
-  apiPost('/api/settings/users/create',{username:username,name:name||username,password:password,role:role,domain:domain,access:access}).then(function(r){
+  apiPost('/api/v1/settings/users/create',{username:username,name:name||username,password:password,role:role,domain:domain,access:access}).then(function(r){
    if(r.status==='ok'){showMsg('user-msg','User created: '+r.username,'#00ff41');clearUserForm();refreshUsers();}
    else showMsg('user-msg',r.error||'Error','#ff4444');
   });
  }
 }
 function editUser(u){
- apiFetch('/api/settings/users').then(function(users){
+ apiFetch('/api/v1/settings/users').then(function(users){
   var info=users[u]; if(!info)return;
   _editingUser=u;
   document.getElementById('u-username').value=u;
@@ -537,7 +537,7 @@ function editUser(u){
 }
 function deleteUser(u){
  if(!confirm('Delete user "'+u+'"?'))return;
- apiPost('/api/settings/users/delete',{username:u}).then(function(){refreshUsers();});
+ apiPost('/api/v1/settings/users/delete',{username:u}).then(function(){refreshUsers();});
 }
 function clearUserForm(){
  _editingUser=null;
@@ -552,7 +552,7 @@ function clearUserForm(){
 /* ── SCENARIOS ── */
 function exportScenario(){
  var name=document.getElementById('sc-name').value.trim();
- apiPost('/api/scenario/save',{name:name||undefined}).then(function(r){
+ apiPost('/api/v1/scenario/save',{name:name||undefined}).then(function(r){
   if(r.error){showMsg('sc-export-msg',r.error,'#ff4444');return;}
   var blob=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
   var a=document.createElement('a');
@@ -566,7 +566,7 @@ function importScenario(){
  var raw=document.getElementById('sc-json').value.trim();
  if(!raw){showMsg('sc-import-msg','Paste scenario JSON first','#ff4444');return;}
  try{var data=JSON.parse(raw);}catch(e){showMsg('sc-import-msg','Invalid JSON','#ff4444');return;}
- apiPost('/api/scenario/load',data).then(function(r){
+ apiPost('/api/v1/scenario/load',data).then(function(r){
   if(r.status==='ok'){showMsg('sc-import-msg','Loaded: '+r.name+' ('+r.loaded.assets+' assets, '+r.loaded.threats+' threats)','#00ff41');}
   else showMsg('sc-import-msg',r.error||'Error','#ff4444');
  });

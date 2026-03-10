@@ -27,7 +27,7 @@
 <script>
 const STATE_COL={STAGING:'#666',PROBING:'#ffa500',ATTACKING:'#ff4444',WITHDRAWING:'#00ccff',DECOYING:'#ff00ff',DESTROYED:'#444'};
 async function refreshRF(){
-    const stats=await apiFetch('/api/redforce/status');
+    const stats=await apiFetch('/api/v1/redforce/status');
     if(stats){
         document.getElementById('rf-active').textContent=stats.active_units||0;
         document.getElementById('rf-strategy').textContent=stats.strategy||'--';
@@ -39,7 +39,7 @@ async function refreshRF(){
             '<span>Decoys: <b style="color:#ff00ff">'+stats.decoys_deployed+'</b></span>'+
             '<span>Attacks: <b style="color:#ff4444">'+stats.attacks_launched+'</b></span></div>';
     }
-    const units=await apiFetch('/api/redforce/units');
+    const units=await apiFetch('/api/v1/redforce/units');
     const uDiv=document.getElementById('rf-units');
     const entries=Object.entries(units||{});
     if(!entries.length){uDiv.innerHTML='<div style="color:#666;padding:10px">No red force units</div>';}
@@ -48,7 +48,7 @@ async function refreshRF(){
         return '<div style="border-left:3px solid '+sc+';padding:4px 8px;margin:3px 0;background:#0a0a0a;'+(u.state==='DESTROYED'?'opacity:0.4':'')+'"><strong style="color:'+sc+'">'+u.id+'</strong> ['+u.state+'] '+u.type+(u.is_decoy?' <span style="color:#ff00ff">DECOY</span>':'')+'<br><small>'+u.lat.toFixed(4)+', '+u.lng.toFixed(4)+' | '+u.speed_kts+'kts | RF: '+u.rf_freq_mhz+'MHz'+(u.jammed?' <span style="color:#ffa500">JAMMED</span>':'')+(u.freq_hops?' | hops:'+u.freq_hops:'')+'</small></div>';
     }).join('');
 }
-async function spawnUnit(){const t=document.getElementById('spawn-type').value;await apiPost('/api/redforce/spawn',{unit_type:t});refreshRF();}
+async function spawnUnit(){const t=document.getElementById('spawn-type').value;await apiPost('/api/v1/redforce/spawn',{unit_type:t});refreshRF();}
 refreshRF(); setInterval(refreshRF,3000);
 </script>
 {% endblock %}

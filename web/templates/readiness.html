@@ -67,7 +67,7 @@ function catCard(el,title,score,content){
 }
 
 async function refreshReadiness(){
-    const d=await apiFetch('/api/readiness');
+    const d=await apiFetch('/api/v1/readiness');
     // Main gauge
     var col=d.go_status==='GO'?'#00ff41':d.go_status==='MARGINAL'?'#ffaa00':'#ff4444';
     document.getElementById('rdy-overall').style.color=col;

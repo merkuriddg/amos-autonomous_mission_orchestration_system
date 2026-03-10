@@ -26,16 +26,16 @@
 {% block scripts %}
 <script>
 async function refreshEW(){
-    const status=await apiFetch('/api/ew/status');
+    const status=await apiFetch('/api/v1/ew/status');
     document.getElementById('ew-assets').textContent=status.ew_assets;
     document.getElementById('ew-active').textContent=status.active_jams;
     document.getElementById('ew-ready').textContent=status.ready;
     const sel=document.getElementById('jam-asset');
-    if(sel.options.length<1){const assets=await apiFetch('/api/assets');sel.innerHTML='';for(const[id,a]of Object.entries(assets)){if(a.sensors&&(a.sensors.includes('EW_JAMMER')||a.sensors.includes('SIGINT')))sel.innerHTML+='<option value="'+id+'">'+id+'</option>';}}
+    if(sel.options.length<1){const assets=await apiFetch('/api/v1/assets');sel.innerHTML='';for(const[id,a]of Object.entries(assets)){if(a.sensors&&(a.sensors.includes('EW_JAMMER')||a.sensors.includes('SIGINT')))sel.innerHTML+='<option value="'+id+'">'+id+'</option>';}}
     const opsDiv=document.getElementById('active-ops');
     if(status.operations.length===0)opsDiv.innerHTML='<div style="color:#666;padding:10px">No active jamming operations</div>';
     else opsDiv.innerHTML=status.operations.map(function(op){return '<div style="border:1px solid #ff4444;padding:8px;margin:4px 0"><strong style="color:#ff4444">'+op.technique.toUpperCase()+'</strong> @ '+op.target_freq_mhz+' MHz | '+op.power_dbm+' dBm | '+op.jammer_id+'<button class="btn btn-red" style="float:right;padding:2px 8px" onclick="stopJam(\''+op.id+'\')">STOP</button></div>';}).join('');
-    const intercepts=await apiFetch('/api/sigint');
+    const intercepts=await apiFetch('/api/v1/sigint');
     const tbody=document.getElementById('ew-intercepts'); tbody.innerHTML='';
     const list=Array.isArray(intercepts)?intercepts:[];
     list.slice(-30).reverse().forEach(function(i){
@@ -43,8 +43,8 @@ async function refreshEW(){
         tbody.innerHTML+='<tr><td>'+(i.timestamp||'').substring(11,19)+'</td><td>'+(i.collector||'--')+'</td><td>'+(i.freq_mhz||0).toFixed(1)+' MHz</td><td>'+(i.power_dbm||'--')+' dBm</td><td>'+(i.modulation||'--')+'</td><td><span class="badge '+cls+'">'+(i.classification||'--')+'</span></td></tr>';
     });
 }
-async function activateJam(){const a=document.getElementById('jam-asset').value;const f=parseFloat(document.getElementById('jam-freq').value);const t=document.getElementById('jam-tech').value;await apiPost('/api/ew/jam',{jammer_id:a,freq_mhz:f,technique:t});refreshEW();}
-async function stopJam(id){await apiPost('/api/ew/jam/stop',{op_id:id});refreshEW();}
+async function activateJam(){const a=document.getElementById('jam-asset').value;const f=parseFloat(document.getElementById('jam-freq').value);const t=document.getElementById('jam-tech').value;await apiPost('/api/v1/ew/jam',{jammer_id:a,freq_mhz:f,technique:t});refreshEW();}
+async function stopJam(id){await apiPost('/api/v1/ew/jam/stop',{op_id:id});refreshEW();}
 refreshEW(); setInterval(refreshEW,3000);
 </script>
 {% endblock %}

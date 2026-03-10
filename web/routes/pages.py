@@ -171,3 +171,11 @@ def hmt_page(): return render_template("hmt.html", **ctx())
 @bp.route("/mesh")
 @login_required
 def mesh_page(): return render_template("mesh.html", **ctx())
+
+@bp.route("/scripts")
+@login_required
+def scripts_page(): return render_template("scripts.html", **ctx())
+
+@bp.route("/edition")
+@login_required
+def edition_page(): return render_template("edition.html", **ctx())

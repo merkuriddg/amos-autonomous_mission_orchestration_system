@@ -70,7 +70,7 @@ var lastScenarioId=null;
 
 async function runWargame(){
  document.getElementById('wg-run-status').textContent='Running simulation...';
- var r=await apiPost('/api/wargame/run',{
+ var r=await apiPost('/api/v1/wargame/run',{
   name:document.getElementById('wg-name').value,
   approach:document.getElementById('wg-approach').value,
   tempo:document.getElementById('wg-tempo').value,
@@ -85,7 +85,7 @@ async function runWargame(){
 }
 
 async function pollResult(sid,attempt){
- var r=await apiFetch('/api/wargame/results/'+sid);
+ var r=await apiFetch('/api/v1/wargame/results/'+sid);
  if(r&&r.results){
   renderResults(r);
   document.getElementById('wg-run-status').textContent='Complete: '+sid;
@@ -121,7 +121,7 @@ function renderResults(sc){
 }
 
 async function refreshHistory(){
- var hist=await apiFetch('/api/wargame/history');
+ var hist=await apiFetch('/api/v1/wargame/history');
  var el=document.getElementById('wg-history');
  if(!hist||!hist.length){el.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No scenarios yet</div>';return;}
  el.innerHTML=hist.slice().reverse().map(function(h){
@@ -133,12 +133,12 @@ async function refreshHistory(){
 }
 
 async function loadScenario(sid){
- var r=await apiFetch('/api/wargame/results/'+sid);
+ var r=await apiFetch('/api/v1/wargame/results/'+sid);
  if(r&&r.results)renderResults(r);
 }
 
 async function refreshStats(){
- var s=await apiFetch('/api/wargame/history');
+ var s=await apiFetch('/api/v1/wargame/history');
  if(!s)return;
  var total=s.length,complete=s.length,running=0;
  document.getElementById('wg-total').textContent=total;

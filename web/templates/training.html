@@ -83,7 +83,7 @@ async function refreshAll(){
 }
 
 async function refreshCert(){
- var c=await apiFetch('/api/training/cert/{{ user }}');
+ var c=await apiFetch('/api/v1/training/cert/{{ user }}');
  document.getElementById('tr-cert-name').textContent=c.cert_name;
  document.getElementById('tr-cert-name').style.color=c.cert_color;
  document.getElementById('tr-ex-count').textContent=c.exercises;
@@ -112,7 +112,7 @@ async function refreshCert(){
 }
 
 async function refreshLeaderboard(){
- var board=await apiFetch('/api/training/leaderboard');
+ var board=await apiFetch('/api/v1/training/leaderboard');
  var h='';
  board.forEach(function(b){
   var posCol=b.rank===1?'#ffaa00':b.rank===2?'#aaa':b.rank===3?'#cc6633':'#555';
@@ -122,7 +122,7 @@ async function refreshLeaderboard(){
 }
 
 async function refreshHistory(){
- var recs=await apiFetch('/api/training/history');
+ var recs=await apiFetch('/api/v1/training/history');
  document.getElementById('tr-total').textContent=recs.length;
  // Scorecards
  var h='';
@@ -151,7 +151,7 @@ async function recordManual(){
  if(!name){document.getElementById('tr-msg').style.color='#ff4444';document.getElementById('tr-msg').textContent='Name required';return;}
  var score=parseInt(document.getElementById('tr-score').value)||0;
  var mx=parseInt(document.getElementById('tr-max').value)||100;
- var r=await apiPost('/api/training/record',{exercise_name:name,score:score,max_score:mx});
+ var r=await apiPost('/api/v1/training/record',{exercise_name:name,score:score,max_score:mx});
  if(r.status==='ok'){
   document.getElementById('tr-msg').style.color='#00ff41';
   document.getElementById('tr-msg').textContent='Recorded!';

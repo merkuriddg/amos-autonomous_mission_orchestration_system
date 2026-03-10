@@ -72,7 +72,7 @@ function initUptimeChart(){
 }
 
 async function refreshHealth(){
- var h=await apiFetch('/api/syscmd/health');
+ var h=await apiFetch('/api/v1/syscmd/health');
  // Stats
  var m=Math.floor(h.uptime_sec/60);var hr=Math.floor(m/60);
  document.getElementById('sc-uptime').textContent=(hr?hr+'h ':'')+(m%60)+'m';
@@ -101,7 +101,7 @@ async function refreshHealth(){
 }
 
 async function refreshMetrics(){
- var m=await apiFetch('/api/syscmd/metrics');
+ var m=await apiFetch('/api/v1/syscmd/metrics');
  document.getElementById('sc-reqs').textContent=m.total_requests;
  document.getElementById('sc-unique-eps').textContent=m.unique_endpoints;
  var h='';
@@ -114,7 +114,7 @@ async function refreshMetrics(){
 }
 
 async function refreshDiag(){
- var d=await apiFetch('/api/syscmd/diagnostics');
+ var d=await apiFetch('/api/v1/syscmd/diagnostics');
  var rows=[
   {name:'SocketIO Clients',ok:d.socketio_clients>0,val:d.socketio_clients+' connected'},
   {name:'PX4 Autopilot',ok:d.px4.connected,val:d.px4.connected?'Connected':'Offline'},
@@ -137,7 +137,7 @@ async function refreshDiag(){
 }
 
 async function refreshLogs(){
- var l=await apiFetch('/api/syscmd/logs');
+ var l=await apiFetch('/api/v1/syscmd/logs');
  var h='';
  (l.lines||[]).forEach(function(line){
   var col='#aaa';

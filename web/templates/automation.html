@@ -90,7 +90,7 @@
 <script>
 /* ── Rules ── */
 async function refreshRules(){
- const rules=await apiFetch('/api/automation/rules');
+ const rules=await apiFetch('/api/v1/automation/rules');
  const entries=Object.entries(rules||{});
  var active=entries.filter(function(e){return e[1].enabled;}).length;
  document.getElementById('rule-count').textContent=active;
@@ -123,17 +123,17 @@ function createRule(){
  else if(tt==='elapsed_time')tp={seconds:parseInt(tv)||300};
  if(at==='alert')ap={level:'warning',message:av||'Rule triggered'};
  else if(at==='speed_change')ap={speed:parseFloat(av)||0.5};
- apiPost('/api/automation/rules/create',{name:name,trigger_type:tt,trigger_params:tp,action_type:at,action_params:ap}).then(function(r){
+ apiPost('/api/v1/automation/rules/create',{name:name,trigger_type:tt,trigger_params:tp,action_type:at,action_params:ap}).then(function(r){
   if(r.status==='ok'){document.getElementById('r-name').value='';refreshRules();}
  });
 }
-function toggleRule(id){apiPost('/api/automation/rules/toggle',{rule_id:id}).then(refreshRules);}
-function deleteRule(id){apiPost('/api/automation/rules/delete',{rule_id:id}).then(refreshRules);}
+function toggleRule(id){apiPost('/api/v1/automation/rules/toggle',{rule_id:id}).then(refreshRules);}
+function deleteRule(id){apiPost('/api/v1/automation/rules/delete',{rule_id:id}).then(refreshRules);}
 
 /* ── Exercise ── */
 var _selectedPreset=null;
 async function loadPresets(){
- const presets=await apiFetch('/api/exercise/presets');
+ const presets=await apiFetch('/api/v1/exercise/presets');
  var h='';
  (presets||[]).forEach(function(p,i){
   h+='<div style="border:1px solid #333;padding:6px;margin:3px 0;cursor:pointer" onclick="selectPreset('+i+')" id="preset-'+i+'">';
@@ -150,11 +150,11 @@ function selectPreset(i){
 function startPreset(){
  if(_selectedPreset===null){alert('Select a preset first');return;}
  var p=window._presetData[_selectedPreset];
- apiPost('/api/exercise/start',{name:p.name,injects:p.injects}).then(function(){refreshExercise();loadPresets();});
+ apiPost('/api/v1/exercise/start',{name:p.name,injects:p.injects}).then(function(){refreshExercise();loadPresets();});
 }
-function stopExercise(){apiPost('/api/exercise/stop').then(refreshExercise);}
+function stopExercise(){apiPost('/api/v1/exercise/stop').then(refreshExercise);}
 async function refreshExercise(){
- const ex=await apiFetch('/api/exercise/status');
+ const ex=await apiFetch('/api/v1/exercise/status');
  if(ex.active){
   document.getElementById('ex-status').textContent='ACTIVE';
   document.getElementById('ex-status').style.color='#00ff41';
@@ -177,7 +177,7 @@ async function refreshExercise(){
 
 /* ── SITREP ── */
 async function generateSitrep(){
- const s=await apiPost('/api/sitrep/generate',{});
+ const s=await apiPost('/api/v1/sitrep/generate',{});
  var h='<div style="border:1px solid #00ff41;padding:10px;background:#0a0a0a">';
  h+='<div style="color:#ffaa00;font-weight:bold;margin-bottom:6px">'+s.id+' — '+s.dtg+'</div>';
  h+='<div style="color:#888;font-size:.75em;margin-bottom:6px">'+s.classification+' | '+s.mission+' ('+s.callsign+') | '+s.elapsed+'min elapsed</div>';
@@ -191,7 +191,7 @@ async function generateSitrep(){
  refreshSitrepHistory();
 }
 async function refreshSitrepHistory(){
- const list=await apiFetch('/api/sitrep/history');
+ const list=await apiFetch('/api/v1/sitrep/history');
  document.getElementById('sitrep-history').innerHTML=(list||[]).reverse().map(function(s){
   return '<div style="padding:4px 0;border-bottom:1px solid #111;font-size:.78em;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'"><span style="color:#ffaa00">'+s.id+'</span> '+s.dtg+'</div><div style="display:none;padding:4px 8px;background:#0a0a0a;font-size:.75em;color:#aaa">'+s.line1_enemy+'<br>'+s.line2_friendly+'</div>';
  }).join('')||'<div style="color:#666;padding:4px">No SITREPs generated</div>';
@@ -199,9 +199,9 @@ async function refreshSitrepHistory(){
 
 /* ── Overlays ── */
 async function refreshOverlays(){
- const hm=await apiFetch('/api/overlays/heatmap');
- const sc=await apiFetch('/api/overlays/sectors');
- const ez=await apiFetch('/api/overlays/engagement-zones');
+ const hm=await apiFetch('/api/v1/overlays/heatmap');
+ const sc=await apiFetch('/api/v1/overlays/sectors');
+ const ez=await apiFetch('/api/v1/overlays/engagement-zones');
  document.getElementById('overlay-stats').innerHTML=
   '<div class="card stat"><div class="value" style="color:#ff4444">'+hm.count+'</div><div class="label">HEATMAP POINTS</div></div>'+
   '<div class="card stat"><div class="value" style="color:#4488ff">'+sc.length+'</div><div class="label">DOMAIN SECTORS</div></div>'+

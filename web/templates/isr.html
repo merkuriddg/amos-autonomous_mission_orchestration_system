@@ -63,10 +63,10 @@
 {% block scripts %}
 <script>
 async function refreshISR(){
- var targets=await apiFetch('/api/isr/targets');
- var patterns=await apiFetch('/api/isr/patterns');
- var changes=await apiFetch('/api/isr/changes');
- var colls=await apiFetch('/api/isr/collections');
+ var targets=await apiFetch('/api/v1/isr/targets');
+ var patterns=await apiFetch('/api/v1/isr/patterns');
+ var changes=await apiFetch('/api/v1/isr/changes');
+ var colls=await apiFetch('/api/v1/isr/collections');
 
  // Stats
  var tkeys=targets?Object.keys(targets):[];
@@ -137,7 +137,7 @@ async function refreshISR(){
 }
 
 async function loadTarget(tid){
- var t=await apiFetch('/api/isr/atr/'+tid);
+ var t=await apiFetch('/api/v1/isr/atr/'+tid);
  if(!t||!t.id){document.getElementById('isr-detail').textContent='Not found';return;}
  var h='<div style="color:#4488ff;font-weight:bold;margin-bottom:4px">'+t.id+' ('+t.source+')</div>';
  h+='<div>ATR Confidence: <b style="color:#00ff41">'+(t.atr_confidence*100).toFixed(1)+'%</b></div>';
@@ -156,7 +156,7 @@ async function loadTarget(tid){
 async function addCollection(){
  var name=document.getElementById('isr-req-name').value||'Manual Collection';
  var pri=parseInt(document.getElementById('isr-req-pri').value)||5;
- await apiPost('/api/isr/task',{name:name,priority:pri,target:{lat:35.68,lng:51.31}});
+ await apiPost('/api/v1/isr/task',{name:name,priority:pri,target:{lat:35.68,lng:51.31}});
  refreshISR();
 }
 

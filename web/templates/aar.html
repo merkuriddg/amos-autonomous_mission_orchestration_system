@@ -74,7 +74,7 @@ var EVT_COLORS={countermeasure:'#ff4444',detection:'#ffaa00',ew_action:'#4488ff'
     waypoint_set:'#00aaff'};
 
 async function refreshAAR(){
-    var url='/api/aar/timeline';
+    var url='/api/v1/aar/timeline';
     if(_tlFilter) url+='?type='+_tlFilter;
     const d=await apiFetch(url);
     document.getElementById('aar-events').textContent=d.total||0;
@@ -103,14 +103,14 @@ async function refreshAAR(){
     });
 }
 function setFilter(t){_tlFilter=t;refreshAAR();}
-function exportAAR(){apiFetch('/api/aar/export').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
-function downloadReport(){apiFetch('/api/reports/mission').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MISSION_REPORT_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
+function exportAAR(){apiFetch('/api/v1/aar/export').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MOS_AAR_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
+function downloadReport(){apiFetch('/api/v1/reports/mission').then(function(data){var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MISSION_REPORT_'+new Date().toISOString().substring(0,10)+'.json';a.click();});}
 refreshAAR(); setInterval(refreshAAR,5000);
 
 /* ── Recording Controls ── */
 async function recStart(){
     const name = document.getElementById('rec-name').value || undefined;
-    const r = await apiFetch('/api/recording/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const r = await apiFetch('/api/v1/recording/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
     if(r.status==='ok'){
         document.getElementById('btn-rec-start').style.display='none';
         document.getElementById('btn-rec-stop').style.display='';
@@ -119,7 +119,7 @@ async function recStart(){
     } else { alert(r.error||'Failed'); }
 }
 async function recStop(){
-    const r = await apiFetch('/api/recording/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const r = await apiFetch('/api/v1/recording/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
     if(r.status==='ok'){
         document.getElementById('btn-rec-start').style.display='';
         document.getElementById('btn-rec-stop').style.display='none';
@@ -136,11 +136,11 @@ const _rDC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
 function _rIcon(c,s){s=s||7;return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border-radius:50%;border:1px solid #fff;box-shadow:0 0 6px '+c+'"></div>',iconSize:[s,s],className:''});}
 function initReplayMap(){
     if(_rMap)return;
-    _rMap=L.map('replay-map',{zoomControl:true}).setView([35.689,51.312],10);
+    _rMap=L.map('replay-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],10);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(_rMap);
 }
 async function loadSessions(){
-    const rows=await apiFetch('/api/recording/sessions');
+    const rows=await apiFetch('/api/v1/recording/sessions');
     const sel=document.getElementById('replay-sel');
     sel.innerHTML='<option value="">— Select a recording —</option>';
     (rows||[]).forEach(function(s){
@@ -150,7 +150,7 @@ async function loadSessions(){
 async function loadReplay(){
     const sid=document.getElementById('replay-sel').value;
     if(!sid){document.getElementById('replay-controls').style.display='none';return;}
-    _frames=await apiFetch('/api/recording/'+sid+'/frames');
+    _frames=await apiFetch('/api/v1/recording/'+sid+'/frames');
     if(!_frames||!_frames.length){document.getElementById('replay-info').innerHTML='<em>No frames</em>';return;}
     document.getElementById('replay-controls').style.display='';
     document.getElementById('replay-scrub').max=_frames.length-1;

@@ -90,7 +90,7 @@ async function genDoc(type){
     if(type==='briefing'){
         document.getElementById('doc-output').style.display='none';
         document.getElementById('briefing-output').style.display='block';
-        const brief=await apiPost('/api/docs/briefing',body);
+        const brief=await apiPost('/api/v1/docs/briefing',body);
         renderBriefing(brief);
         _lastDoc=brief;
         return;
@@ -98,7 +98,7 @@ async function genDoc(type){
 
     document.getElementById('briefing-output').style.display='none';
     document.getElementById('doc-output').style.display='block';
-    const doc=await apiPost('/api/docs/'+type,body);
+    const doc=await apiPost('/api/v1/docs/'+type,body);
     _lastDoc=doc;
 
     // Title

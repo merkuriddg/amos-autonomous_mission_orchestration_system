@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}System Scripts{% endblock %}
+{% block head %}
+<style>
+.file-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #111;font-size:.8em}
+.file-row input[type=checkbox]{accent-color:#00ff41}
+.file-status{width:20px;text-align:center;font-weight:bold}
+.commit-row{padding:6px 0;border-bottom:1px solid #111;font-size:.78em}
+.commit-hash{color:#4488ff;font-family:'Courier New',monospace}
+.commit-msg{color:#ccc}
+.commit-meta{color:#666;font-size:.85em}
+.danger-zone{border:1px solid #ff4444;padding:10px;margin-top:8px;background:#1a0000}
+.danger-zone h4{color:#ff4444;margin-bottom:8px;font-size:.85em}
+.lock-banner{background:#332200;border:1px solid #ffaa00;padding:8px;margin-bottom:8px;color:#ffaa00;font-size:.82em;display:none}
+.diff-box{background:#0a0a0a;border:1px solid #222;padding:8px;font-family:'Courier New',monospace;font-size:.72em;max-height:400px;overflow:auto;white-space:pre;color:#888}
+.diff-box .add{color:#00ff41}.diff-box .del{color:#ff4444}.diff-box .hdr{color:#4488ff}
+.confirm-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:5000;align-items:center;justify-content:center}
+.confirm-modal.show{display:flex}
+.confirm-box{background:#111;border:1px solid #ff4444;padding:20px;max-width:400px;text-align:center}
+.confirm-box h3{color:#ff4444;margin-bottom:10px}
+.confirm-box p{color:#ccc;font-size:.85em;margin-bottom:14px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">⚙ SYSTEM SCRIPTS <span class="badge badge-blue" id="sc-branch">--</span></h2>
+
+ <div id="lock-banner" class="lock-banner">⏳ Git operation in progress: <span id="lock-op">--</span> — please wait...</div>
+
+ <div style="display:flex;gap:4px;margin-bottom:12px">
+  <button class="btn tab-btn active" onclick="showTab('status',this)">GIT STATUS</button>
+  <button class="btn tab-btn" onclick="showTab('commit',this)">COMMIT</button>
+  <button class="btn tab-btn" onclick="showTab('branches',this)">BRANCHES</button>
+  <button class="btn tab-btn" onclick="showTab('log',this)">LOG</button>
+ </div>
+
+ <!-- STATUS TAB -->
+ <div id="tab-status" class="tab-panel">
+  <div class="grid-2">
+   <div class="card">
+    <h3>WORKING TREE</h3>
+    <div id="sc-modified" class="scroll-box" style="max-height:300px"></div>
+   </div>
+   <div class="card">
+    <h3>DIFF PREVIEW</h3>
+    <div id="sc-diff" class="diff-box">Select a file to preview diff</div>
+   </div>
+  </div>
+  <div class="card" style="margin-top:8px">
+   <h3>UNTRACKED FILES</h3>
+   <div id="sc-untracked" style="font-size:.8em;color:#888"></div>
+  </div>
+ </div>
+
+ <!-- COMMIT TAB -->
+ <div id="tab-commit" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>SELECT FILES TO COMMIT</h3>
+    <div style="margin-bottom:6px"><button class="btn" style="font-size:.7em;padding:2px 8px" onclick="selectAllFiles()">SELECT ALL</button> <button class="btn" style="font-size:.7em;padding:2px 8px" onclick="deselectAllFiles()">DESELECT ALL</button></div>
+    <div id="sc-commit-files" class="scroll-box" style="max-height:350px"></div>
+   </div>
+   <div class="card">
+    <h3>COMMIT</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+     <input id="commit-msg" type="text" placeholder="Commit message..." style="width:100%">
+     <label style="font-size:.78em;color:#888"><input type="checkbox" id="push-after" style="accent-color:#00ff41"> Push after commit</label>
+     <button class="btn" onclick="doCommit()" id="btn-commit">COMMIT SELECTED FILES</button>
+     <div id="commit-result" style="font-size:.78em;margin-top:4px"></div>
+    </div>
+    <div id="sc-staged-diff" class="diff-box" style="margin-top:8px;max-height:250px">Staged diff preview will appear here</div>
+   </div>
+  </div>
+ </div>
+
+ <!-- BRANCHES TAB -->
+ <div id="tab-branches" class="tab-panel" style="display:none">
+  <div class="grid-2">
+   <div class="card">
+    <h3>BRANCHES</h3>
+    <div id="sc-branches" class="scroll-box" style="max-height:400px"></div>
+   </div>
+   <div class="card">
+    <div class="danger-zone">
+     <h4>⚠ DANGER ZONE — Branch Operations</h4>
+     <p style="font-size:.78em;color:#aaa;margin-bottom:8px">Switching branches may affect running operations. Use with caution.</p>
+     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn btn-red" onclick="confirmAction('pull','Pull latest changes from remote?')">GIT PULL</button>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- LOG TAB -->
+ <div id="tab-log" class="tab-panel" style="display:none">
+  <div class="card">
+   <h3>RECENT COMMITS <button class="btn" style="float:right;padding:1px 8px;font-size:.7em" onclick="refreshLog()">REFRESH</button></h3>
+   <div id="sc-log" class="scroll-box" style="max-height:500px"></div>
+  </div>
+ </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="confirm-modal" id="confirm-modal">
+ <div class="confirm-box">
+  <h3>⚠ CONFIRM OPERATION</h3>
+  <p id="confirm-text">Are you sure?</p>
+  <div style="display:flex;gap:8px;justify-content:center">
+   <button class="btn btn-red" id="confirm-yes" onclick="executeConfirmed()">CONFIRM</button>
+   <button class="btn" onclick="closeConfirm()">CANCEL</button>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var _pendingAction=null;
+var _selectedFiles=new Set();
+
+function showTab(id,btn){
+ document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
+ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+ document.getElementById('tab-'+id).style.display='block';
+ if(btn)btn.classList.add('active');
+}
+
+function colorDiff(text){
+ return text.split('\n').map(function(l){
+  if(l.startsWith('+'))return'<span class="add">'+l.replace(/</g,'&lt;')+'</span>';
+  if(l.startsWith('-'))return'<span class="del">'+l.replace(/</g,'&lt;')+'</span>';
+  if(l.startsWith('@@')||l.startsWith('diff'))return'<span class="hdr">'+l.replace(/</g,'&lt;')+'</span>';
+  return l.replace(/</g,'&lt;');
+ }).join('\n');
+}
+
+async function refreshStatus(){
+ var d=await apiFetch('/api/v1/scripts/git/status');
+ if(d.error){document.getElementById('sc-modified').innerHTML='<div style="color:#ff4444;padding:8px">'+d.error+'</div>';return;}
+ document.getElementById('sc-branch').textContent=d.branch||'--';
+ // Lock banner
+ if(d.lock&&d.lock.running){document.getElementById('lock-banner').style.display='block';document.getElementById('lock-op').textContent=d.lock.operation||'unknown';}
+ else{document.getElementById('lock-banner').style.display='none';}
+ // Modified
+ var h='';
+ (d.modified||[]).forEach(function(f){
+  var col=f.status=='D'?'#ff4444':'#ffaa00';
+  h+='<div class="file-row"><span class="file-status" style="color:'+col+'">'+f.status+'</span><span style="color:#ccc;cursor:pointer" onclick="previewDiff(\''+f.file+'\')">'+f.file+'</span></div>';
+ });
+ (d.staged||[]).forEach(function(f){
+  h+='<div class="file-row"><span class="file-status" style="color:#00ff41">'+f.status+'</span><span style="color:#ccc">'+f.file+' <span style="color:#00ff41;font-size:.75em">(staged)</span></span></div>';
+ });
+ if(!h)h='<div style="color:#00ff41;padding:8px">✓ Working tree clean</div>';
+ document.getElementById('sc-modified').innerHTML=h;
+ // Untracked
+ var u='';
+ (d.untracked||[]).forEach(function(f){u+='<span style="color:#666;margin-right:10px">? '+f+'</span>';});
+ document.getElementById('sc-untracked').innerHTML=u||'<span style="color:#666">None</span>';
+ // Build commit file list
+ var allFiles=[].concat(d.modified||[]).concat(d.staged||[]);
+ var uniq={};allFiles.forEach(function(f){uniq[f.file]=f;});
+ (d.untracked||[]).forEach(function(f){uniq[f]={file:f,status:'?'};});
+ var ch='';
+ Object.values(uniq).forEach(function(f){
+  var checked=_selectedFiles.has(f.file)?'checked':'';
+  ch+='<div class="file-row"><input type="checkbox" '+checked+' onchange="toggleFile(\''+f.file+'\',this.checked)"><span class="file-status">'+f.status+'</span><span style="color:#ccc">'+f.file+'</span></div>';
+ });
+ document.getElementById('sc-commit-files').innerHTML=ch||'<div style="color:#666;padding:8px">No files to commit</div>';
+}
+
+async function previewDiff(file){
+ var d=await apiFetch('/api/v1/scripts/git/diff?file='+encodeURIComponent(file));
+ document.getElementById('sc-diff').innerHTML=colorDiff(d.diff||'No changes');
+}
+
+function toggleFile(f,checked){if(checked)_selectedFiles.add(f);else _selectedFiles.delete(f);}
+function selectAllFiles(){document.querySelectorAll('#sc-commit-files input[type=checkbox]').forEach(function(cb){cb.checked=true;toggleFile(cb.parentElement.querySelector('span:last-child').textContent,true);});}
+function deselectAllFiles(){_selectedFiles.clear();document.querySelectorAll('#sc-commit-files input[type=checkbox]').forEach(function(cb){cb.checked=false;});}
+
+async function doCommit(){
+ var msg=document.getElementById('commit-msg').value.trim();
+ if(!msg){document.getElementById('commit-result').innerHTML='<span style="color:#ff4444">Commit message required</span>';return;}
+ if(_selectedFiles.size===0){document.getElementById('commit-result').innerHTML='<span style="color:#ff4444">No files selected</span>';return;}
+ var pushAfter=document.getElementById('push-after').checked;
+ document.getElementById('btn-commit').disabled=true;
+ document.getElementById('commit-result').innerHTML='<span style="color:#ffaa00">Committing...</span>';
+ var d=await apiPost('/api/v1/scripts/git/commit',{message:msg,files:Array.from(_selectedFiles),push_after:pushAfter});
+ document.getElementById('btn-commit').disabled=false;
+ if(d.error){document.getElementById('commit-result').innerHTML='<span style="color:#ff4444">'+d.error+'</span>';}
+ else{
+  var r='<span style="color:#00ff41">✓ Committed: '+d.message+'</span>';
+  if(d.push){r+=d.push.status==='ok'?' <span style="color:#00ff41">| Pushed</span>':' <span style="color:#ff4444">| Push failed: '+d.push.output+'</span>';}
+  document.getElementById('commit-result').innerHTML=r;
+  document.getElementById('commit-msg').value='';_selectedFiles.clear();refreshStatus();
+ }
+}
+
+async function refreshBranches(){
+ var d=await apiFetch('/api/v1/scripts/git/branches');
+ if(d.error){document.getElementById('sc-branches').innerHTML='<div style="color:#ff4444;padding:8px">'+d.error+'</div>';return;}
+ var h='';
+ (d.branches||[]).forEach(function(b){
+  var isCurrent=b.current;
+  var col=isCurrent?'#00ff41':'#888';
+  var indicator=isCurrent?' ◀ CURRENT':'';
+  h+='<div class="file-row"><span style="color:'+col+'">'+b.name+indicator+'</span>';
+  if(!isCurrent&&!b.name.startsWith('origin/'))h+=' <button class="btn btn-red" style="padding:1px 6px;font-size:.68em" onclick="confirmAction(\'checkout\',\'Switch to branch: '+b.name+'?\',\''+b.name+'\')">CHECKOUT</button>';
+  h+='</div>';
+ });
+ document.getElementById('sc-branches').innerHTML=h||'<div style="color:#666;padding:8px">No branches found</div>';
+}
+
+async function refreshLog(){
+ var d=await apiFetch('/api/v1/scripts/git/log');
+ if(d.error){document.getElementById('sc-log').innerHTML='<div style="color:#ff4444;padding:8px">'+d.error+'</div>';return;}
+ var h='';
+ (d.commits||[]).forEach(function(c){
+  h+='<div class="commit-row"><span class="commit-hash">'+c.short_hash+'</span> <span class="commit-msg">'+c.message+'</span><br><span class="commit-meta">'+c.author+' — '+c.date+'</span></div>';
+ });
+ document.getElementById('sc-log').innerHTML=h||'<div style="color:#666;padding:8px">No commits</div>';
+}
+
+function confirmAction(action,text,param){
+ _pendingAction={action:action,param:param};
+ document.getElementById('confirm-text').textContent=text;
+ document.getElementById('confirm-modal').classList.add('show');
+}
+function closeConfirm(){document.getElementById('confirm-modal').classList.remove('show');_pendingAction=null;}
+
+async function executeConfirmed(){
+ if(!_pendingAction){closeConfirm();return;}
+ var a=_pendingAction;closeConfirm();
+ if(a.action==='pull'){
+  var d=await apiPost('/api/v1/scripts/git/pull',{});
+  if(d.error)alert('Pull failed: '+d.error);
+  else{alert('Pull successful');refreshStatus();refreshLog();}
+ }else if(a.action==='checkout'){
+  var d=await apiPost('/api/v1/scripts/git/checkout',{branch:a.param});
+  if(d.error)alert('Checkout failed: '+d.error);
+  else{alert('Switched to '+a.param);refreshStatus();refreshBranches();refreshLog();}
+ }
+}
+
+// Init
+refreshStatus();refreshBranches();refreshLog();
+setInterval(refreshStatus,10000);
+</script>
+{% endblock %}

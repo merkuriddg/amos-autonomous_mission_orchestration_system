@@ -55,7 +55,7 @@
 var wxMap, wxMarkers=[];
 
 function initMap(){
- wxMap=L.map('wx-map',{zoomControl:true}).setView([35.689,51.312],9);
+ wxMap=L.map('wx-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],9);
  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(wxMap);
  setTimeout(function(){wxMap.invalidateSize();},300);
 }
@@ -67,7 +67,7 @@ function windArrow(dir){
 }
 
 async function refreshData(){
- var wx=await apiFetch('/api/weather/current');
+ var wx=await apiFetch('/api/v1/weather/current');
  document.getElementById('wx-cond').textContent=wx.conditions||'--';
  document.getElementById('wx-wind').textContent=Math.round(wx.wind_speed_kt)+' '+windArrow(wx.wind_dir_deg);
  document.getElementById('wx-vis').textContent=wx.visibility_km.toFixed(1);
@@ -96,7 +96,7 @@ async function refreshData(){
 }
 
 async function refreshImpact(){
- var imp=await apiFetch('/api/weather/impact');
+ var imp=await apiFetch('/api/v1/weather/impact');
  document.getElementById('wx-rec').textContent=imp.recommendation;
  document.getElementById('wx-rec').style.color=imp.recommendation==='GO'?'#00ff41':imp.recommendation==='CAUTION'?'#ffaa00':'#ff4444';
  var domains=[
@@ -115,7 +115,7 @@ async function refreshImpact(){
 
 async function refreshMap(){
  wxMarkers.forEach(function(m){wxMap.removeLayer(m);});wxMarkers=[];
- var overlay=await apiFetch('/api/weather/overlay');
+ var overlay=await apiFetch('/api/v1/weather/overlay');
  var showWind=document.getElementById('wx-show-wind').checked;
  var showVis=document.getElementById('wx-show-vis').checked;
  overlay.points.forEach(function(p){

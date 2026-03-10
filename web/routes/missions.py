@@ -14,15 +14,15 @@ bp = Blueprint("missions", __name__)
 # ═══════════════════════════════════════════════════════════
 #  WAYPOINT API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/waypoints")
+@bp.route("/waypoints")
 @login_required
 def api_wp_all(): return jsonify(waypoint_nav.get_all())
 
-@bp.route("/api/waypoints/<asset_id>")
+@bp.route("/waypoints/<asset_id>")
 @login_required
 def api_wp_asset(asset_id): return jsonify(waypoint_nav.get_waypoints(asset_id))
 
-@bp.route("/api/waypoints/set", methods=["POST"])
+@bp.route("/waypoints/set", methods=["POST"])
 @login_required
 def api_wp_set():
     d = request.json; aid = d.get("asset_id"); lat = d.get("lat"); lng = d.get("lng")
@@ -35,7 +35,7 @@ def api_wp_set():
         "details": f"WP set: {aid} -> {lat:.4f},{lng:.4f} by {c['name']}"})
     return jsonify({"status": "ok", "waypoints": waypoint_nav.get_waypoints(aid)})
 
-@bp.route("/api/waypoints/add", methods=["POST"])
+@bp.route("/waypoints/add", methods=["POST"])
 @login_required
 def api_wp_add():
     d = request.json; aid = d.get("asset_id"); lat = d.get("lat"); lng = d.get("lng")
@@ -44,7 +44,7 @@ def api_wp_add():
     waypoint_nav.add_waypoint(aid, lat, lng, d.get("alt_ft"))
     return jsonify({"status": "ok", "waypoints": waypoint_nav.get_waypoints(aid)})
 
-@bp.route("/api/waypoints/clear", methods=["POST"])
+@bp.route("/waypoints/clear", methods=["POST"])
 @login_required
 def api_wp_clear():
     d = request.json; aid = d.get("asset_id")
@@ -56,11 +56,11 @@ def api_wp_clear():
 # ═══════════════════════════════════════════════════════════
 #  GEOFENCE API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/geofences")
+@bp.route("/geofences")
 @login_required
 def api_gf(): return jsonify(geofence_mgr.get_all())
 
-@bp.route("/api/geofences/create", methods=["POST"])
+@bp.route("/geofences/create", methods=["POST"])
 @login_required
 def api_gf_create():
     d = request.json
@@ -68,12 +68,12 @@ def api_gf_create():
                                      d.get("name", ""), d.get("id"))
     return jsonify({"status": "ok", "id": gid})
 
-@bp.route("/api/geofences/delete", methods=["POST"])
+@bp.route("/geofences/delete", methods=["POST"])
 @login_required
 def api_gf_del():
     geofence_mgr.remove_geofence(request.json.get("id", "")); return jsonify({"status": "ok"})
 
-@bp.route("/api/geofences/alerts")
+@bp.route("/geofences/alerts")
 @login_required
 def api_gf_alerts(): return jsonify(geofence_mgr.get_alerts())
 
@@ -81,7 +81,7 @@ def api_gf_alerts(): return jsonify(geofence_mgr.get_alerts())
 # ═══════════════════════════════════════════════════════════
 #  VOICE COMMAND API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/voice/command", methods=["POST"])
+@bp.route("/voice/command", methods=["POST"])
 @login_required
 def api_voice():
     transcript = request.json.get("transcript", ""); c = ctx()
@@ -156,15 +156,15 @@ def api_voice():
 # ═══════════════════════════════════════════════════════════
 #  TASK ALLOCATOR API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/tasks")
+@bp.route("/tasks")
 @login_required
 def api_tasks(): return jsonify(task_allocator.get_tasks())
 
-@bp.route("/api/tasks/gantt")
+@bp.route("/tasks/gantt")
 @login_required
 def api_tasks_gantt(): return jsonify(task_allocator.get_gantt())
 
-@bp.route("/api/tasks/assign", methods=["POST"])
+@bp.route("/tasks/assign", methods=["POST"])
 @login_required
 def api_tasks_assign():
     d = request.json
@@ -177,7 +177,7 @@ def api_tasks_assign():
 # ═══════════════════════════════════════════════════════════
 #  MISSION PLANNING SUITE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/missionplan/templates")
+@bp.route("/missionplan/templates")
 @login_required
 def api_missionplan_templates():
     return jsonify([
@@ -205,7 +205,7 @@ def api_missionplan_templates():
          "asset_roles": ["medevac", "recon", "air_superiority"], "description": "Personnel recovery with air cover"},
     ])
 
-@bp.route("/api/missionplan/save", methods=["POST"])
+@bp.route("/missionplan/save", methods=["POST"])
 @login_required
 def api_missionplan_save():
     d = request.json or {}
@@ -221,11 +221,11 @@ def api_missionplan_save():
         "created_at": now_iso(), "created_by": c["name"]}
     return jsonify({"status": "ok", "plan": mission_plans[pid]})
 
-@bp.route("/api/missionplan/list")
+@bp.route("/missionplan/list")
 @login_required
 def api_missionplan_list(): return jsonify(list(mission_plans.values()))
 
-@bp.route("/api/missionplan/<plan_id>")
+@bp.route("/missionplan/<plan_id>")
 @login_required
 def api_missionplan_get(plan_id):
     p = mission_plans.get(plan_id)
@@ -257,11 +257,11 @@ def _compute_cert(user):
             "best_score": round(best, 1), "cert_level": cert["level"],
             "cert_name": cert["name"], "cert_color": cert["color"]}
 
-@bp.route("/api/training/history")
+@bp.route("/training/history")
 @login_required
 def api_training_history(): return jsonify(training_records)
 
-@bp.route("/api/training/leaderboard")
+@bp.route("/training/leaderboard")
 @login_required
 def api_training_leaderboard():
     operators = set(r["operator"] for r in training_records)
@@ -277,11 +277,11 @@ def api_training_leaderboard():
         b["rank"] = i + 1
     return jsonify(board)
 
-@bp.route("/api/training/cert/<user>")
+@bp.route("/training/cert/<user>")
 @login_required
 def api_training_cert(user): return jsonify(_compute_cert(user))
 
-@bp.route("/api/training/record", methods=["POST"])
+@bp.route("/training/record", methods=["POST"])
 @login_required
 def api_training_record():
     d = request.json or {}; c = ctx()
@@ -298,7 +298,7 @@ def api_training_record():
 # ═══════════════════════════════════════════════════════════
 #  COMMS NETWORK
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/commsnet/topology")
+@bp.route("/commsnet/topology")
 @login_required
 def api_commsnet_topology():
     nodes, links = [], []
@@ -327,7 +327,7 @@ def api_commsnet_topology():
                     "total_nodes": len(nodes), "active_links": sum(1 for l in links if l["active"]),
                     "avg_quality": round(sum(n["comms_pct"] for n in nodes) / max(1, len(nodes)), 1)})
 
-@bp.route("/api/commsnet/links")
+@bp.route("/commsnet/links")
 @login_required
 def api_commsnet_links():
     link_details = []
@@ -343,7 +343,7 @@ def api_commsnet_links():
             "encryption": "AES-256", "protocol": "MANET" if a["domain"] != "air" else "SATCOM"})
     return jsonify(link_details)
 
-@bp.route("/api/commsnet/heatmap")
+@bp.route("/commsnet/heatmap")
 @login_required
 def api_commsnet_heatmap():
     points = []

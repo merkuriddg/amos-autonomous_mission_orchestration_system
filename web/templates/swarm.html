@@ -55,7 +55,7 @@
 {% block scripts %}
 <script>
 async function refreshSwarm(){
- var d=await apiFetch('/api/swarm/status');
+ var d=await apiFetch('/api/v1/swarm/status');
  if(!d)return;
  var stats=d.stats||{};
  document.getElementById('sw-active').textContent=stats.active_swarms||0;
@@ -110,17 +110,17 @@ async function createSwarm(){
  var sid=document.getElementById('sw-id').value||('SWM-'+Math.random().toString(36).substring(2,8));
  var aids=document.getElementById('sw-assets-input').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
  var beh=document.getElementById('sw-behavior').value;
- await apiPost('/api/swarm/create',{swarm_id:sid,asset_ids:aids,behavior:beh});
+ await apiPost('/api/v1/swarm/create',{swarm_id:sid,asset_ids:aids,behavior:beh});
  refreshSwarm();
 }
 
 async function setEmergent(sid,eb){
- await apiPost('/api/swarm/behavior',{swarm_id:sid,emergent:eb});
+ await apiPost('/api/v1/swarm/behavior',{swarm_id:sid,emergent:eb});
  refreshSwarm();
 }
 
 async function dissolveSwarm(sid){
- await apiPost('/api/swarm/dissolve',{swarm_id:sid});
+ await apiPost('/api/v1/swarm/dissolve',{swarm_id:sid});
  refreshSwarm();
 }
 

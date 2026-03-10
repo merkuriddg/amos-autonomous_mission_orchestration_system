@@ -67,7 +67,7 @@
 {% block scripts %}
 <script>
 async function refreshBridges(){
-    const d=await apiFetch('/api/bridge/all');
+    const d=await apiFetch('/api/v1/bridge/all');
     // PX4
     const px4=d.px4||{};
     document.getElementById('px4-dot').className='bridge-dot '+(px4.connected?'on':'off');
@@ -88,19 +88,19 @@ async function refreshBridges(){
 
 async function refreshL16(){
     // Participants
-    const parts=await apiFetch('/api/bridge/link16/participants');
+    const parts=await apiFetch('/api/v1/bridge/link16/participants');
     const pdiv=document.getElementById('l16-participants');
     const keys=Object.keys(parts);
     if(keys.length===0){pdiv.innerHTML='<span style="color:#888">No participants</span>';
     }else{pdiv.innerHTML=keys.map(function(k){return '<span class="l16-participant"><span style="color:#00ff41">'+k+'</span> TN:'+parts[k].tn+' ['+parts[k].role+']</span>';}).join('');}
     // Messages
-    const msgs=await apiFetch('/api/bridge/link16/messages?limit=30');
+    const msgs=await apiFetch('/api/v1/bridge/link16/messages?limit=30');
     const mdiv=document.getElementById('l16-messages');
     mdiv.innerHTML=(Array.isArray(msgs)?msgs:[]).reverse().map(function(m){
         return '<div class="l16-msg"><span class="j-type">'+m.j_type+'</span> '+m.description+' — TN:'+m.source_tn+' <span style="color:#555">seq:'+m.sequence+'</span></div>';
     }).join('');
     // Asset selector
-    const assets=await apiFetch('/api/assets');
+    const assets=await apiFetch('/api/v1/assets');
     const sel=document.getElementById('l16-asset');
     sel.innerHTML=Object.keys(assets).map(function(k){return '<option value="'+k+'">'+k+'</option>';}).join('');
 }
@@ -109,13 +109,13 @@ async function takConnect(){
     const host=document.getElementById('tak-host').value;
     const port=document.getElementById('tak-port').value;
     const proto=document.getElementById('tak-proto').value;
-    await apiPost('/api/bridge/tak/connect',{host:host,port:parseInt(port),protocol:proto});
+    await apiPost('/api/v1/bridge/tak/connect',{host:host,port:parseInt(port),protocol:proto});
     refreshBridges();
 }
-async function takDisconnect(){await apiPost('/api/bridge/tak/disconnect',{});refreshBridges();}
+async function takDisconnect(){await apiPost('/api/v1/bridge/tak/disconnect',{});refreshBridges();}
 async function l16Join(){
     const aid=document.getElementById('l16-asset').value;
-    await apiPost('/api/bridge/link16/join',{asset_id:aid});
+    await apiPost('/api/v1/bridge/link16/join',{asset_id:aid});
     refreshL16();
 }
 

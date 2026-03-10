@@ -118,7 +118,7 @@
 var mpMap, mpRoute, mpMarkers=[], wpData=[], phases=[], templates=[], assignedAssets=new Set();
 
 function initMap(){
- mpMap=L.map('mp-map',{zoomControl:true}).setView([35.689,51.312],9);
+ mpMap=L.map('mp-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],9);
  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM'}).addTo(mpMap);
  mpRoute=L.polyline([],{color:'#00ff41',weight:3,dashArray:'8,6'}).addTo(mpMap);
  mpMap.on('click',function(e){
@@ -188,7 +188,7 @@ function removePhase(i){phases.splice(i,1);renderPhases();}
 
 // Templates
 async function loadTemplates(){
- templates=await apiFetch('/api/missionplan/templates');
+ templates=await apiFetch('/api/v1/missionplan/templates');
  var sel=document.getElementById('mp-template');
  templates.forEach(function(t){
   var o=document.createElement('option');o.value=t.id;o.textContent=t.name;sel.appendChild(o);
@@ -215,7 +215,7 @@ function loadTemplate(){
 
 // Assets
 async function loadAssets(){
- var assets=await apiFetch('/api/assets');
+ var assets=await apiFetch('/api/v1/assets');
  var pool=document.getElementById('asset-pool');
  var h='';
  for(var id in assets){
@@ -240,7 +240,7 @@ async function savePlan(){
   pace:{primary:document.getElementById('pace-p').value,alternate:document.getElementById('pace-a').value,
         contingency:document.getElementById('pace-c').value,emergency:document.getElementById('pace-e').value},
   assets:Array.from(assignedAssets)};
- var r=await apiPost('/api/missionplan/save',plan);
+ var r=await apiPost('/api/v1/missionplan/save',plan);
  if(r.status==='ok'){showMsg('mp-msg','Plan saved: '+r.plan.id,'#00ff41');refreshPlans();}
  else showMsg('mp-msg',r.error||'Error','#ff4444');
 }
@@ -251,7 +251,7 @@ function newPlan(){
  document.getElementById('tpl-desc').textContent='';
 }
 async function refreshPlans(){
- var plans=await apiFetch('/api/missionplan/list');
+ var plans=await apiFetch('/api/v1/missionplan/list');
  document.getElementById('mp-saved').textContent=plans.length;
  var h='';
  plans.forEach(function(p){
@@ -260,7 +260,7 @@ async function refreshPlans(){
  document.getElementById('plan-list').innerHTML=h||'<div style="color:#666;padding:6px">No saved plans</div>';
 }
 async function loadPlan(id){
- var p=await apiFetch('/api/missionplan/'+id);
+ var p=await apiFetch('/api/v1/missionplan/'+id);
  if(p.error)return;
  clearWaypoints();
  (p.waypoints||[]).forEach(function(w){addWaypoint(w.lat,w.lng);});

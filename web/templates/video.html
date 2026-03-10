@@ -71,13 +71,13 @@
 <script>
 async function refreshVideo(){
     try{
-        const st=await apiFetch('/api/video/status');
+        const st=await apiFetch('/api/v1/video/status');
         document.getElementById('vid-pipe-status').textContent=st.active_feeds>0?'Active':'Standby';
         document.getElementById('vid-feed-count').textContent=st.active_feeds||0;
         document.getElementById('vid-img-count').textContent=st.images_captured||0;
     }catch(e){}
     try{
-        const imgs=await apiFetch('/api/imagery/catalog?limit=20');
+        const imgs=await apiFetch('/api/v1/imagery/catalog?limit=20');
         const div=document.getElementById('imagery-catalog');
         if(Array.isArray(imgs)&&imgs.length>0){
             div.innerHTML=imgs.map(function(im){

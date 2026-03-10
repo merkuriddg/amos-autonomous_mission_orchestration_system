@@ -13,14 +13,14 @@ bp = Blueprint("ent_defense", __name__)
 # ═══════════════════════════════════════════════════════════
 #  VMF (Variable Message Format)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/vmf/status")
+@bp.route("/vmf/status")
 @login_required
 def api_vmf_status():
     if _vmf_adapter:
         return jsonify(_vmf_adapter.get_status())
     return jsonify({"error": "VMF adapter not available"}), 503
 
-@bp.route("/api/vmf/messages")
+@bp.route("/vmf/messages")
 @login_required
 def api_vmf_messages():
     if _vmf_adapter:
@@ -31,21 +31,21 @@ def api_vmf_messages():
 # ═══════════════════════════════════════════════════════════
 #  STANAG 4586
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/stanag4586/status")
+@bp.route("/stanag4586/status")
 @login_required
 def api_stanag4586_status():
     if _stanag4586:
         return jsonify(_stanag4586.get_status())
     return jsonify({"error": "STANAG 4586 not available"}), 503
 
-@bp.route("/api/stanag4586/vehicles")
+@bp.route("/stanag4586/vehicles")
 @login_required
 def api_stanag4586_vehicles():
     if _stanag4586:
         return jsonify(_stanag4586.get_vehicles())
     return jsonify({})
 
-@bp.route("/api/stanag4586/command", methods=["POST"])
+@bp.route("/stanag4586/command", methods=["POST"])
 @login_required
 def api_stanag4586_command():
     if not _stanag4586:
@@ -61,21 +61,21 @@ def api_stanag4586_command():
 # ═══════════════════════════════════════════════════════════
 #  NFFI (NATO Friendly Force Information)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/nffi/status")
+@bp.route("/nffi/status")
 @login_required
 def api_nffi_status():
     if _nffi_adapter:
         return jsonify(_nffi_adapter.get_status())
     return jsonify({"error": "NFFI not available"}), 503
 
-@bp.route("/api/nffi/units")
+@bp.route("/nffi/units")
 @login_required
 def api_nffi_units():
     if _nffi_adapter:
         return jsonify(_nffi_adapter.get_units())
     return jsonify({})
 
-@bp.route("/api/nffi/contacts")
+@bp.route("/nffi/contacts")
 @login_required
 def api_nffi_contacts():
     if _nffi_adapter:
@@ -86,21 +86,21 @@ def api_nffi_contacts():
 # ═══════════════════════════════════════════════════════════
 #  OGC WMS / WFS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/ogc/status")
+@bp.route("/ogc/status")
 @login_required
 def api_ogc_status():
     if _ogc_client:
         return jsonify(_ogc_client.get_status())
     return jsonify({"error": "OGC client not available"}), 503
 
-@bp.route("/api/ogc/endpoints")
+@bp.route("/ogc/endpoints")
 @login_required
 def api_ogc_endpoints():
     if _ogc_client:
         return jsonify(_ogc_client.get_endpoints())
     return jsonify({"wms": {}, "wfs": {}})
 
-@bp.route("/api/ogc/add", methods=["POST"])
+@bp.route("/ogc/add", methods=["POST"])
 @login_required
 def api_ogc_add():
     if not _ogc_client:

@@ -61,7 +61,7 @@ body,html{overflow:hidden!important;margin:0;padding:0}
 
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
 <script>
-var AO_LAT=35.689, AO_LNG=51.312;
+var AO_LAT=_amosTheater.lat, AO_LNG=_amosTheater.lng;
 var selectedId=null, ents={}, domFilter="all", pulseRing=null, viewer=null;
 
 Cesium.Ion.defaultAccessToken="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder";
@@ -81,6 +81,7 @@ try {
         destination:Cesium.Cartesian3.fromDegrees(AO_LNG,AO_LAT,35000),
         orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0}
     });
+    window._amosViewer=viewer;
     console.log("[FIELD] Viewer ready");
 } catch(e){
     console.error("[FIELD]",e);
@@ -136,7 +137,7 @@ function fieldResetView(){
 
 function fieldUpdate(){
     if(!viewer) return;
-    fetch("/api/assets").then(function(r){return r.json()}).then(function(assets){
+    fetch("/api/v1/assets").then(function(r){return r.json()}).then(function(assets){
         var h="",cnt=0,ids=Object.keys(assets).sort();
         for(var i=0;i<ids.length;i++){
             var id=ids[i],a=assets[id];
@@ -173,7 +174,7 @@ function fieldUpdate(){
         document.getElementById("f-mc").textContent=mesh;
     }).catch(function(e){console.warn("[FIELD]",e)});
 
-    fetch("/api/phase3/threats").then(function(r){return r.json()}).then(function(data){
+    fetch("/api/v1/phase3/threats").then(function(r){return r.json()}).then(function(data){
         var arr=Array.isArray(data)?data:(data.threats||[]);
         document.getElementById("f-tc").textContent=arr.length;
         var h="";

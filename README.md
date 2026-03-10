@@ -1,12 +1,12 @@
 # AMOS — Autonomous Mission Orchestration System
 
 Multi-domain C2 platform for autonomous robotic platoon operations.
-**v5.0 — Modular Blueprint Architecture + Open-Core/Enterprise Split**
+**v5.1 — API Versioning, CI/CD, System Scripts, Edition Dashboard**
 
 ## Quick Start
 
 ```bash
-cp .env.example .env          # configure edition (open or enterprise)
+cp .env.example .env          # configure edition + dev tools
 source .venv/bin/activate
 python3 web/app.py
 ```
@@ -50,11 +50,12 @@ amos/
 │   ├── extensions.py        — Flask app factory, config, login
 │   ├── state.py             — Shared mutable state + subsystem init
 │   ├── edition.py           — AMOS_EDITION feature flags
+│   ├── edition_service.py   — Feature toggle abstraction layer
 │   ├── simulation_engine.py — Background sim tick loop
 │   ├── websockets.py        — Socket.IO event handlers
-│   ├── routes/              — 9 core blueprints (auth, assets, ops, etc.)
+│   ├── routes/              — 11 core blueprints (auth, assets, ops, scripts, edition, etc.)
 │   ├── enterprise/          — 4 enterprise blueprints (intelligence, warfare, security, defense)
-│   └── templates/           — Terminal-aesthetic UI (30+ views)
+│   └── templates/           — Terminal-aesthetic UI (40+ views)
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
 ├── services/                — 36 autonomous subsystems
 ├── integrations/            — PX4, TAK, Link 16, MQTT, DDS, Kafka bridges
@@ -62,7 +63,9 @@ amos/
 ├── enterprise/              — Overlay installer for private enterprise repo
 ├── db/                      — MariaDB persistence (36 tables)
 ├── config/                  — Platoon config + theater locations
-└── docs/                    — Architecture, SDK, simulation, API docs
+├── tests/                   — 207 automated tests (3-layer: route, service, contract)
+├── .github/workflows/       — CI/CD pipelines (core + enterprise)
+└── docs/                    — Architecture, SDK, simulation, API versioning
 ```
 
 ### Core (core/)
@@ -204,26 +207,53 @@ amos/
 
 ## Key API Routes
 
+All API routes are dual-mounted at `/api/v1/` (primary) and `/api/` (deprecated compat).
+See `docs/platform/API_VERSIONING.md` for the full versioning policy.
+
 ```
-GET  /api/assets                    — All assets
-GET  /api/threats                   — All threats
-POST /api/coa/generate              — AI-scored COAs
-GET  /api/hal/recommendations       — Cognitive engine recommendations
-POST /api/docs/opord                — Generate 5-paragraph OPORD
-POST /api/docs/conop                — Generate CONOP summary
-GET  /api/bridge/all                — All integration statuses
-GET  /api/bridge/link16/tracks      — Link 16 tactical picture
-GET  /api/analytics/summary         — Aggregated mission metrics
-POST /api/voice/command             — Voice command processing
-POST /api/wargame/run               — Run Monte Carlo wargame scenario
-GET  /api/swarm/status              — Swarm intelligence status
-GET  /api/isr/targets               — ATR tracked targets
-POST /api/effects/create            — Create effects chain
-GET  /api/space/orbital             — Orbital asset status
-GET  /api/hmt/status                — HMT operator status
-GET  /api/mesh/topology             — Mesh network topology
-GET  /api/mesh/resilience           — Network resilience score
+GET  /api/v1/assets                 — All assets
+GET  /api/v1/threats                — All threats
+POST /api/v1/coa/generate           — AI-scored COAs
+GET  /api/v1/hal/recommendations    — Cognitive engine recommendations
+POST /api/v1/docs/opord             — Generate 5-paragraph OPORD
+GET  /api/v1/bridge/all             — All integration statuses
+GET  /api/v1/theater/list           — Theater locations
+GET  /api/v1/healthz                — Liveness probe (no auth)
+GET  /api/v1/readyz                 — Readiness probe (no auth)
+GET  /api/v1/scripts/git/status     — Git repo status (commander, dev only)
+GET  /api/v1/edition/status         — Current edition + feature flags
+POST /api/v1/edition/toggle         — Toggle runtime feature flag
+GET  /api/v1/edition/bundles        — Feature bundles with status
+GET  /api/v1/analytics/summary      — Aggregated mission metrics
+POST /api/v1/voice/command          — Voice command processing
+POST /api/v1/wargame/run            — Run Monte Carlo wargame scenario
+GET  /api/v1/mesh/resilience        — Network resilience score
 ```
+
+## Testing
+
+207 automated tests across 3 layers:
+
+- **Route tests** — auth, pages, assets, missions, simulation, ops, scripts, edition management
+- **Service tests** — edition service, plugin loader, event bus
+- **Contract tests** — schema validation, smoke tests for both editions
+
+```bash
+# Run all tests
+python3 -m pytest tests/ -v --tb=short
+
+# With coverage
+python3 -m pytest tests/ --cov=web --cov=core --cov=services --cov-report=term-missing
+```
+
+## CI/CD
+
+GitHub Actions workflows in `.github/workflows/`:
+
+- **core-ci.yml** — Lint (ruff) + tests on Python 3.11/3.12 for core edition
+- **enterprise-ci.yml** — Same matrix + smoke tests for enterprise paths
+
+Both enforce 50% coverage threshold.
 
 ## Database
 
@@ -232,8 +262,10 @@ MariaDB — 36 tables including: users, assets, audit_log, missions, mission_eve
 ## Tech Stack
 
 - **Backend:** Python 3, Flask, Flask-SocketIO
-- **Frontend:** Vanilla JS, Leaflet.js, WebSocket
+- **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB
+- **Testing:** pytest, pytest-cov
+- **CI/CD:** GitHub Actions (ruff lint, Python 3.11+3.12 matrix)
 - **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, NFFI, OGC WMS/WFS
 - **Security:** AES-256-GCM encryption, HMAC, key management, security audit logging
 
@@ -244,4 +276,4 @@ Example plugins live in `plugins/` — copy `plugins/example_drone/` to start bu
 
 ## License
 
-Proprietary — MavrixOne / Merkuri DDG
+Proprietary — merkuri, llc

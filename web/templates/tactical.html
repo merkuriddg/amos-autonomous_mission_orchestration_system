@@ -57,7 +57,7 @@
 {% block scripts %}
 <script>
 // Full-screen tactical map
-const map=L.map('tac-map',{zoomControl:false,attributionControl:false}).setView([35.689,51.312],11);
+const map=L.map('tac-map',{zoomControl:false,attributionControl:false}).setView([_amosTheater.lat,_amosTheater.lng],11);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 window._amosMap=map;
 
@@ -90,13 +90,13 @@ window.onSimUpdate=function(d){
 
 // Refresh positions
 async function refresh(){
- const assets=await apiFetch('/api/assets');
+ const assets=await apiFetch('/api/v1/assets');
  for(const[id,a]of Object.entries(assets)){
   const c=DC[a.domain]||'#888';const p=[a.position.lat,a.position.lng];
   if(aM[id])aM[id].setLatLng(p);
   else{aM[id]=L.marker(p,{icon:mkI(c,12)}).bindTooltip(id,{direction:'top'}).addTo(map);}
  }
- const threats=await apiFetch('/api/threats');
+ const threats=await apiFetch('/api/v1/threats');
  for(const[id,t]of Object.entries(threats)){
   if(t.neutralized){if(tM[id]){map.removeLayer(tM[id]);delete tM[id];}continue;}
   if(!t.lat||!t.lng)continue;
@@ -105,14 +105,14 @@ async function refresh(){
   else{tM[id]=L.marker(p,{icon:mkI('#ff4444',12)}).bindTooltip(id,{direction:'top'}).addTo(map);}
  }
  // Alerts
- const alerts=await apiFetch('/api/geofences/alerts');
+ const alerts=await apiFetch('/api/v1/geofences/alerts');
  const ad=document.getElementById('tac-alerts');
  if(!alerts.length)ad.innerHTML='<div style="color:#555">No alerts</div>';
  else ad.innerHTML=alerts.slice(-10).reverse().map(function(a){
   return '<div class="tac-alert" style="border-color:'+(a.geofence_type==='restricted'?'#ff4444':'#ffaa00')+'"><strong>'+a.event.toUpperCase()+'</strong> '+a.entity_id+' — '+a.geofence_name+'</div>';
  }).join('');
  // HAL approvals
- const hal=await apiFetch('/api/hal/recommendations');
+ const hal=await apiFetch('/api/v1/hal/recommendations');
  const pending=(hal||[]).filter(function(r){return r.status==='pending';});
  const hp=document.getElementById('tac-approvals');
  if(!pending.length)hp.innerHTML='<div style="color:#555">None pending</div>';
@@ -122,7 +122,7 @@ async function refresh(){
 }
 
 async function halAction(id,action){
- await apiPost('/api/hal/'+action,{id:id});
+ await apiPost('/api/v1/hal/'+action,{id:id});
  refresh();
 }
 

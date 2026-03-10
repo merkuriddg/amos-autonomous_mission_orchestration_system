@@ -165,6 +165,8 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <a href="/automation" class="amos-menu-item{% if request.path=='/automation' %} active{% endif %}">Automation</a>
       <a href="/readiness" class="amos-menu-item{% if request.path=='/readiness' %} active{% endif %}">Readiness</a>
       <a href="/syscmd" class="amos-menu-item{% if request.path=='/syscmd' %} active{% endif %}">Sys Command</a>
+      <a href="/scripts" class="amos-menu-item{% if request.path=='/scripts' %} active{% endif %}">System Scripts</a>
+      <a href="/edition" class="amos-menu-item{% if request.path=='/edition' %} active{% endif %}">Edition</a>
       <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">Integrations</a>
       <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">Settings</a>
      </div>
@@ -209,6 +211,7 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
 <div id="amos-alert-container"></div>
 <div class="main">{% block content %}{% endblock %}</div>
 <script>
+window._amosTheater={lat:{{theater_lat}},lng:{{theater_lng}},zoom:{{theater_zoom}}};
 const socket=io();
 socket.on('sim_update',function(d){if(window.onSimUpdate)window.onSimUpdate(d);});
 socket.on('amos_alerts',function(alerts){
@@ -240,7 +243,7 @@ socket.on('space_update',function(d){window._amosData.space=d;if(window.onSpaceU
 socket.on('hmt_update',function(d){window._amosData.hmt=d;if(window.onHmtUpdate)window.onHmtUpdate(d);});
 socket.on('mesh_update',function(d){window._amosData.mesh=d;if(window.onMeshUpdate)window.onMeshUpdate(d);});
 // Theater selector
-function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
+function loadTheaters(){apiFetch('/api/v1/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';var active=null;ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active){o.selected=true;active=t;}s.appendChild(o);});if(active){setTimeout(function(){_theaterFlyTo(active.lat,active.lng,active.zoom);if(window._amosViewer&&window._amosViewer.camera){try{window._amosViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(active.lng,active.lat,35000),orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0},duration:2})}catch(e){}}},500);}}).catch(function(){});}
 function _findAmosMap(){
  if(window._amosMap&&window._amosMap.flyTo) return window._amosMap;
  var els=document.querySelectorAll('.leaflet-container');
@@ -248,7 +251,7 @@ function _findAmosMap(){
  return null;
 }
 function _theaterFlyTo(lat,lng,zoom){var m=_findAmosMap();if(m)m.flyTo([lat,lng],zoom||10,{duration:2});}
-function switchTheater(key){apiPost('/api/theater/switch',{key:key}).then(function(r){if(r.status==='ok'&&r.lat!==undefined)_theaterFlyTo(r.lat,r.lng,r.zoom);});}
+function switchTheater(key){apiPost('/api/v1/theater/switch',{key:key}).then(function(r){if(r.status==='ok'&&r.lat!==undefined)_theaterFlyTo(r.lat,r.lng,r.zoom);});}
 loadTheaters();
 socket.on('theater_changed',function(d){var s=document.getElementById('theater-sel');if(s)s.value=d.key;_theaterFlyTo(d.lat,d.lng,d.zoom);});
 // Menu
@@ -294,7 +297,7 @@ function switchChannel(){
  loadChatHistory();
 }
 async function loadChatHistory(){
- const rows=await apiFetch('/api/chat/history?channel='+_currentChannel);
+ const rows=await apiFetch('/api/v1/chat/history?channel='+_currentChannel);
  document.getElementById('chat-msgs').innerHTML='';
  (rows||[]).forEach(appendChatMsg);
  var el=document.getElementById('chat-msgs');el.scrollTop=el.scrollHeight;
@@ -329,7 +332,7 @@ function toggleVoice(){
    const t=e.results[0][0].transcript;
    document.getElementById('vp-transcript').textContent='"'+t+'"';
    document.getElementById('vp-status').textContent='Processing...';
-   apiPost('/api/voice/command',{transcript:t}).then(function(r){
+   apiPost('/api/v1/voice/command',{transcript:t}).then(function(r){
     document.getElementById('vp-response').textContent=r.response||'No response';
     document.getElementById('vp-status').textContent=r.executed?'✅ Executed':'⚠️ Not executed';
    });

@@ -52,6 +52,19 @@
       },
       "zoom": 7,
       "description": "NATO Eastern Flank \u2014 combined arms, air defense, ISR corridor"
+    },
+    "test_base": {
+      "name": "Test Base",
+      "lat": 35.0,
+      "lng": 69.0,
+      "ao": {
+        "north": 0,
+        "south": 0,
+        "east": 0,
+        "west": 0
+      },
+      "zoom": 10,
+      "description": ""
     }
   }
 }

@@ -12,7 +12,7 @@ bp = Blueprint("assets", __name__)
 # ═══════════════════════════════════════════════════════════
 #  SCENARIO SAVE / LOAD
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/scenario/save", methods=["POST"])
+@bp.route("/scenario/save", methods=["POST"])
 @login_required
 def api_scenario_save():
     """Export full mission state as JSON."""
@@ -34,7 +34,7 @@ def api_scenario_save():
     return jsonify(scenario)
 
 
-@bp.route("/api/scenario/load", methods=["POST"])
+@bp.route("/scenario/load", methods=["POST"])
 @login_required
 def api_scenario_load():
     """Load a mission scenario from JSON."""
@@ -51,14 +51,14 @@ def api_scenario_load():
 # ═══════════════════════════════════════════════════════════
 #  SETTINGS — ASSET FLEET MANAGEMENT
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/settings/assets")
+@bp.route("/settings/assets")
 @login_required
 def api_settings_assets():
     """Return full sim_assets dict for fleet management."""
     return jsonify(sim_assets)
 
 
-@bp.route("/api/settings/assets/save", methods=["POST"])
+@bp.route("/settings/assets/save", methods=["POST"])
 @login_required
 def api_settings_assets_save():
     """Create or update an asset in sim_assets."""
@@ -110,7 +110,7 @@ def api_settings_assets_save():
     return jsonify({"status": "ok", "id": aid})
 
 
-@bp.route("/api/settings/assets/delete", methods=["POST"])
+@bp.route("/settings/assets/delete", methods=["POST"])
 @login_required
 def api_settings_assets_delete():
     """Remove an asset from sim_assets."""
@@ -127,7 +127,7 @@ def api_settings_assets_delete():
 # ═══════════════════════════════════════════════════════════
 #  ASSET API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/assets")
+@bp.route("/assets")
 @login_required
 def api_assets():
     c = ctx()
@@ -136,7 +136,7 @@ def api_assets():
     return jsonify({k: v for k, v in sim_assets.items() if v["domain"] == c["domain"]})
 
 
-@bp.route("/api/assets/summary")
+@bp.route("/assets/summary")
 @login_required
 def api_assets_summary():
     bd, bs, br = {}, {}, {}
@@ -147,7 +147,7 @@ def api_assets_summary():
     return jsonify({"total": len(sim_assets), "by_domain": bd, "by_status": bs, "by_role": br})
 
 
-@bp.route("/api/assets/<asset_id>")
+@bp.route("/assets/<asset_id>")
 @login_required
 def api_asset_detail(asset_id):
     a = sim_assets.get(asset_id)
@@ -161,7 +161,7 @@ def api_asset_detail(asset_id):
 # ═══════════════════════════════════════════════════════════
 #  THREAT API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/threats")
+@bp.route("/threats")
 @login_required
 def api_threats():
     return jsonify(sim_threats)

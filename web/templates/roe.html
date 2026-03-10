@@ -60,9 +60,9 @@
 {% block scripts %}
 <script>
 async function refreshROE(){
- var status=await apiFetch('/api/roe/status');
- var rules=await apiFetch('/api/roe/rules');
- var viols=await apiFetch('/api/roe/violations');
+ var status=await apiFetch('/api/v1/roe/status');
+ var rules=await apiFetch('/api/v1/roe/rules');
+ var viols=await apiFetch('/api/v1/roe/violations');
  // Posture
  var pe=document.getElementById('roe-posture');
  pe.textContent=status.posture;
@@ -104,11 +104,11 @@ async function refreshROE(){
 }
 
 async function setPosture(p){
- await apiPost('/api/roe/set',{posture:p});
+ await apiPost('/api/v1/roe/set',{posture:p});
  refreshROE();
 }
 async function toggleRule(rid){
- await apiPost('/api/roe/toggle',{rule_id:rid});
+ await apiPost('/api/v1/roe/toggle',{rule_id:rid});
  refreshROE();
 }
 

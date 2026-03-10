@@ -26,9 +26,30 @@ bp = Blueprint("ops", __name__)
 
 
 # ══════════════════════════════════════════════════════════
+#  HEALTH / READINESS PROBES  (no auth — LB / k8s probes)
+# ══════════════════════════════════════════════════════════
+@bp.route("/healthz")
+def healthz():
+    """Liveness probe — is the process running?"""
+    return jsonify({"status": "ok"})
+
+
+@bp.route("/readyz")
+def readyz():
+    """Readiness probe — is the app ready to serve traffic?"""
+    checks = {
+        "app": True,
+        "assets_loaded": len(sim_assets) > 0,
+        "db": db_check(),
+    }
+    ok = all(checks.values())
+    return jsonify({"status": "ok" if ok else "degraded", "checks": checks}), 200 if ok else 503
+
+
+# ══════════════════════════════════════════════════════════
 #  SWARM FORMATION CONTROL  (NO @login_required — preserved)
 # ══════════════════════════════════════════════════════════
-@bp.route("/api/swarm/formation", methods=["POST"])
+@bp.route("/swarm/formation", methods=["POST"])
 def set_swarm_formation():
     """Set swarm formation — assets MOVE to positions via waypoints."""
     import math as _m
@@ -126,8 +147,8 @@ def set_swarm_formation():
     })
 
 
-@bp.route("/api/swarm/formation/clear", methods=["POST"])
-@bp.route("/api/swarm/clear", methods=["POST"])
+@bp.route("/swarm/formation/clear", methods=["POST"])
+@bp.route("/swarm/clear", methods=["POST"])
 def clear_swarm_formation():
     """Clear formation, return to patrol."""
     d = request.get_json() or {}
@@ -141,7 +162,7 @@ def clear_swarm_formation():
                     "message": f"{count} {domain} assets returned to patrol"})
 
 
-@bp.route("/api/swarm/debug")
+@bp.route("/swarm/debug")
 def swarm_debug():
     """Debug: show asset structure."""
     info = {"asset_count": len(sim_assets), "domains": {}, "sample_keys": None, "position_sample": None}
@@ -161,7 +182,7 @@ def swarm_debug():
 # ═══════════════════════════════════════════════════════════
 #  AUDIT API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/audit")
+@bp.route("/audit")
 @login_required
 def api_audit():
     c = ctx()
@@ -175,7 +196,7 @@ def api_audit():
 # ═══════════════════════════════════════════════════════════
 #  BRIDGE APIs (PX4 + TAK + Link 16)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/bridge/all")
+@bp.route("/bridge/all")
 @login_required
 def api_bridge_all():
     """Unified status of all integration bridges."""
@@ -187,21 +208,21 @@ def api_bridge_all():
     })
 
 # ── PX4 ──
-@bp.route("/api/bridge/px4/status")
+@bp.route("/bridge/px4/status")
 @login_required
 def api_px4_status():
     if not _px4:
         return jsonify({"connected": False, "error": "Bridge not loaded"})
     return jsonify(_px4.get_status())
 
-@bp.route("/api/bridge/px4/telemetry")
+@bp.route("/bridge/px4/telemetry")
 @login_required
 def api_px4_telemetry():
     if not _px4:
         return jsonify({})
     return jsonify({aid: _px4.get_telemetry(aid) for aid in _px4.vehicles})
 
-@bp.route("/api/bridge/px4/register", methods=["POST"])
+@bp.route("/bridge/px4/register", methods=["POST"])
 @login_required
 def api_px4_register():
     if not _px4:
@@ -225,7 +246,7 @@ def api_px4_register():
         }
     return jsonify({"status": "ok", "asset_id": amos_id, "system_id": sysid})
 
-@bp.route("/api/bridge/px4/command", methods=["POST"])
+@bp.route("/bridge/px4/command", methods=["POST"])
 @login_required
 def api_px4_command():
     if not _px4 or not _px4.connected:
@@ -246,14 +267,14 @@ def api_px4_command():
     return jsonify({"status": "ok" if ok else "failed", "command": cmd, "asset_id": aid})
 
 # ── TAK Bridge ──
-@bp.route("/api/bridge/tak/status")
+@bp.route("/bridge/tak/status")
 @login_required
 def api_tak_status():
     if not _tak:
         return jsonify({"connected": False, "error": "TAK bridge not loaded"})
     return jsonify(_tak.get_status())
 
-@bp.route("/api/bridge/tak/connect", methods=["POST"])
+@bp.route("/bridge/tak/connect", methods=["POST"])
 @login_required
 def api_tak_connect():
     if not _tak:
@@ -265,7 +286,7 @@ def api_tak_connect():
     ok = _tak.connect()
     return jsonify({"status": "ok" if ok else "failed", "connected": _tak.connected})
 
-@bp.route("/api/bridge/tak/disconnect", methods=["POST"])
+@bp.route("/bridge/tak/disconnect", methods=["POST"])
 @login_required
 def api_tak_disconnect():
     if _tak and _tak.sock:
@@ -275,21 +296,21 @@ def api_tak_disconnect():
     return jsonify({"status": "ok"})
 
 # ── Link 16 ──
-@bp.route("/api/bridge/link16/status")
+@bp.route("/bridge/link16/status")
 @login_required
 def api_link16_status():
     if not _link16:
         return jsonify({"connected": False, "error": "Link 16 not loaded"})
     return jsonify(_link16.get_status())
 
-@bp.route("/api/bridge/link16/tracks")
+@bp.route("/bridge/link16/tracks")
 @login_required
 def api_link16_tracks():
     if not _link16:
         return jsonify({})
     return jsonify(_link16.get_tactical_picture())
 
-@bp.route("/api/bridge/link16/messages")
+@bp.route("/bridge/link16/messages")
 @login_required
 def api_link16_messages():
     if not _link16:
@@ -298,14 +319,14 @@ def api_link16_messages():
     limit = request.args.get("limit", 50, type=int)
     return jsonify(_link16.get_messages(j_type=j_type, limit=limit))
 
-@bp.route("/api/bridge/link16/participants")
+@bp.route("/bridge/link16/participants")
 @login_required
 def api_link16_participants():
     if not _link16:
         return jsonify({})
     return jsonify(_link16.get_participants())
 
-@bp.route("/api/bridge/link16/join", methods=["POST"])
+@bp.route("/bridge/link16/join", methods=["POST"])
 @login_required
 def api_link16_join():
     if not _link16:
@@ -317,7 +338,7 @@ def api_link16_join():
     tn = _link16.join(aid, role=d.get("role", "PARTICIPANT"))
     return jsonify({"status": "ok", "asset_id": aid, "track_number": tn})
 
-@bp.route("/api/bridge/link16/command", methods=["POST"])
+@bp.route("/bridge/link16/command", methods=["POST"])
 @login_required
 def api_link16_command():
     if not _link16:
@@ -332,7 +353,7 @@ def api_link16_command():
 # ═══════════════════════════════════════════════════════════
 #  THREAT INTELLIGENCE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/threat-intel")
+@bp.route("/threat-intel")
 @login_required
 def apithreat_intel():
     """Threat intelligence database."""
@@ -342,7 +363,7 @@ def apithreat_intel():
 # ═══════════════════════════════════════════════════════════
 #  READINESS SCORECARD
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/readiness")
+@bp.route("/readiness")
 @login_required
 def api_readiness():
     """Pre-mission readiness scorecard."""
@@ -415,7 +436,7 @@ def api_readiness():
 # ═══════════════════════════════════════════════════════════
 #  MULTI-OPERATOR HTTP ROUTES
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/operators/online")
+@bp.route("/operators/online")
 @login_required
 def api_operators_online():
     ops = []
@@ -425,7 +446,7 @@ def api_operators_online():
                     "connected_at": info["connected_at"]})
     return jsonify(ops)
 
-@bp.route("/api/chat/history")
+@bp.route("/chat/history")
 @login_required
 def api_chat_history():
     channel = request.args.get("channel", "general")
@@ -436,7 +457,7 @@ def api_chat_history():
     return jsonify([{"sender": r["sender"], "message": r["message"],
                      "timestamp": str(r["timestamp"])} for r in reversed(rows)])
 
-@bp.route("/api/asset/locks")
+@bp.route("/asset/locks")
 @login_required
 def apiasset_locks():
     return jsonify(asset_locks)
@@ -445,7 +466,7 @@ def apiasset_locks():
 # ═══════════════════════════════════════════════════════════
 #  CYBER OPS CENTER
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/cyber/topology")
+@bp.route("/cyber/topology")
 @login_required
 def api_cyber_topology():
     """Network topology graph for cyber ops visualization."""
@@ -492,7 +513,7 @@ def api_cyber_topology():
             lnk["attack"] = any(not e.get("blocked") for e in recent)
     return jsonify({"nodes": nodes, "links": links, "active_attacks": len(attacked_targets)})
 
-@bp.route("/api/cyber/killchain")
+@bp.route("/cyber/killchain")
 @login_required
 def api_cyber_killchain():
     """Map cyber events to intrusion kill chain stages."""
@@ -521,7 +542,7 @@ def api_cyber_killchain():
 # ═══════════════════════════════════════════════════════════
 #  THEATER OPERATIONS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/theater/list")
+@bp.route("/theater/list")
 @login_required
 def api_theater_list():
     """List all available theaters."""
@@ -534,7 +555,7 @@ def api_theater_list():
             "active": key == data.get("active", "")})
     return jsonify(theaters)
 
-@bp.route("/api/theater/switch", methods=["POST"])
+@bp.route("/theater/switch", methods=["POST"])
 @login_required
 def api_theater_switch():
     """Switch active theater — updates map center for all clients."""
@@ -565,7 +586,7 @@ def api_theater_switch():
 # ═══════════════════════════════════════════════════════════
 #  LOGISTICS & SUPPLY CHAIN
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/logistics/status")
+@bp.route("/logistics/status")
 @login_required
 def api_logistics_status():
     """Per-asset supply snapshot."""
@@ -584,13 +605,13 @@ def api_logistics_status():
                      "water_hr": round(water, 1), "rations_hr": round(rations, 1), "status": status})
     return jsonify(rows)
 
-@bp.route("/api/logistics/history")
+@bp.route("/logistics/history")
 @login_required
 def api_logistics_history():
     """Supply consumption timeline."""
     return jsonify(supply_history)
 
-@bp.route("/api/logistics/resupply", methods=["POST"])
+@bp.route("/logistics/resupply", methods=["POST"])
 @login_required
 def api_logistics_resupply():
     """Resupply an asset."""
@@ -615,13 +636,13 @@ def api_logistics_resupply():
 # ═══════════════════════════════════════════════════════════
 #  WEATHER & ENVIRONMENT
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/weather/current")
+@bp.route("/weather/current")
 @login_required
 def apiweather_current():
     """Live weather conditions."""
     return jsonify(weather)
 
-@bp.route("/api/weather/overlay")
+@bp.route("/weather/overlay")
 @login_required
 def apiweather_overlay():
     """Generate Leaflet-compatible weather overlay data."""
@@ -643,7 +664,7 @@ def apiweather_overlay():
                        "precip": weather["precipitation"]})
     return jsonify({"points": points, "timestamp": now_iso()})
 
-@bp.route("/api/weather/impact")
+@bp.route("/weather/impact")
 @login_required
 def apiweather_impact():
     """Mission impact scores by domain."""
@@ -670,13 +691,13 @@ def apiweather_impact():
 # ═══════════════════════════════════════════════════════════
 #  BATTLE DAMAGE ASSESSMENT (BDA)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/bda/list")
+@bp.route("/bda/list")
 @login_required
 def api_bda_list():
     """All BDA reports."""
     return jsonify(bda_reports)
 
-@bp.route("/api/bda/report", methods=["POST"])
+@bp.route("/bda/report", methods=["POST"])
 @login_required
 def api_bda_report():
     """Submit a BDA report."""
@@ -704,7 +725,7 @@ def api_bda_report():
                    "msg": f"BDA REPORT: {rpt['target_name']} — {rpt['damage_level']}"})
     return jsonify({"status": "ok", "report": rpt})
 
-@bp.route("/api/bda/analytics")
+@bp.route("/bda/analytics")
 @login_required
 def api_bda_analytics():
     """BDA effectiveness analytics."""
@@ -731,13 +752,13 @@ def api_bda_analytics():
 # ═══════════════════════════════════════════════════════════
 #  ELECTRONIC ORDER OF BATTLE (EOB)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/eob/units")
+@bp.route("/eob/units")
 @login_required
 def apieob_units():
     """All tracked EOB units."""
     return jsonify(list(eob_units.values()))
 
-@bp.route("/api/eob/unit/<uid>")
+@bp.route("/eob/unit/<uid>")
 @login_required
 def api_eob_unit(uid):
     """Single EOB unit detail."""
@@ -746,7 +767,7 @@ def api_eob_unit(uid):
         return jsonify({"error": "Unit not found"}), 404
     return jsonify(u)
 
-@bp.route("/api/eob/unit", methods=["POST"])
+@bp.route("/eob/unit", methods=["POST"])
 @login_required
 def api_eob_unit_add():
     """Manually add / update an EOB entry."""
@@ -768,7 +789,7 @@ def api_eob_unit_add():
     }
     return jsonify({"status": "ok", "unit": eob_units[uid]})
 
-@bp.route("/api/eob/map")
+@bp.route("/eob/map")
 @login_required
 def api_eob_map():
     """EOB map layer data (positions + track history)."""
@@ -786,12 +807,12 @@ def api_eob_map():
 # ═══════════════════════════════════════════════════════════
 #  RULES OF ENGAGEMENT (ROE)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/roe/status")
+@bp.route("/roe/status")
 @login_required
 def api_roe_status():
     return jsonify(roe_engine.get_status())
 
-@bp.route("/api/roe/set", methods=["POST"])
+@bp.route("/roe/set", methods=["POST"])
 @login_required
 def api_roe_set():
     c = ctx()
@@ -806,12 +827,12 @@ def api_roe_set():
         "details": f"ROE changed: {result['old']} → {result['new']} by {c['name']}"})
     return jsonify({"status": "ok", **result})
 
-@bp.route("/api/roe/rules")
+@bp.route("/roe/rules")
 @login_required
 def api_roe_rules():
     return jsonify(roe_engine.get_rules())
 
-@bp.route("/api/roe/rule", methods=["POST"])
+@bp.route("/roe/rule", methods=["POST"])
 @login_required
 def api_roe_rule_add():
     d = request.json or {}
@@ -821,7 +842,7 @@ def api_roe_rule_add():
         d.get("severity", "WARNING"))
     return jsonify({"status": "ok", "rule": rule})
 
-@bp.route("/api/roe/toggle", methods=["POST"])
+@bp.route("/roe/toggle", methods=["POST"])
 @login_required
 def api_roe_toggle():
     rid = (request.json or {}).get("rule_id", "")
@@ -830,7 +851,7 @@ def api_roe_toggle():
         return jsonify({"error": "Rule not found"}), 404
     return jsonify({"status": "ok", "rule": result})
 
-@bp.route("/api/roe/violations")
+@bp.route("/roe/violations")
 @login_required
 def api_roe_violations():
     limit = request.args.get("limit", 50, type=int)
@@ -840,14 +861,14 @@ def api_roe_violations():
 # ═══════════════════════════════════════════════════════════
 #  EW API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/ew/status")
+@bp.route("/ew/status")
 @login_required
 def api_ew_status():
     return jsonify({"ew_assets": len(ew_capable), "active_jams": len(ew_active_jams),
                     "ready": len(ew_capable) - len(ew_active_jams),
                     "operations": ew_active_jams, "intercept_count": len(ew_intercepts)})
 
-@bp.route("/api/ew/jam", methods=["POST"])
+@bp.route("/ew/jam", methods=["POST"])
 @login_required
 def api_ew_jam():
     d = request.json
@@ -860,7 +881,7 @@ def api_ew_jam():
         "details": f"JAM: {op['jammer_id']} @ {op['target_freq_mhz']} MHz ({op['technique']})"})
     return jsonify({"status": "ok", "operation": op})
 
-@bp.route("/api/ew/jam/stop", methods=["POST"])
+@bp.route("/ew/jam/stop", methods=["POST"])
 @login_required
 def api_ew_stop():
     oid = request.json.get("op_id", "")
@@ -871,12 +892,12 @@ def api_ew_stop():
 # ═══════════════════════════════════════════════════════════
 #  SIGINT API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/sigint")
+@bp.route("/sigint")
 @login_required
 def api_sigint():
     return jsonify(sigint_intercepts[-100:])
 
-@bp.route("/api/sigint/summary")
+@bp.route("/sigint/summary")
 @login_required
 def api_sigint_summary():
     bc = {}
@@ -886,7 +907,7 @@ def api_sigint_summary():
     return jsonify({"total_intercepts": len(sigint_intercepts),
                     "unique_emitters": len(sigint_emitter_db), "by_classification": bc})
 
-@bp.route("/api/sigint/emitters")
+@bp.route("/sigint/emitters")
 @login_required
 def api_sigint_emitters():
     return jsonify(sigint_emitter_db)
@@ -895,12 +916,12 @@ def api_sigint_emitters():
 # ═══════════════════════════════════════════════════════════
 #  CYBER API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/cyber/events")
+@bp.route("/cyber/events")
 @login_required
 def api_cyber_events():
     return jsonify(cyber_events[-100:])
 
-@bp.route("/api/cyber/summary")
+@bp.route("/cyber/summary")
 @login_required
 def api_cyber_summary():
     a = sum(1 for e in cyber_events if not e.get("blocked"))
@@ -908,7 +929,7 @@ def api_cyber_summary():
     return jsonify({"total_events": len(cyber_events), "active_threats": a,
                     "blocked": b, "blocked_ips": len(cyber_blocked_ips)})
 
-@bp.route("/api/cyber/block", methods=["POST"])
+@bp.route("/cyber/block", methods=["POST"])
 @login_required
 def api_cyber_block():
     d = request.json
@@ -930,7 +951,7 @@ def api_cyber_block():
 # ═══════════════════════════════════════════════════════════
 #  COUNTERMEASURES API
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/cm/engage", methods=["POST"])
+@bp.route("/cm/engage", methods=["POST"])
 @login_required
 def api_cm_engage():
     d = request.json
@@ -977,7 +998,7 @@ def api_cm_engage():
         return jsonify({"status": "ok", "result": "neutralized"})
     return jsonify({"error": "Not found"}), 404
 
-@bp.route("/api/cm/log")
+@bp.route("/cm/log")
 @login_required
 def api_cm_log():
     return jsonify(cm_log)

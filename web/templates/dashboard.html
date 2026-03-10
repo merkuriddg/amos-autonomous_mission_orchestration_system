@@ -34,8 +34,8 @@
 <script>
 var domChart=null;
 async function refreshTwin(){
- var assets=await apiFetch('/api/assets');
- var summary=await apiFetch('/api/assets/summary');
+ var assets=await apiFetch('/api/v1/assets');
+ var summary=await apiFetch('/api/v1/assets/summary');
  var entries=Object.entries(assets);
  document.getElementById('d-total').textContent=entries.length;
  document.getElementById('d-air').textContent=summary.by_domain.air||0;

@@ -21,7 +21,7 @@
 {% block scripts %}
 <script>
 async function refreshCM(){
-    var threats=await apiFetch('/api/threats');
+    var threats=await apiFetch('/api/v1/threats');
     var entries=Object.entries(threats);
     var active=0,neut=0;
     entries.forEach(function(e){if(e[1].neutralized)neut++;else active++;});
@@ -33,7 +33,7 @@ async function refreshCM(){
         var n=t.neutralized;
         div.innerHTML+='<div style="border:1px solid '+(n?'#333':'#ff4444')+';padding:10px;margin:4px 0;'+(n?'opacity:0.4':'')+'"><strong style="color:'+(n?'#666':'#ff4444')+'">'+id+'</strong> — '+t.type+(n?' [NEUTRALIZED]':'')+(!n?'<div style="margin-top:6px"><button class="btn btn-yellow" onclick="engage(\''+id+'\',\'jam\')">JAM</button> <button class="btn btn-red" onclick="engage(\''+id+'\',\'intercept\')">INTERCEPT</button> <button class="btn" onclick="engage(\''+id+'\',\'cyber_block\')">CYBER BLOCK</button></div>':'')+'</div>';
     }
-    var log=await apiFetch('/api/cm/log');
+    var log=await apiFetch('/api/v1/cm/log');
     var arr=Array.isArray(log)?log:[];
     document.getElementById('cm-engagements').textContent=arr.length;
     var logDiv=document.getElementById('cm-log'); logDiv.innerHTML='';
@@ -54,7 +54,7 @@ async function refreshCM(){
     }
     aDiv.innerHTML=aH||'<div style="color:#555;padding:12px">No engagements yet</div>';
 }
-async function engage(tid,type){await apiPost('/api/cm/engage',{threat_id:tid,type:type});refreshCM();}
+async function engage(tid,type){await apiPost('/api/v1/cm/engage',{threat_id:tid,type:type});refreshCM();}
 refreshCM(); setInterval(refreshCM,3000);
 </script>
 {% endblock %}

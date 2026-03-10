@@ -42,12 +42,21 @@ def _track_request_start():
 
 @app.after_request
 def _add_no_cache(response):
-    """Prevent browser caching during development + track API metrics."""
+    """Prevent browser caching during development + track API metrics + deprecation headers."""
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     if request.path.startswith("/api/"):
+        # ── Deprecation headers on unversioned /api/ routes ──
+        if request.path.startswith("/api/") and not request.path.startswith("/api/v1/"):
+            response.headers["Deprecation"] = "true"
+            v1_path = request.path.replace("/api/", "/api/v1/", 1)
+            response.headers["Link"] = f'<{v1_path}>; rel="successor-version"'
+
+        # ── API metrics (normalize versioned paths) ──
         ep = request.path
+        if ep.startswith("/api/v1/"):
+            ep = "/api/" + ep[8:]  # normalize for metrics grouping
         api_metrics["requests"] += 1
         if response.status_code >= 400:
             api_metrics["errors"] += 1
@@ -77,8 +86,15 @@ def ctx():
     from web.state import USERS
     u = session.get("user", "unknown")
     d = USERS.get(u, {})
+    loc_data = load_locations()
+    active_key = loc_data.get("active", "")
+    active_loc = loc_data.get("locations", {}).get(active_key, {})
     return {"user": u, "role": d.get("role", ""), "name": d.get("name", u),
-            "domain": d.get("domain", "all"), "access": d.get("access", [])}
+            "domain": d.get("domain", "all"), "access": d.get("access", []),
+            "theater_lat": active_loc.get("lat", base_pos.get("lat", 35.689)),
+            "theater_lng": active_loc.get("lng", base_pos.get("lng", 51.312)),
+            "theater_zoom": active_loc.get("zoom", 10),
+            "theater_name": active_loc.get("name", "Default")}
 
 
 # ── Location persistence helpers ──

@@ -60,9 +60,9 @@
 {% block scripts %}
 <script>
 async function refreshMesh(){
- var topo=await apiFetch('/api/mesh/topology');
- var resilience=await apiFetch('/api/mesh/resilience');
- var bw=await apiFetch('/api/mesh/bandwidth');
+ var topo=await apiFetch('/api/v1/mesh/topology');
+ var resilience=await apiFetch('/api/v1/mesh/resilience');
+ var bw=await apiFetch('/api/v1/mesh/bandwidth');
 
  // Stats
  var nodes=topo&&topo.nodes?Object.keys(topo.nodes):[];
@@ -143,7 +143,7 @@ async function degradeNode(){
  var nid=document.getElementById('mesh-deg-node').value;
  var amt=parseInt(document.getElementById('mesh-deg-amt').value)||30;
  if(!nid)return;
- await apiPost('/api/mesh/degrade',{node_id:nid,amount:amt});
+ await apiPost('/api/v1/mesh/degrade',{node_id:nid,amount:amt});
  refreshMesh();
 }
 

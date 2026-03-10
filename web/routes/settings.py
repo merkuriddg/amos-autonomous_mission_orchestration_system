@@ -14,13 +14,13 @@ bp = Blueprint("settings", __name__)
 # ═══════════════════════════════════════════════════════════
 #  LOCATIONS
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/settings/locations")
+@bp.route("/settings/locations")
 @login_required
 def api_settings_locations():
     return jsonify(load_locations())
 
 
-@bp.route("/api/settings/locations/save", methods=["POST"])
+@bp.route("/settings/locations/save", methods=["POST"])
 @login_required
 def api_settings_locations_save():
     d = request.json
@@ -40,7 +40,7 @@ def api_settings_locations_save():
     return jsonify({"status": "ok", "locations": data})
 
 
-@bp.route("/api/settings/locations/delete", methods=["POST"])
+@bp.route("/settings/locations/delete", methods=["POST"])
 @login_required
 def api_settings_locations_delete():
     key = request.json.get("key", "")
@@ -53,7 +53,7 @@ def api_settings_locations_delete():
     return jsonify({"status": "ok", "locations": data})
 
 
-@bp.route("/api/settings/locations/activate", methods=["POST"])
+@bp.route("/settings/locations/activate", methods=["POST"])
 @login_required
 def api_settings_locations_activate():
     key = request.json.get("key", "")
@@ -73,7 +73,7 @@ def api_settings_locations_activate():
 # ═══════════════════════════════════════════════════════════
 #  PASSWORD & PROFILE
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/settings/password", methods=["POST"])
+@bp.route("/settings/password", methods=["POST"])
 @login_required
 def api_settings_password():
     d = request.json
@@ -95,7 +95,7 @@ def api_settings_password():
     return jsonify({"status": "ok"})
 
 
-@bp.route("/api/settings/profile", methods=["POST"])
+@bp.route("/settings/profile", methods=["POST"])
 @login_required
 def api_settings_profile():
     d = request.json
@@ -110,7 +110,7 @@ def api_settings_profile():
     return jsonify({"status": "ok", "name": usr["name"], "role": usr["role"]})
 
 
-@bp.route("/api/settings/system")
+@bp.route("/settings/system")
 @login_required
 def api_settings_system():
     loc_data = load_locations()
@@ -132,7 +132,7 @@ def api_settings_system():
 # ═══════════════════════════════════════════════════════════
 #  USER CRUD (Admin)
 # ═══════════════════════════════════════════════════════════
-@bp.route("/api/settings/users")
+@bp.route("/settings/users")
 @login_required
 def api_settings_users():
     c = ctx()
@@ -146,7 +146,7 @@ def api_settings_users():
     return jsonify(result)
 
 
-@bp.route("/api/settings/users/create", methods=["POST"])
+@bp.route("/settings/users/create", methods=["POST"])
 @login_required
 def api_settings_users_create():
     c = ctx()
@@ -177,7 +177,7 @@ def api_settings_users_create():
     return jsonify({"status": "ok", "username": username})
 
 
-@bp.route("/api/settings/users/update", methods=["POST"])
+@bp.route("/settings/users/update", methods=["POST"])
 @login_required
 def api_settings_users_update():
     c = ctx()
@@ -206,7 +206,7 @@ def api_settings_users_update():
     return jsonify({"status": "ok", "username": username})
 
 
-@bp.route("/api/settings/users/delete", methods=["POST"])
+@bp.route("/settings/users/delete", methods=["POST"])
 @login_required
 def api_settings_users_delete():
     c = ctx()

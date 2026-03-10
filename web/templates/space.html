@@ -61,10 +61,10 @@
 {% block scripts %}
 <script>
 async function refreshSpace(){
- var orbital=await apiFetch('/api/space/orbital');
- var satcom=await apiFetch('/api/space/satcom');
- var gps=await apiFetch('/api/space/gps');
- var weather=await apiFetch('/api/space/weather');
+ var orbital=await apiFetch('/api/v1/space/orbital');
+ var satcom=await apiFetch('/api/v1/space/satcom');
+ var gps=await apiFetch('/api/v1/space/gps');
+ var weather=await apiFetch('/api/v1/space/weather');
 
  // Stats
  var skeys=orbital?Object.keys(orbital):[];
@@ -146,7 +146,7 @@ async function addDenialZone(){
  var lat=parseFloat(document.getElementById('sp-dz-lat').value)||35.68;
  var lng=parseFloat(document.getElementById('sp-dz-lng').value)||51.31;
  var rad=parseFloat(document.getElementById('sp-dz-rad').value)||20;
- await apiPost('/api/space/gps-denial',{lat:lat,lng:lng,radius_km:rad,severity:'moderate'});
+ await apiPost('/api/v1/space/gps-denial',{lat:lat,lng:lng,radius_km:rad,severity:'moderate'});
  refreshSpace();
 }
 

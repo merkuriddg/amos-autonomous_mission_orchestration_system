@@ -63,8 +63,8 @@
 var LEVELS={1:'Manual',2:'Advisory',3:'Consensual',4:'Monitored',5:'Autonomous'};
 
 async function refreshHMT(){
- var status=await apiFetch('/api/hmt/status');
- var wl=await apiFetch('/api/hmt/workload');
+ var status=await apiFetch('/api/v1/hmt/status');
+ var wl=await apiFetch('/api/v1/hmt/workload');
 
  // Stats
  var ops=status?Object.keys(status):[];
@@ -128,7 +128,7 @@ async function refreshHMT(){
  document.getElementById('hmt-fatigued').textContent=fatigued;
 
  // Delegations
- var del=await apiFetch('/api/hmt/trust');
+ var del=await apiFetch('/api/v1/hmt/trust');
  var dEl=document.getElementById('hmt-delegations');
  // Use simple display since /api/hmt/trust returns trust, not delegations
  dEl.innerHTML='<div style="color:#666;padding:8px;font-size:.78em">Use the form below to delegate domain authority to AI</div>';
@@ -143,14 +143,14 @@ async function refreshHMT(){
 }
 
 async function setGlobalAutonomy(lvl){
- await apiPost('/api/hmt/autonomy',{level:lvl});
+ await apiPost('/api/v1/hmt/autonomy',{level:lvl});
  refreshHMT();
 }
 
 async function delegateDomain(){
  var dom=document.getElementById('hmt-del-domain').value;
  var lvl=parseInt(document.getElementById('hmt-del-level').value);
- await apiPost('/api/hmt/delegate',{domain:dom,level:lvl});
+ await apiPost('/api/v1/hmt/delegate',{domain:dom,level:lvl});
  refreshHMT();
 }
 
