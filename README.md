@@ -41,8 +41,6 @@ Each scenario runs ~2 minutes with timed mission events, autonomous coordination
 
 ![AMOS Demo](docs/images/demo.gif)
 
-> *Replace this placeholder after recording: `Cmd+Shift+5` → screen record → convert with `gifski` → save to `docs/images/demo.gif`*
-
 ---
 
 ## Platform Overview
