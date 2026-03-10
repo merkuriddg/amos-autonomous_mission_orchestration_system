@@ -47,6 +47,16 @@ python3 web/app.py
 
 Open **http://localhost:2600** — Login: `commander` / `amos_op1`
 
+### Optional: Database Setup
+
+AMOS runs without a database (in-memory mode). For persistent storage:
+
+```bash
+bash db/setup.sh              # creates MariaDB database, user, schema, seed data
+```
+
+The script creates a dedicated `amos` DB user with a random password and writes the credentials to `.env`. See `db/schema.sql` for the full schema (36 tables). Use `--reset` to drop and recreate everything.
+
 ### All Users
 
 | Username | Password | Role | Domain |
