@@ -13,30 +13,15 @@ AMOS orchestrates assets, sensors, autonomy engines, and communications to execu
 
 ## Platform Overview
 
-### Mission Console
-AMOS provides a unified operational interface for supervising autonomous missions across multiple robotic assets.
-
-<!-- TODO: Add screenshot -->
-
-### Mission Planning
-Operators define mission intent and assign assets. AMOS converts mission plans into executable task graphs that coordinate robotic teams.
-
-<!-- TODO: Add screenshot -->
-
-### Simulation Environment
-AMOS includes a built-in simulation environment for testing mission scenarios, autonomy behaviors, and swarm coordination.
-
-<!-- TODO: Add screenshot -->
-
-### Telemetry & Event Stream
-An event-driven architecture tracks mission state, asset health, and sensor detections in real time.
-
-<!-- TODO: Add screenshot -->
-
-### Extensible Plugin Architecture
-AMOS supports asset adapters, sensor integrations, mission packs, and autonomy modules through a modular plugin system.
-
-<!-- TODO: Add screenshot -->
+<table>
+<tr>
+<td align="center"><a href="docs/images/mission_console.png"><img src="docs/images/mission_console.png" width="180" alt="Mission Console"/></a><br/><sub><b>Mission Console</b></sub></td>
+<td align="center"><a href="docs/images/mission_planning.png"><img src="docs/images/mission_planning.png" width="180" alt="Mission Planning"/></a><br/><sub><b>Mission Planning</b></sub></td>
+<td align="center"><a href="docs/images/simulation.png"><img src="docs/images/simulation.png" width="180" alt="Simulation"/></a><br/><sub><b>Simulation</b></sub></td>
+<td align="center"><a href="docs/images/telemetry.png"><img src="docs/images/telemetry.png" width="180" alt="Telemetry"/></a><br/><sub><b>Telemetry</b></sub></td>
+<td align="center"><a href="docs/images/plugins.png"><img src="docs/images/plugins.png" width="180" alt="Integrations"/></a><br/><sub><b>Integrations</b></sub></td>
+</tr>
+</table>
 
 ---
 
