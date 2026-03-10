@@ -34,3 +34,5 @@ Thumbs.db
 *.deb
 *.rpm
 *.AppImage
+docs/images/demo.mov
+~$*

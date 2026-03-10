@@ -406,15 +406,19 @@ def api_adsb_connect():
     d = request.json or {}
     _adsb.host = d.get("host", _adsb.host)
     _adsb.port = int(d.get("port", _adsb.port))
-    if hasattr(_adsb, "protocol"):
-        _adsb.protocol = d.get("protocol", _adsb.protocol)
+    # UI sends "protocol" (sbs/beast/raw) → bridge uses "mode" (sbs/beast/json)
+    proto = d.get("protocol", _adsb.mode)
+    _adsb.mode = "json" if proto == "raw" else proto
     ok = _adsb.connect()
+    if ok:
+        _adsb.start_tracking()
     return jsonify({"status": "ok" if ok else "failed", "connected": _adsb.connected})
 
 @bp.route("/bridge/adsb/disconnect", methods=["POST"])
 @login_required
 def api_adsb_disconnect():
     if _adsb:
+        _adsb.stop_tracking()
         _adsb.disconnect()
     return jsonify({"status": "ok"})
 

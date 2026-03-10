@@ -64,8 +64,8 @@
     <div id="adsb-info" style="font-size:.8em;color:#888">Loading...</div>
     <div style="margin-top:8px">
       <input type="text" id="adsb-host" placeholder="Host" value="localhost" style="width:100px">
-      <input type="number" id="adsb-port" placeholder="Port" value="30003" style="width:70px">
-      <select id="adsb-proto" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="sbs">SBS</option><option value="beast">Beast</option><option value="raw">Raw</option></select>
+      <input type="number" id="adsb-port" placeholder="Port" value="8080" style="width:70px">
+      <select id="adsb-proto" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="raw">JSON</option><option value="sbs">SBS</option><option value="beast">Beast</option></select>
       <button class="btn" onclick="adsbConnect()" style="margin-left:4px">CONNECT</button>
       <button class="btn btn-red" onclick="adsbDisconnect()">STOP</button>
     </div>
