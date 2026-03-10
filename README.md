@@ -1,32 +1,44 @@
 # AMOS — Autonomous Mission Orchestration System
 
-Multi-domain C2 platform for autonomous robotic platoon operations.
-**v5.1 — API Versioning, CI/CD, System Scripts, Edition Dashboard**
+**Mission Operating System for Autonomous Systems**
 
+AMOS is a **multi-domain command-and-control platform** that enables small teams of human operators to supervise and coordinate autonomous robotic assets across **air, ground, maritime, cyber, and space domains**.
+
+Operators define **mission intent**.  
+AMOS orchestrates assets, sensors, autonomy engines, and communications to execute those missions.
+
+**v5.2 — API Versioning • CI/CD • System Scripts • Edition Dashboard**
+
+---
 
 ## Platform Overview
 
 ### Mission Console
 AMOS provides a unified operational interface for supervising autonomous missions across multiple robotic assets.
-![Mission Console](docs/images/mission_console.png)
+
+<!-- TODO: Add screenshot -->
 
 ### Mission Planning
-Operators define mission intent and assign assets. AMOS translates mission plans into executable task graphs.
-![Mission Planning](docs/images/mission_planning.png)
+Operators define mission intent and assign assets. AMOS converts mission plans into executable task graphs that coordinate robotic teams.
+
+<!-- TODO: Add screenshot -->
 
 ### Simulation Environment
 AMOS includes a built-in simulation environment for testing mission scenarios, autonomy behaviors, and swarm coordination.
-![Simulation](docs/images/simulation.png)
 
-### Telemetry and Event Stream
-AMOS uses an event-driven architecture to track mission state and coordinate autonomous responses.
-![Telemetry](docs/images/telemetry.png)
+<!-- TODO: Add screenshot -->
 
+### Telemetry & Event Stream
+An event-driven architecture tracks mission state, asset health, and sensor detections in real time.
+
+<!-- TODO: Add screenshot -->
 
 ### Extensible Plugin Architecture
-AMOS supports asset adapters, sensor integrations, mission packs, and autonomy modules through a plugin system.
-![Plugins](docs/images/plugins.png)
+AMOS supports asset adapters, sensor integrations, mission packs, and autonomy modules through a modular plugin system.
 
+<!-- TODO: Add screenshot -->
+
+---
 
 
 ## Quick Start
@@ -52,24 +64,61 @@ Open **http://localhost:2600** — Login: `commander` / `amos_op1`
 
 ## What AMOS Does
 
-AMOS manages a **25-asset autonomous robotic platoon** across air, ground, and maritime domains. A small team of human operators sets mission objectives; the system coordinates robotic assets to achieve them.
+AMOS coordinates a 25-asset autonomous robotic platoon operating across multiple domains.
 
-**Core concept:** Human-on-the-loop — operators define *intent*, autonomous systems execute *tasks*.
+A small team of human operators defines mission objectives while autonomous systems execute the operational workload.
 
-AMOS goes beyond sensor-fusion-and-fire-control platforms by integrating Monte Carlo wargaming, autonomous swarm intelligence, cross-domain effects orchestration, space domain awareness, adaptive human-machine teaming, and resilient mesh networking into a single unified C2 system.
+Core capabilities include:
+- multi-robot coordination
+- sensor fusion and autonomous cueing
+- swarm intelligence and task allocation
+- mission planning and execution
+- real-time telemetry and threat tracking
+- contested environment networking
+- human-machine teaming
+
+AMOS integrates capabilities normally spread across multiple systems — mission planning, autonomy orchestration, sensor fusion, wargaming, and resilient networking — into a single platform.
+
 
 ## Editions
 
 AMOS ships in two editions controlled by `AMOS_EDITION` in `.env`:
 
 - **Open** (`AMOS_EDITION=open`) — Core C2 platform: 200+ API routes, map, assets, threats, EW, SIGINT, cyber, ROE, waypoints, sensor fusion, mesh networking, voice commands, plugin system. Free and open-source.
+
 - **Enterprise** (`AMOS_EDITION=enterprise`) — Full platform: 300+ API routes. Adds cognitive engine (OODA/COA), NLP mission parser, Monte Carlo wargaming, swarm intelligence, kill web, ISR/ATR, effects chain, space domain, human-machine teaming, COMSEC, TAK/Link 16/VMF/STANAG integrations, OPORD/CONOP generation, and more.
 
 Per-feature overrides let you enable individual enterprise modules in open mode (e.g. `AMOS_ENABLE_COGNITIVE=true`). See `.env.example` for all flags.
 
-## Architecture
+## System Architecture
 
 ![AMOS Architecture](docs/images/amos_architecture.png)
+
+```
+Applications
+  Mission Packs • Analytics • Operator Tools
+        ▲
+        │
+AMOS Platform
+  Mission Orchestration • Autonomy Engines • Swarm Coordination
+        ▲
+        │
+Integration Layer
+  ROS2 • MAVLink • TAK • MQTT • DDS • Link-16
+        ▲
+        │
+Assets & Sensors
+  Drones • Ground Robots • Maritime Vehicles • Satellites
+```
+
+**Key Features**
+- Autonomous mission orchestration
+- Multi-robot swarm coordination
+- Monte Carlo operational wargaming
+- Cross-domain effects planning
+- Human-machine teaming
+- Resilient mesh networking
+- Extensible plugin ecosystem
 
 ```
 amos/
@@ -91,7 +140,7 @@ amos/
 ├── enterprise/              — Overlay installer for private enterprise repo
 ├── db/                      — MariaDB persistence (36 tables)
 ├── config/                  — Platoon config + theater locations
-├── tests/                   — 207 automated tests (3-layer: route, service, contract)
+├── tests/                   — 209 automated tests (3-layer: route, service, contract)
 ├── .github/workflows/       — CI/CD pipelines (core + enterprise)
 └── docs/                    — Architecture, SDK, simulation, API versioning
 ```
@@ -260,7 +309,7 @@ GET  /api/v1/mesh/resilience        — Network resilience score
 
 ## Testing
 
-207 automated tests across 3 layers:
+209 automated tests across 3 layers:
 
 - **Route tests** — auth, pages, assets, missions, simulation, ops, scripts, edition management
 - **Service tests** — edition service, plugin loader, event bus
