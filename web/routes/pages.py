@@ -183,3 +183,7 @@ def edition_page(): return render_template("edition.html", **ctx())
 @bp.route("/manual")
 @login_required
 def manual_page(): return render_template("manual.html", **ctx())
+
+@bp.route("/mobile")
+@login_required
+def mobile_page(): return render_template("mobile.html", **ctx())

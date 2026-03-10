@@ -1,0 +1,17 @@
+name: perimeter_security_mission
+version: "1.0"
+type: mission_pack
+description: >
+  Perimeter security mission pack — static overwatch, roving patrol,
+  and layered tripwire zones with QRF breach response.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:PerimeterSecurityMissionPlugin
+capabilities:
+  - mission_templates
+  - waypoint_generation
+  - static_overwatch
+  - roving_patrol
+  - tripwire_zones
+  - breach_response
+  - qrf_dispatch

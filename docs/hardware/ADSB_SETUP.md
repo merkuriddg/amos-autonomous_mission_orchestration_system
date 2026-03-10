@@ -87,11 +87,8 @@ curl http://localhost:2600/api/v1/bridge/adsb/status
 curl http://localhost:2600/api/v1/bridge/adsb/tracks
 ```
 
-## Tips for St Pete Beach / Tampa Bay Area
+## Reception Tips
 
-- **PIE** (St. Pete-Clearwater Intl) is ~10 miles north
-- **TPA** (Tampa Intl) is ~20 miles northeast
-- **MCF** (MacDill AFB) is ~15 miles east
 - Aircraft at cruise altitude (30,000+ ft) can be received 100+ miles away
 - Low-altitude traffic needs line-of-sight — put the antenna near a window or outside
 - A dedicated 1090 MHz antenna on a rooftop or balcony will pick up 50-200+ aircraft easily

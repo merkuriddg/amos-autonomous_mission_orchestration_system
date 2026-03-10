@@ -156,12 +156,17 @@ amos/
 │   ├── swarm_recon/         — Swarm reconnaissance demo
 │   ├── disaster_response/   — Earthquake SAR demo
 │   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
-├── plugins/                 — 9 plugins (ADS-B, APRS, ATAK, AIS, Meshtastic + examples)
+├── plugins/                 — 14 plugins (adapters, mission packs, examples)
 │   ├── adsb_adapter/        — ADS-B aircraft surveillance
 │   ├── aprs_adapter/        — APRS amateur radio position tracking
 │   ├── atak_adapter/        — ATAK/TAK blue force & CoT
 │   ├── ais_adapter/         — AIS maritime vessel tracking
 │   ├── meshtastic_adapter/  — Meshtastic/LoRa off-grid mesh
+│   ├── px4_adapter/         — PX4 MAVLink autopilot bridge
+│   ├── ros2_adapter/        — ROS 2 middleware bridge
+│   ├── patrol_mission/      — Patrol mission pack (linear, orbit, sector sweep)
+│   ├── search_rescue_mission/ — SAR mission pack (expanding square, parallel track)
+│   ├── perimeter_security_mission/ — Perimeter defense (overwatch, tripwire zones)
 │   ├── example_sensor/      — Reference sensor plugin
 │   └── example_mission_pack/ — Reference mission template
 ├── sdk/                     — Developer SDK (Python package + docs)
@@ -203,6 +208,9 @@ amos/
 
 | Guide | Description |
 |-------|-------------|
+| `/api/docs` | **Interactive Swagger UI** — auto-generated OpenAPI 3.0 docs for all routes |
+| `/api/v1/openapi.json` | Machine-readable OpenAPI 3.0 JSON spec |
+| `/mobile` | **Mobile / Tablet Field Operator UI** — touch-friendly responsive view |
 | `docs/platform/` | System architecture, simulation guide, API versioning |
 | `docs/platform/AMOS_Plugin_SDK.md` | Plugin SDK — build asset adapters and integrations |
 | `docs/platform/INTEGRATION_GUIDE.md` | Integration bridge development |

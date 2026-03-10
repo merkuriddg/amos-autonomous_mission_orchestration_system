@@ -1,13 +1,21 @@
 name: px4_adapter
 version: "1.0"
 type: asset_adapter
-domain: air
-author: AMOS Team
-enabled: true
-entry_point: PX4AdapterPlugin
 description: >
   PX4 Autopilot adapter — bridges MAVLink telemetry and commands
-  between PX4 SITL / hardware and the AMOS platform.
-dependencies:
-  - amos-core >=1.0
-  - pymavlink
+  between PX4 SITL / hardware and the AMOS event bus.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:PX4AdapterPlugin
+requires:
+  - integrations.px4_bridge
+capabilities:
+  - mavlink
+  - telemetry
+  - waypoint
+  - arm
+  - mode
+  - health
+config:
+  connection_string: "udp:127.0.0.1:14540"
+  sync_interval_sec: 1.0

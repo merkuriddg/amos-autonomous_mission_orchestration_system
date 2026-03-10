@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AMOS — Field Operator</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/static/css/mobile.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+</head><body>
+
+<!-- ── Top bar ────────────────────────────────────────── -->
+<div class="m-topbar">
+ <button class="m-hamburger" id="hamburger" onclick="toggleNav()">
+  <span></span><span></span><span></span>
+ </button>
+ <span class="brand">AMOS FIELD</span>
+ <span style="font-size:.75rem;color:#888">{{ name }}</span>
+</div>
+
+<!-- ── Slide-out nav ─────────────────────────────────── -->
+<div class="m-nav-overlay" id="nav-overlay" onclick="toggleNav()"></div>
+<nav class="m-nav" id="nav-drawer">
+ <div class="m-nav-hdr">VIEWS</div>
+ <a href="/mobile" class="active">Field Operator</a>
+ <a href="/">Full C2 Console</a>
+ <a href="/dashboard">Digital Twin</a>
+ <a href="/tactical">Tactical</a>
+ <div class="m-nav-hdr">QUICK LINKS</div>
+ <a href="/missionplan">Mission Plan</a>
+ <a href="/commsnet">Comms Net</a>
+ <a href="/aar">AAR</a>
+ <a href="/api/docs">API Docs</a>
+ <div class="m-nav-hdr">SYSTEM</div>
+ <a href="/settings">Settings</a>
+ <a href="/logout">Logout</a>
+</nav>
+
+<!-- ── Main content ──────────────────────────────────── -->
+<div class="m-main">
+
+ <!-- Stats strip -->
+ <div class="m-stats" id="stats-strip">
+  <div class="m-stat"><div class="val" id="s-assets">—</div><div class="lbl">ASSETS</div></div>
+  <div class="m-stat"><div class="val" id="s-threats" style="color:#ff4444">—</div><div class="lbl">THREATS</div></div>
+  <div class="m-stat"><div class="val" id="s-missions">—</div><div class="lbl">MISSIONS</div></div>
+  <div class="m-stat"><div class="val" id="s-alerts" style="color:#ffaa00">—</div><div class="lbl">ALERTS</div></div>
+ </div>
+
+ <!-- Map -->
+ <div id="m-map"></div>
+
+ <!-- Quick actions -->
+ <div class="m-card" style="margin-top:10px">
+  <h3>QUICK ACTIONS</h3>
+  <div class="m-actions">
+   <button class="m-btn" onclick="qcmd('halt_all')">⏹ HALT ALL</button>
+   <button class="m-btn red" onclick="qcmd('rtb_all')">🏠 RTB ALL</button>
+   <button class="m-btn yellow" onclick="refreshAll()">🔄 REFRESH</button>
+   <button class="m-btn blue" onclick="centerMap()">📍 CENTER</button>
+  </div>
+ </div>
+
+ <!-- Assets -->
+ <div class="m-card">
+  <h3>ASSETS</h3>
+  <div id="asset-list"></div>
+ </div>
+
+ <!-- Threats -->
+ <div class="m-card">
+  <h3>ACTIVE THREATS</h3>
+  <div id="threat-list"></div>
+ </div>
+
+ <!-- Alerts feed -->
+ <div class="m-card">
+  <h3>ALERTS</h3>
+  <div class="m-alerts" id="alert-feed"></div>
+ </div>
+
+</div><!-- /m-main -->
+
+<script>
+/* ── Globals ─────────────────────────────────────────── */
+let map, assetMarkers={}, threatMarkers={}, lastAlertId=0;
+const API='/api/v1';
+
+/* ── Nav ─────────────────────────────────────────────── */
+function toggleNav(){
+  document.getElementById('hamburger').classList.toggle('open');
+  document.getElementById('nav-drawer').classList.toggle('open');
+  document.getElementById('nav-overlay').classList.toggle('open');
+}
+
+/* ── Map init ────────────────────────────────────────── */
+function initMap(){
+  map=L.map('m-map',{zoomControl:false,attributionControl:false}).setView([28.0,-82.5],10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+}
+
+/* ── Data fetch ──────────────────────────────────────── */
+async function fetchJSON(url){
+  try{const r=await fetch(url,{credentials:'same-origin'});if(!r.ok)return null;return await r.json();}catch{return null;}
+}
+
+async function refreshAll(){
+  // Metrics
+  const m=await fetchJSON(API+'/metrics');
+  if(m){
+    document.getElementById('s-assets').textContent=m.assets_detail?m.assets_detail.length:'—';
+    document.getElementById('s-threats').textContent=(m.threats_active||0)+(m.threats_tracking||0);
+    document.getElementById('s-missions').textContent=m.threats_neutralized||0;
+    updateAssets(m.assets_detail||[]);
+  }
+  // Threats
+  const t=await fetchJSON(API+'/threats');
+  if(t) updateThreats(Array.isArray(t)?t:Object.values(t));
+  // Alerts
+  const a=await fetchJSON(API+'/alerts?since='+lastAlertId);
+  if(a&&a.length) updateAlerts(a);
+}
+
+/* ── Render assets ───────────────────────────────────── */
+function updateAssets(list){
+  const el=document.getElementById('asset-list');el.innerHTML='';
+  list.forEach(a=>{
+    const batt=a.battery||100;const cls=batt>50?'ok':batt>20?'warn':'err';
+    el.innerHTML+=`<div class="m-asset" onclick="panTo(${a.lat},${a.lng})">
+      <div><div class="name">${a.callsign||a.id}</div><div class="meta">${a.type||'—'} · ${a.lat?.toFixed(4)}, ${a.lng?.toFixed(4)}</div></div>
+      <div class="status ${cls}">${batt}%</div></div>`;
+    // Map markers
+    if(a.lat&&a.lng){
+      if(assetMarkers[a.id]){assetMarkers[a.id].setLatLng([a.lat,a.lng]);}
+      else{assetMarkers[a.id]=L.circleMarker([a.lat,a.lng],{radius:6,color:'#00ff41',fillColor:'#00ff41',fillOpacity:.8}).addTo(map).bindPopup(a.callsign||a.id);}
+    }
+  });
+}
+
+/* ── Render threats ──────────────────────────────────── */
+function updateThreats(list){
+  const el=document.getElementById('threat-list');el.innerHTML='';
+  const active=list.filter(t=>!t.neutralized&&t.status!=='neutralized');
+  document.getElementById('s-threats').textContent=active.length;
+  active.forEach(t=>{
+    el.innerHTML+=`<div class="m-threat" onclick="panTo(${t.lat||0},${t.lng||0})">
+      <div><div class="name">${t.type||t.id}</div><div class="meta">${t.status||'active'} · ${(t.lat||0).toFixed(4)}, ${(t.lng||0).toFixed(4)}</div></div></div>`;
+    if(t.lat&&t.lng){
+      if(threatMarkers[t.id]){threatMarkers[t.id].setLatLng([t.lat,t.lng]);}
+      else{threatMarkers[t.id]=L.circleMarker([t.lat,t.lng],{radius:6,color:'#ff4444',fillColor:'#ff4444',fillOpacity:.8}).addTo(map).bindPopup(t.type||t.id);}
+    }
+  });
+}
+
+/* ── Render alerts ───────────────────────────────────── */
+function updateAlerts(list){
+  const el=document.getElementById('alert-feed');
+  list.forEach(a=>{
+    const cls=a.type==='critical'?'critical':a.type==='warning'?'warning':'';
+    el.innerHTML=`<div class="m-alert-item ${cls}">${a.message||a.title||JSON.stringify(a)}</div>`+el.innerHTML;
+    if(a.id>lastAlertId) lastAlertId=a.id;
+  });
+  document.getElementById('s-alerts').textContent=el.children.length;
+}
+
+/* ── Quick commands ──────────────────────────────────── */
+async function qcmd(cmd){
+  await fetch(API+'/voice/command',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({transcript:cmd.replace('_',' ')})});
+  refreshAll();
+}
+
+function panTo(lat,lng){if(map&&lat&&lng) map.setView([lat,lng],14);}
+function centerMap(){if(map) map.setView([28.0,-82.5],10);}
+
+/* ── SocketIO live updates ───────────────────────────── */
+let sock;
+try{
+  sock=io({transports:['websocket','polling']});
+  sock.on('amos_alert',function(d){updateAlerts([d]);});
+  sock.on('asset_update',function(){refreshAll();});
+}catch(e){}
+
+/* ── Init ────────────────────────────────────────────── */
+initMap();
+refreshAll();
+setInterval(refreshAll,5000);
+</script>
+</body></html>

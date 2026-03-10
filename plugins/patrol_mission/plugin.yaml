@@ -1,0 +1,15 @@
+name: patrol_mission
+version: "1.0"
+type: mission_pack
+description: >
+  Advanced patrol mission pack — linear patrol, orbit/race-track,
+  and sector sweep templates with dynamic threat rerouting.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:PatrolMissionPlugin
+capabilities:
+  - mission_templates
+  - waypoint_generation
+  - orbit_pattern
+  - sector_sweep
+  - dynamic_reroute

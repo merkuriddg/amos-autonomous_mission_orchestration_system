@@ -20,6 +20,10 @@ import web.state  # noqa: F401  — triggers all subsystem instantiation
 from web.routes import register_core_blueprints
 register_core_blueprints(app)
 
+# ── OpenAPI / Swagger docs ──
+from web.swagger import bp as swagger_bp
+app.register_blueprint(swagger_bp)
+
 # ── Register enterprise blueprints (if edition=enterprise) ──
 from web.enterprise import register_enterprise_blueprints
 register_enterprise_blueprints(app)

@@ -20,7 +20,7 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#00ff41;overfl
 .card{background:#111;border:1px solid #222;padding:10px;margin-bottom:8px}
 .card h3{color:#00ff41;font-size:.85em;margin-bottom:6px;border-bottom:1px solid #222;padding-bottom:4px}
 .badge{display:inline-block;padding:1px 6px;font-size:.7em;border:1px solid}
-.badge-green{color:#00ff41;border-color:#00ff41}.badge-red{color:#ff4444;border-color:#ff4444}
+.badge-green{color:#00ff41;border-color:#00ff41}.badge-red{color:#ff4444;border-color:#ff4444}.badge-cyan{color:#00ccff;border-color:#00ccff}
 .badge-yellow{color:#ffaa00;border-color:#ffaa00}.badge-blue{color:#4488ff;border-color:#4488ff}
 table{width:100%;border-collapse:collapse;font-size:.78em}
 th{color:#888;text-align:left;padding:5px;border-bottom:1px solid #333}
@@ -170,6 +170,8 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
       <a href="/integrations" class="amos-menu-item{% if request.path=='/integrations' %} active{% endif %}">Integrations</a>
       <a href="/manual" class="amos-menu-item{% if request.path=='/manual' %} active{% endif %}">Manual</a>
       <a href="/settings" class="amos-menu-item{% if request.path=='/settings' %} active{% endif %}">Settings</a>
+      <a href="/mobile" class="amos-menu-item{% if request.path=='/mobile' %} active{% endif %}">📱 Mobile</a>
+      <a href="/api/docs" class="amos-menu-item{% if request.path=='/api/docs' %} active{% endif %}">API Docs</a>
      </div>
     </div>
    </div>

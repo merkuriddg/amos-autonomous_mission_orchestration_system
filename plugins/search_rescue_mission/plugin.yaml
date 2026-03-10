@@ -1,0 +1,17 @@
+name: search_rescue_mission
+version: "1.0"
+type: mission_pack
+description: >
+  Search & Rescue mission pack — expanding square, parallel track,
+  and creeping line ahead patterns with casualty detection workflow.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:SearchRescueMissionPlugin
+capabilities:
+  - mission_templates
+  - waypoint_generation
+  - expanding_square
+  - parallel_track
+  - creeping_line
+  - casualty_detection
+  - extraction_workflow

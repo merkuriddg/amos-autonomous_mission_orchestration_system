@@ -1,13 +1,19 @@
 name: ros2_adapter
 version: "1.0"
 type: transport
-domain: all
-author: AMOS Team
-enabled: true
-entry_point: ROS2AdapterPlugin
 description: >
-  ROS 2 bridge adapter — publishes AMOS asset state to ROS 2 topics
-  and subscribes to external robotic nodes.
-dependencies:
-  - amos-core >=1.0
-  - rclpy
+  ROS 2 bridge adapter — publishes AMOS asset/threat state to ROS 2
+  topics and ingests telemetry from external robotic nodes.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:ROS2AdapterPlugin
+requires:
+  - integrations.ros2_integration
+capabilities:
+  - ros2_publish
+  - ros2_subscribe
+  - telemetry_ingest
+  - health
+config:
+  node_name: "amos_bridge"
+  sync_interval_sec: 1.0
