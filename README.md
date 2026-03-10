@@ -5,11 +5,11 @@
 [![Tests](https://img.shields.io/badge/Tests-209_passing-brightgreen.svg)](tests/)
 
 > *"The LORD roars from Zion … the shepherd watches, and what he sees he declares."*
-> — inspired by the Book of Amos
+> — the Book of Amos
 
-In the Hebrew Bible, **Amos** was a shepherd called to be a watchman — scanning the horizon, seeing threats others missed, and speaking truth when it mattered most. That is exactly what this platform does: it watches across every domain, fuses what it sees, and orchestrates autonomous forces to protect and respond. The name isn't a coincidence.
+In the Bible, **Amos** was a shepherd called to be a watchman — scanning the horizon, seeing threats others missed, and speaking truth when it mattered most. That is exactly what this platform does: it watches across every domain, fuses what it sees, and orchestrates autonomous forces to protect and respond. The name isn't a coincidence.
 
-**Mission Operating System for Autonomous Systems**
+**Autonomous Mission Orchestration System**
 
 AMOS is a **multi-domain command-and-control platform** that enables small teams of human operators to supervise and coordinate autonomous robotic assets across **air, ground, maritime, cyber, and space domains**.
 
