@@ -1,6 +1,6 @@
 
 # AMOS Platform Architecture
-**Autonomous Mission Operating System (AMOS)**  
+**Autonomous Mission Orchestration System (AMOS)**  
 Platform Architecture v0.1
 
 ---

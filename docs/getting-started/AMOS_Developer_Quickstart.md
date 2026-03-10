@@ -87,7 +87,7 @@ In under two minutes you launched:
 	•	telemetry streaming
 	•	event-driven coordination
 
-All coordinated by AMOS — the Autonomous Mission Operating System.
+All coordinated by AMOS — the Autonomous Mission Orchestration System.
 
 ⸻
 

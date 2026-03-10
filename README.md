@@ -1,4 +1,4 @@
-# AMOS — Autonomous Mission Operating System
+# AMOS — Autonomous Mission Orchestration System
 
 Multi-domain C2 platform for autonomous robotic platoon operations.
 **v4.0 — Phase 29: Full Data Integration Stack**

@@ -1,6 +1,6 @@
 # Contributing to AMOS
 
-Thank you for your interest in contributing to **AMOS — the Autonomous Mission Operating System**.
+Thank you for your interest in contributing to **AMOS — the Autonomous Mission Orchestration System**.
 
 AMOS is an open platform designed to enable **mission orchestration for autonomous systems across air, ground, maritime, cyber, and space domains**.
 

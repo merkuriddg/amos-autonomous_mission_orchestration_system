@@ -242,7 +242,7 @@ def generate_opord(platoon_config, assets, threats, coa_data=None,
         "para_5_c2": {
             "title": "5. COMMAND AND SIGNAL",
             "commander": platoon_config.get("commander", "CDR Mitchell"),
-            "c2_system": "AMOS v2.0 — Autonomous Mission Operating System",
+            "c2_system": "AMOS v2.0 — Autonomous Mission Orchestration System",
             "succession": ["CDR Mitchell", "CPT Torres", "SGT Reeves"],
             "signal": {
                 "primary_net": "AMOS WebSocket (port 2600)",

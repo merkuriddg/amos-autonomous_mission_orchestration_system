@@ -1,9 +1,9 @@
-# AMOS — Autonomous Mission Operating System
+# AMOS — Autonomous Mission Orchestration System
 # Production container
 FROM python:3.11-slim
 
 LABEL maintainer="MavrixOne / Merkuri DDG"
-LABEL description="AMOS — Autonomous Mission Operating System"
+LABEL description="AMOS — Autonomous Mission Orchestration System"
 
 WORKDIR /opt/amos
 

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   AMOS Phase 3 — Autonomous Mission Operating System
+   AMOS Phase 3 — Autonomous Mission Orchestration System
    Complete UI: Modals, Sorting, Mesh, Toasts, Swarm Patterns
    ═══════════════════════════════════════════════════════════ */
 console.log('[AMOS] Phase 3 JS loading...');

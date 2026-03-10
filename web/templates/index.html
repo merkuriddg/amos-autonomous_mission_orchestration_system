@@ -283,10 +283,7 @@ async function refreshOverlay(key){
 }
 setInterval(function(){for(var k in _ovActive){if(_ovActive[k])refreshOverlay(k);}},5000);
 
-// ═══ Phase 8: Theater switching ═══
-socket.on('theater_changed',function(d){
- map.flyTo([d.lat,d.lng],d.zoom||10,{duration:2});
-});
+// Theater switching now handled by base.html _theaterFlyTo()
 
   // Expose map for AMOS Phase 3
   (function(){

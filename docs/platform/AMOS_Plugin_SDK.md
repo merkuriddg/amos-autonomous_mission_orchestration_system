@@ -1,6 +1,6 @@
 
 # AMOS Plugin SDK
-**Autonomous Mission Operating System (AMOS)**  
+**Autonomous Mission Orchestration System (AMOS)**  
 Plugin Development Kit v0.1
 
 ---

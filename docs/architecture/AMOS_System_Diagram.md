@@ -1,5 +1,5 @@
 # AMOS System Diagram
-**Autonomous Mission Operating System (AMOS)**  
+**Autonomous Mission Orchestration System (AMOS)**  
 System Diagram v0.1
 
 ---

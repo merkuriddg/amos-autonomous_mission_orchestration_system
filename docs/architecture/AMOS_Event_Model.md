@@ -1,6 +1,6 @@
 
 # AMOS Event Model
-Autonomous Mission Operating System
+Autonomous Mission Orchestration System
 Event Architecture v0.1
 
 ## Purpose

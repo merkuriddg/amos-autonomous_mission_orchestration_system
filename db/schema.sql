@@ -1,4 +1,4 @@
--- AMOS — Autonomous Mission Operating System
+-- AMOS — Autonomous Mission Orchestration System
 -- Phase 1 Database Schema (MariaDB)
 -- =====================================================
 

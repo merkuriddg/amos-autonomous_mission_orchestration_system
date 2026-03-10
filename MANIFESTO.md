@@ -1,5 +1,5 @@
 # AMOS Manifesto
-## The Autonomous Mission Operating System
+## The Autonomous Mission Orchestration System
 
 Autonomous systems are transforming robotics, defense, logistics, and infrastructure.
 
@@ -39,7 +39,7 @@ A layer that can:
 
 ---
 
-# The Mission Operating System
+# The Mission Orchestration System
 
 AMOS is an attempt to build that layer.
 

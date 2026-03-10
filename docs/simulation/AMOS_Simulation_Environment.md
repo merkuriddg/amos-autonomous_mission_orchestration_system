@@ -1,6 +1,6 @@
 
 # AMOS Simulation Environment
-Autonomous Mission Operating System
+Autonomous Mission Orchestration System
 Simulation Framework v0.1
 
 ## Purpose

@@ -413,4 +413,4 @@ platoon:
     east: -82.1
     west: -82.9
 system_name: AMOS
-system_full_name: Autonomous Mission Operating System
+system_full_name: Autonomous Mission Orchestration System

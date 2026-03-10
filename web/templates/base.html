@@ -241,9 +241,16 @@ socket.on('hmt_update',function(d){window._amosData.hmt=d;if(window.onHmtUpdate)
 socket.on('mesh_update',function(d){window._amosData.mesh=d;if(window.onMeshUpdate)window.onMeshUpdate(d);});
 // Theater selector
 function loadTheaters(){apiFetch('/api/theater/list').then(function(ts){var s=document.getElementById('theater-sel');if(!s||!ts.length)return;s.innerHTML='';ts.forEach(function(t){var o=document.createElement('option');o.value=t.key;o.textContent=t.name;if(t.active)o.selected=true;s.appendChild(o);});}).catch(function(){});}
-function switchTheater(key){apiPost('/api/theater/switch',{key:key});}
+function _findAmosMap(){
+ if(window._amosMap&&window._amosMap.flyTo) return window._amosMap;
+ var els=document.querySelectorAll('.leaflet-container');
+ for(var i=0;i<els.length;i++){for(var k in window){try{if(window[k]&&window[k]._container===els[i]&&window[k].flyTo)return window[k];}catch(e){}}}
+ return null;
+}
+function _theaterFlyTo(lat,lng,zoom){var m=_findAmosMap();if(m)m.flyTo([lat,lng],zoom||10,{duration:2});}
+function switchTheater(key){apiPost('/api/theater/switch',{key:key}).then(function(r){if(r.status==='ok'&&r.lat!==undefined)_theaterFlyTo(r.lat,r.lng,r.zoom);});}
 loadTheaters();
-socket.on('theater_changed',function(d){var s=document.getElementById('theater-sel');if(s)s.value=d.key;});
+socket.on('theater_changed',function(d){var s=document.getElementById('theater-sel');if(s)s.value=d.key;_theaterFlyTo(d.lat,d.lng,d.zoom);});
 // Menu
 function toggleAmosMenu(){document.getElementById('amos-menu').classList.toggle('open');}
 document.getElementById('topbar-page').textContent=document.title.replace(/^AMOS\s*[—–-]\s*/,'');

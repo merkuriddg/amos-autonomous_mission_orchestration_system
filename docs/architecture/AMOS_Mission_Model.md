@@ -1,6 +1,6 @@
 
 # AMOS Mission Model
-Autonomous Mission Operating System
+Autonomous Mission Orchestration System
 Mission Specification v0.1
 
 ## Purpose

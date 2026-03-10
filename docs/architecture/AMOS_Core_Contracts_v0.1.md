@@ -1,6 +1,6 @@
 
 # AMOS Core Contracts
-**Autonomous Mission Operating System (AMOS)**
+**Autonomous Mission Orchestration System (AMOS)**
 Core Architecture Doctrine v0.1
 
 ---
