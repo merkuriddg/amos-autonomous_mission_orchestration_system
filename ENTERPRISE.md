@@ -21,7 +21,7 @@ AMOS Open Core provides the mission orchestration platform — multi-domain C2, 
 
 Enterprise modules, integrations, and operational deployment tooling are available under commercial license from Merkuri LLC.
 
-For licensing inquiries, contact: **enterprise@merkuri.com**
+For licensing inquiries, contact: **enterprise@merkuri.one**
 
 ## Installation
 

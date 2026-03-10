@@ -18,7 +18,7 @@ If you discover a security vulnerability in AMOS, please report it responsibly.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, email: **security@merkuri.com**
+Instead, email: **security@merkuri.one**
 
 Please include:
 - Description of the vulnerability
@@ -34,8 +34,8 @@ We will acknowledge receipt within 48 hours and provide a timeline for resolutio
 - **Database credentials** should be configured via environment variables (`AMOS_DB_USER`, `AMOS_DB_PASS`), not hardcoded.
 - **Flask secret key** should be set via the `MOS_SECRET` environment variable in production.
 - **COMSEC encryption** (AES-256-GCM) is available in the Enterprise edition for data-at-rest and data-in-transit protection.
-- The default configuration binds to `0.0.0.0` — restrict this in production environments.
+- The default configuration binds to `*******` — restrict this in production environments.
 
 ## Scope
 
-This security policy applies to the AMOS open-core repository. For security issues related to AMOS Enterprise modules, contact enterprise@merkuri.com.
+This security policy applies to the AMOS open-core repository. For security issues related to AMOS Enterprise modules, contact enterprise@merkuri.one.
