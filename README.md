@@ -192,7 +192,8 @@ amos/
 | `docs/platform/INTEGRATION_GUIDE.md` | Integration bridge development |
 | `ENTERPRISE.md` | Enterprise edition features and licensing |
 | `SECURITY.md` | Security policy and vulnerability disclosure |
-| `CONTRIBUTING.md` | Contribution guidelines and code style |
+|| `CONTRIBUTING.md` | Contribution guidelines and code style |
+|| `TRADEMARK.md` | Trademark policy and usage guidelines |
 
 ---
 
@@ -227,7 +228,9 @@ Enterprise modules are available under commercial license from Merkuri LLC. See 
 
 ## Trademark
 
-AMOS™ is a trademark of Merkuri LLC.
+AMOS™ and Autonomous Mission Orchestration System™ are trademarks of Merkuri LLC. Use of these names in commercial products or services requires written permission. See [TRADEMARK.md](TRADEMARK.md) for the full policy.
+
+All contributions grant Merkuri LLC rights to use contributions commercially.
 
 ## Security
 

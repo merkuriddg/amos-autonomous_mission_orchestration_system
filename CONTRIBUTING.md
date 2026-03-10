@@ -64,6 +64,14 @@ You can add this automatically with `git commit -s`.
 - Use GitHub Issues for bugs and feature requests
 - For security vulnerabilities, see [SECURITY.md](SECURITY.md)
 
-## License
+## Contribution License and Commercial Rights
 
-By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
+By contributing to AMOS, you agree that:
+
+- Your contributions will be licensed under the Apache License 2.0
+- **All contributions grant Merkuri LLC the right to use contributions commercially**, including in the AMOS Enterprise edition and any future Merkuri LLC products or services
+- You represent that your contributions are your own original work
+
+## Trademark
+
+AMOS™ and Autonomous Mission Orchestration System™ are trademarks of Merkuri LLC. See [TRADEMARK.md](TRADEMARK.md) for the full trademark policy.
