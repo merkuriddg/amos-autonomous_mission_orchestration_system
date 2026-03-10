@@ -40,8 +40,12 @@ AMOS orchestrates assets, sensors, autonomy engines, and communications to execu
 ## Quick Start
 
 ```bash
-cp .env.example .env          # configure edition + dev tools
+git clone https://github.com/merkuriddg/amos-autonomous_mission_orchestration_system.git
+cd amos-autonomous_mission_orchestration_system
+python3 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # configure edition + dev tools
 python3 web/app.py
 ```
 
@@ -94,7 +98,7 @@ AMOS ships in two editions controlled by `AMOS_EDITION` in `.env`:
 
 - **Enterprise** (`AMOS_EDITION=enterprise`) — Full platform: 300+ API routes. Adds cognitive engine (OODA/COA), NLP mission parser, Monte Carlo wargaming, swarm intelligence, kill web, ISR/ATR, effects chain, space domain, human-machine teaming, COMSEC, TAK/Link 16/VMF/STANAG integrations, OPORD/CONOP generation, and more.
 
-Per-feature overrides let you enable individual enterprise modules in open mode (e.g. `AMOS_ENABLE_COGNITIVE=true`). See `.env.example` for all flags.
+Per-feature overrides are available when the enterprise overlay is installed, allowing you to enable or disable individual modules (e.g. `AMOS_ENABLE_COGNITIVE=true`). See `.env.example` for all flags.
 
 ## System Architecture
 
