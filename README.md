@@ -1,5 +1,9 @@
 # AMOS — Autonomous Mission Orchestration System
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
+[![Tests](https://img.shields.io/badge/Tests-209_passing-brightgreen.svg)](tests/)
+
 **Mission Operating System for Autonomous Systems**
 
 AMOS is a **multi-domain command-and-control platform** that enables small teams of human operators to supervise and coordinate autonomous robotic assets across **air, ground, maritime, cyber, and space domains**.
@@ -7,7 +11,7 @@ AMOS is a **multi-domain command-and-control platform** that enables small teams
 Operators define **mission intent**.  
 AMOS orchestrates assets, sensors, autonomy engines, and communications to execute those missions.
 
-**v5.2 — API Versioning • CI/CD • System Scripts • Edition Dashboard**
+**v0.5.2** — Open Core Release
 
 ---
 
@@ -121,13 +125,13 @@ amos/
 │   ├── simulation_engine.py — Background sim tick loop
 │   ├── websockets.py        — Socket.IO event handlers
 │   ├── routes/              — 11 core blueprints (auth, assets, ops, scripts, edition, etc.)
-│   ├── enterprise/          — 4 enterprise blueprints (intelligence, warfare, security, defense)
+│   ├── enterprise/          — Enterprise blueprint stubs (populated by amos-enterprise overlay)
 │   └── templates/           — Terminal-aesthetic UI (40+ views)
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
 ├── services/                — 36 autonomous subsystems
 ├── integrations/            — PX4, TAK, Link 16, MQTT, DDS, Kafka bridges
 ├── plugins/                 — Plugin system (PX4, ROS 2, example drone)
-├── enterprise/              — Overlay installer for private enterprise repo
+├── enterprise/              — Enterprise overlay installer (see ENTERPRISE.md)
 ├── db/                      — MariaDB persistence (36 tables)
 ├── config/                  — Platoon config + theater locations
 ├── tests/                   — 209 automated tests (3-layer: route, service, contract)
@@ -372,4 +376,16 @@ Example plugins live in `plugins/` — copy `plugins/example_drone/` to start bu
 
 ## License
 
-Proprietary — merkuri, llc
+AMOS Open Core is free and open source under the [Apache License 2.0](LICENSE).
+
+Enterprise modules, integrations, and operational deployment tooling are available under commercial license from Merkuri LLC. See [ENTERPRISE.md](ENTERPRISE.md) for details.
+
+## Trademark
+
+AMOS™ is a trademark of Merkuri LLC. The AMOS name and logo may not be used to endorse or promote derivative products without prior written permission.
+
+## Security
+
+**AMOS is a research and development platform and should not be used in safety-critical environments without appropriate validation and testing.**
+
+See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.

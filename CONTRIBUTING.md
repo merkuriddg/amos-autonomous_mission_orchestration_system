@@ -1,179 +1,69 @@
 # Contributing to AMOS
 
-Thank you for your interest in contributing to **AMOS — the Autonomous Mission Orchestration System**.
+Thank you for your interest in contributing to AMOS! We welcome contributions from the robotics, defense, and autonomous systems communities.
 
-AMOS is an open platform designed to enable **mission orchestration for autonomous systems across air, ground, maritime, cyber, and space domains**.
+## Scope
 
-We welcome contributions from engineers, robotics researchers, autonomy developers, and system integrators.
+Contributions are accepted to the **open-core platform only**. Enterprise modules (cognitive engine, wargaming, swarm autonomy, ISR/ATR, COMSEC, TAK/Link-16/STANAG integrations, etc.) are commercially licensed and not open for external contribution.
 
----
+Areas where contributions are especially welcome:
+- **Plugins** — new hardware adapters, sensor integrations, autonomy modules
+- **Bug fixes** — across the core platform
+- **Documentation** — tutorials, API examples, deployment guides
+- **Tests** — additional test coverage
+- **Integrations** — ROS 2, MAVLink, MQTT, DDS adapters
+- **Simulation** — new asset models, threat behaviors, environment models
 
-# Ways to Contribute
+## How to Contribute
 
-You can contribute to AMOS in several ways:
+1. **Fork** the repository
+2. **Create a branch** from `main` (`git checkout -b feature/my-feature`)
+3. **Make your changes** — follow the code style below
+4. **Write tests** — all new features must include tests
+5. **Run the test suite** — `python3 -m pytest tests/ -v --tb=short`
+6. **Submit a Pull Request** against `main`
 
-### Platform Development
+## Code Style
 
-Improve the core system:
+- Python 3.11+ — use type hints where practical
+- Follow existing patterns in the codebase
+- Keep functions focused and well-documented
+- Validate all inputs to prevent errors
+- Use environment variables for configuration, never hardcode secrets
 
-- Mission orchestration
-- Event architecture
-- Autonomy engines
-- State management
-- Authority enforcement
+## Testing
 
-### Plugin Development
-
-Create plugins that extend AMOS capabilities:
-
-- Asset adapters (robots, drones, vehicles)
-- Sensor adapters
-- Mission packs
-- Planning algorithms
-- Analytics modules
-- Transport integrations
-
-### Documentation
-
-Improve:
-
-- architecture documentation
-- developer guides
-- plugin SDK examples
-- tutorials
-
-### Simulation
-
-Extend the simulator:
-
-- new asset models
-- threat behaviors
-- environment models
-- test scenarios
-
----
-
-# Development Setup
-
-Clone the repository:
+All PRs must pass the existing test suite. New features should include tests.
 
 ```bash
-git clone https://github.com/YOUR_ORG/amos.git
-cd amos
+# Run all tests
+python3 -m pytest tests/ -v --tb=short
 
-Install dependencies:
-pip install -r requirements.txt
+# With coverage
+python3 -m pytest tests/ --cov=web --cov=core --cov=services --cov-report=term-missing
+```
 
-Run AMOS locally:
-python3 web/app.py
+## Plugin Development
 
-Open:
-http://localhost:2600
+Plugins are the preferred way to extend AMOS. See `docs/platform/AMOS_Plugin_SDK.md` for the full SDK guide. Copy `plugins/example_drone/` to start building your own.
 
+## Developer Certificate of Origin (DCO)
 
+By contributing to this project, you agree that your contributions are your own original work and that you have the right to submit them under the Apache 2.0 License.
 
+All commits must include a `Signed-off-by` line:
 
+```
+Signed-off-by: Your Name <your@email.com>
+```
 
-Plugin Development
+You can add this automatically with `git commit -s`.
 
-Plugins are the preferred way to extend AMOS.
+## Reporting Issues
 
-See:
-docs/platform/AMOS_Plugin_SDK.md
+- Use GitHub Issues for bugs and feature requests
+- For security vulnerabilities, see [SECURITY.md](SECURITY.md)
 
-Example plugin types:
-	•	Asset adapters
-	•	Sensor integrations
-	•	Mission packs
-	•	Autonomy planners
-	•	Analytics modules
+## License
 
-⸻
-
-Pull Request Process
-	1.	Fork the repository
-	2.	Create a feature branch
-
-git checkout -b feature/my-feature
-
-	3.	Commit your changes
-git commit -m "Add feature"
-
-	4.	Push your branch
-
-git push origin feature/my-feature
-
-	5.	Open a Pull Request
-
-
-⸻
-
-Code Style
-
-General guidelines:
-	•	Write clear, readable Python
-	•	Follow PEP8 where practical
-	•	Document public functions
-	•	Avoid unnecessary complexity
-
-Architecture changes should include documentation updates.
-
-⸻
-
-Reporting Issues
-
-If you discover a bug or have a feature request:
-
-Create an issue with:
-	•	clear description
-	•	steps to reproduce
-	•	expected behavior
-	•	screenshots if applicable
-
-⸻
-
-Community
-
-AMOS aims to build an ecosystem of developers working on autonomous mission systems.
-
-We encourage:
-	•	collaboration
-	•	respectful discussion
-	•	constructive feedback
-
-Thank you for helping build the future of autonomous mission platforms.
-
-
----
-
-# 2️⃣ LICENSE (Apache 2.0 – recommended)
-
-Save this as:
-
-LICENSE
-```markdown
-Apache License
-Version 2.0, January 2004
-
-Copyright 2026 Mavrix / Merkuri
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-
-You may obtain a copy of the License at:
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-See the License for the specific language governing permissions
-and limitations under the License.
-
-Why Apache 2.0?
-
-It:
-	•	protects contributors
-	•	allows commercial use
-	•	is common for platforms (Kubernetes, ROS, etc.)
+By contributing, you agree that your contributions will be licensed under the Apache License 2.0.

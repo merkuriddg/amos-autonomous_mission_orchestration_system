@@ -16,7 +16,7 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, "templates"),
             static_folder=os.path.join(BASE_DIR, "static"))
-app.secret_key = os.environ.get("MOS_SECRET", "mos-shadow-forge-2026")
+app.secret_key = os.environ.get("MOS_SECRET", "change-me-in-production")
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # ── Config paths ──

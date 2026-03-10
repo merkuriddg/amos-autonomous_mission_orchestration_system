@@ -10,8 +10,8 @@ from contextlib import contextmanager
 # ── Config ──────────────────────────────────────────────
 DB_CONFIG = {
     "unix_socket": os.environ.get("AMOS_DB_SOCKET", "/tmp/mysql.sock"),
-    "user": os.environ.get("AMOS_DB_USER", "rpmbbu"),
-    "password": os.environ.get("AMOS_DB_PASS", "z8468RPMerkuri123!"),
+    "user": os.environ.get("AMOS_DB_USER", "root"),
+    "password": os.environ.get("AMOS_DB_PASS", ""),
     "database": os.environ.get("AMOS_DB_NAME", "amos"),
     "charset": "utf8mb4",
     "cursorclass": pymysql.cursors.DictCursor,
