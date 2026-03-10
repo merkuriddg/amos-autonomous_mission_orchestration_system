@@ -150,10 +150,16 @@ amos/
 ├── web/                     — Flask app, routes, templates, simulation engine
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
 ├── services/                — 36 autonomous subsystems
-├── integrations/            — PX4, TAK, Link 16, MQTT, DDS, Kafka bridges
-├── plugins/                 — Plugin system (PX4, ROS 2, example drone)
-├── demo/
-│   └── scenarios/           — border_patrol, swarm_recon, disaster_response
+├── integrations/            — 21 protocol bridges (see below)
+├── plugins/                 — 8 plugins (asset, sensor, mission pack adapters)
+├── examples/                — Demo scenarios + quickstart code samples
+│   ├── border_intrusion/    — Border patrol demo
+│   ├── swarm_recon/         — Swarm reconnaissance demo
+│   ├── disaster_response/   — Earthquake SAR demo
+│   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
+├── sdk/                     — Developer SDK (Python package + docs)
+├── tools/                   — CLI tools (plugin scaffolding)
+├── demo/                    — Legacy demo scenarios
 ├── db/                      — MariaDB schema + setup script (36 tables)
 ├── config/                  — Platoon config + theater locations
 ├── tests/                   — 209 automated tests
@@ -204,7 +210,7 @@ amos/
 - **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB (optional — runs in-memory without it)
 - **Testing:** pytest (209 tests), GitHub Actions CI (Python 3.11 + 3.12)
-- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586
+- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA
 - **Security:** AES-256-GCM encryption, HMAC, key lifecycle management
 
 ## Testing
@@ -216,6 +222,14 @@ python3 -m pytest tests/ -v --tb=short
 209 tests across route, service, and contract layers. CI runs on every push via GitHub Actions.
 
 ## Plugin Development
+
+Build your own AMOS plugins with the scaffolding tool:
+
+```bash
+python3 tools/create_plugin.py my_sensor --type sensor_adapter
+```
+
+Supports 6 plugin types: `asset_adapter`, `sensor_adapter`, `mission_pack`, `planner`, `analytics`, `transport`
 
 See `docs/platform/AMOS_Plugin_SDK.md` for the full SDK guide. Copy `plugins/example_drone/` to start.
 
@@ -236,6 +250,20 @@ All contributions grant Merkuri LLC rights to use contributions commercially.
 ## Security
 
 **AMOS is a research and development platform.** See [SECURITY.md](SECURITY.md).
+
+---
+
+## Get Involved
+
+AMOS is built for the robotics, defense, and autonomous systems community. Here's how to contribute:
+
+- **Build a plugin** — Use `tools/create_plugin.py` to scaffold a new asset adapter, sensor, or mission pack
+- **Add an integration** — Connect a new protocol or hardware platform (see `integrations/` for examples)
+- **Improve docs** — Tutorials, API examples, deployment guides
+- **Write tests** — Expand coverage across route, service, and contract layers
+- **Try a demo** — Run `./run_demo.sh` and explore the platform
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
