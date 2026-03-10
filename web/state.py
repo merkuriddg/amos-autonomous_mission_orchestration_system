@@ -554,6 +554,11 @@ _px4 = None
 _px4_ok = False
 _tak = None
 _link16 = None
+_adsb = None
+_aprs = None
+_ais = None
+_lora = None
+_remoteid = None
 _mqtt_adapter = None
 _dds_adapter = None
 _kafka_adapter = None
@@ -604,6 +609,42 @@ if feature_enabled("link16"):
         print("[AMOS] Link 16: Network initialized")
     except Exception as e:
         print(f"[AMOS] Link 16: Not available ({e})")
+
+# Open sensor bridges (no feature gate — always available)
+try:
+    from integrations.adsb_receiver import ADSBReceiver
+    _adsb = ADSBReceiver()
+    print("[AMOS] ADS-B Receiver: Ready")
+except Exception as e:
+    print(f"[AMOS] ADS-B Receiver: Not available ({e})")
+
+try:
+    from integrations.aprs_bridge import APRSBridge
+    _aprs = APRSBridge()
+    print("[AMOS] APRS Bridge: Ready")
+except Exception as e:
+    print(f"[AMOS] APRS Bridge: Not available ({e})")
+
+try:
+    from integrations.ais_receiver import AISReceiver
+    _ais = AISReceiver()
+    print("[AMOS] AIS Receiver: Ready")
+except Exception as e:
+    print(f"[AMOS] AIS Receiver: Not available ({e})")
+
+try:
+    from integrations.lora_bridge import LoRaBridge
+    _lora = LoRaBridge()
+    print("[AMOS] LoRa/Meshtastic: Ready")
+except Exception as e:
+    print(f"[AMOS] LoRa/Meshtastic: Not available ({e})")
+
+try:
+    from integrations.remoteid_bridge import RemoteIDBridge
+    _remoteid = RemoteIDBridge()
+    print("[AMOS] RemoteID: Ready")
+except Exception as e:
+    print(f"[AMOS] RemoteID: Not available ({e})")
 
 if feature_enabled("kafka"):
     try:

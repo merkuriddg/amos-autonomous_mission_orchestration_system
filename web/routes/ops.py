@@ -15,6 +15,7 @@ from web.state import (
     cyber_events, cyber_blocked_ips, supply_history,
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
+    _adsb, _aprs, _ais, _lora, _remoteid,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -207,11 +208,20 @@ def api_audit():
 @login_required
 def api_bridge_all():
     """Unified status of all integration bridges."""
+    def _ss(b):
+        if not b:
+            return {"available": False, "connected": False}
+        s = b.get_status() if hasattr(b, "get_status") else {}
+        s["available"] = True
+        s["connected"] = getattr(b, "connected", False)
+        return s
     return jsonify({
         "px4": _px4.get_status() if _px4 else {"connected": False},
         "tak": _tak.get_status() if _tak else {"connected": False},
         "link16": _link16.get_status() if _link16 else {"connected": False},
         "ros2": ros2_bridge.get_status() if ros2_bridge else {"available": False},
+        "adsb": _ss(_adsb), "aprs": _ss(_aprs), "ais": _ss(_ais),
+        "lora": _ss(_lora), "remoteid": _ss(_remoteid),
     })
 
 # ── PX4 ──
@@ -355,6 +365,202 @@ def api_link16_command():
         d.get("from_id", ""), d.get("to_id", ""),
         d.get("command_type", "ENGAGE"), d.get("params", {}))
     return jsonify({"status": "ok" if msg else "failed", "message": msg})
+
+
+# ═══════════════════════════════════════════════════════════
+#  SENSOR BRIDGES (ADS-B, APRS, AIS, Meshtastic, RemoteID)
+# ═══════════════════════════════════════════════════════════
+@bp.route("/bridge/sensor/all")
+@login_required
+def api_sensor_bridges_all():
+    """Unified status of all sensor bridges."""
+    def _status(bridge, name):
+        if not bridge:
+            return {"name": name, "available": False, "connected": False}
+        s = bridge.get_status() if hasattr(bridge, "get_status") else {}
+        s["name"] = name
+        s["available"] = True
+        s["connected"] = getattr(bridge, "connected", False)
+        return s
+    return jsonify({
+        "adsb": _status(_adsb, "ADS-B"),
+        "aprs": _status(_aprs, "APRS"),
+        "ais": _status(_ais, "AIS"),
+        "lora": _status(_lora, "Meshtastic"),
+        "remoteid": _status(_remoteid, "RemoteID"),
+    })
+
+# ── ADS-B ──
+@bp.route("/bridge/adsb/status")
+@login_required
+def api_adsb_status():
+    if not _adsb:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_adsb.get_status())
+
+@bp.route("/bridge/adsb/connect", methods=["POST"])
+@login_required
+def api_adsb_connect():
+    if not _adsb:
+        return jsonify({"error": "ADS-B receiver not loaded"}), 503
+    d = request.json or {}
+    _adsb.host = d.get("host", _adsb.host)
+    _adsb.port = int(d.get("port", _adsb.port))
+    if hasattr(_adsb, "protocol"):
+        _adsb.protocol = d.get("protocol", _adsb.protocol)
+    ok = _adsb.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _adsb.connected})
+
+@bp.route("/bridge/adsb/disconnect", methods=["POST"])
+@login_required
+def api_adsb_disconnect():
+    if _adsb:
+        _adsb.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/adsb/tracks")
+@login_required
+def api_adsb_tracks():
+    if not _adsb or not _adsb.connected:
+        return jsonify({})
+    return jsonify(getattr(_adsb, "aircraft", {}))
+
+# ── APRS ──
+@bp.route("/bridge/aprs/status")
+@login_required
+def api_aprs_status():
+    if not _aprs:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_aprs.get_status())
+
+@bp.route("/bridge/aprs/connect", methods=["POST"])
+@login_required
+def api_aprs_connect():
+    if not _aprs:
+        return jsonify({"error": "APRS bridge not loaded"}), 503
+    d = request.json or {}
+    if hasattr(_aprs, "callsign") and d.get("callsign"):
+        _aprs.callsign = d["callsign"]
+    if hasattr(_aprs, "server") and d.get("server"):
+        _aprs.server = d["server"]
+    ok = _aprs.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _aprs.connected})
+
+@bp.route("/bridge/aprs/disconnect", methods=["POST"])
+@login_required
+def api_aprs_disconnect():
+    if _aprs:
+        _aprs.disconnect()
+    return jsonify({"status": "ok"})
+
+# ── AIS ──
+@bp.route("/bridge/ais/status")
+@login_required
+def api_ais_status():
+    if not _ais:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_ais.get_status())
+
+@bp.route("/bridge/ais/connect", methods=["POST"])
+@login_required
+def api_ais_connect():
+    if not _ais:
+        return jsonify({"error": "AIS receiver not loaded"}), 503
+    d = request.json or {}
+    _ais.host = d.get("host", _ais.host)
+    _ais.port = int(d.get("port", _ais.port))
+    ok = _ais.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _ais.connected})
+
+@bp.route("/bridge/ais/disconnect", methods=["POST"])
+@login_required
+def api_ais_disconnect():
+    if _ais:
+        _ais.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/ais/vessels")
+@login_required
+def api_ais_vessels():
+    if not _ais or not _ais.connected:
+        return jsonify({})
+    return jsonify(getattr(_ais, "vessels", {}))
+
+# ── LoRa / Meshtastic ──
+@bp.route("/bridge/lora/status")
+@login_required
+def api_lora_status():
+    if not _lora:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_lora.get_status())
+
+@bp.route("/bridge/lora/connect", methods=["POST"])
+@login_required
+def api_lora_connect():
+    if not _lora:
+        return jsonify({"error": "LoRa bridge not loaded"}), 503
+    d = request.json or {}
+    if hasattr(_lora, "connection_type") and d.get("connection_type"):
+        _lora.connection_type = d["connection_type"]
+    if hasattr(_lora, "device") and d.get("device"):
+        _lora.device = d["device"]
+    ok = _lora.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _lora.connected})
+
+@bp.route("/bridge/lora/disconnect", methods=["POST"])
+@login_required
+def api_lora_disconnect():
+    if _lora:
+        _lora.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/lora/send", methods=["POST"])
+@login_required
+def api_lora_send():
+    if not _lora or not _lora.connected:
+        return jsonify({"error": "LoRa not connected"}), 503
+    d = request.json or {}
+    text = d.get("text", "")
+    dest = d.get("destination", "^all")
+    ok = _lora.send_message(text, destination=dest)
+    return jsonify({"status": "ok" if ok else "failed"})
+
+@bp.route("/bridge/lora/nodes")
+@login_required
+def api_lora_nodes():
+    if not _lora or not _lora.connected:
+        return jsonify({})
+    return jsonify(getattr(_lora, "nodes", {}))
+
+# ── RemoteID ──
+@bp.route("/bridge/remoteid/status")
+@login_required
+def api_remoteid_status():
+    if not _remoteid:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_remoteid.get_status())
+
+@bp.route("/bridge/remoteid/connect", methods=["POST"])
+@login_required
+def api_remoteid_connect():
+    if not _remoteid:
+        return jsonify({"error": "RemoteID bridge not loaded"}), 503
+    ok = _remoteid.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _remoteid.connected})
+
+@bp.route("/bridge/remoteid/disconnect", methods=["POST"])
+@login_required
+def api_remoteid_disconnect():
+    if _remoteid:
+        _remoteid.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/remoteid/beacons")
+@login_required
+def api_remoteid_beacons():
+    if not _remoteid or not _remoteid.connected:
+        return jsonify({})
+    return jsonify(getattr(_remoteid, "beacons", {}))
 
 
 # ═══════════════════════════════════════════════════════════

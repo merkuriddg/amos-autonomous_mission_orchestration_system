@@ -50,6 +50,88 @@
   </div>
 </div>
 
+</div>
+
+<!-- Sensor Bridges -->
+<div class="card" style="margin-top:8px"><h3>SENSOR BRIDGES — External Data Feeds</h3></div>
+<div class="grid-3">
+  <!-- ADS-B -->
+  <div class="bridge-card" id="adsb-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="adsb-dot"></span><span class="bridge-name">ADS-B</span></div>
+      <span class="badge badge-cyan">1090 MHz</span>
+    </div>
+    <div id="adsb-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="adsb-host" placeholder="Host" value="localhost" style="width:100px">
+      <input type="number" id="adsb-port" placeholder="Port" value="30003" style="width:70px">
+      <select id="adsb-proto" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="sbs">SBS</option><option value="beast">Beast</option><option value="raw">Raw</option></select>
+      <button class="btn" onclick="adsbConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="adsbDisconnect()">STOP</button>
+    </div>
+  </div>
+  <!-- APRS -->
+  <div class="bridge-card" id="aprs-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="aprs-dot"></span><span class="bridge-name">APRS</span></div>
+      <span class="badge badge-green">144.39 MHz</span>
+    </div>
+    <div id="aprs-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="aprs-call" placeholder="Callsign" value="AMOS-1" style="width:80px">
+      <input type="text" id="aprs-server" placeholder="Server" value="rotate.aprs2.net" style="width:130px">
+      <button class="btn" onclick="aprsConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="aprsDisconnect()">STOP</button>
+    </div>
+  </div>
+  <!-- AIS -->
+  <div class="bridge-card" id="ais-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="ais-dot"></span><span class="bridge-name">AIS</span></div>
+      <span class="badge badge-blue">NMEA</span>
+    </div>
+    <div id="ais-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="ais-host" placeholder="Host" value="localhost" style="width:100px">
+      <input type="number" id="ais-port" placeholder="Port" value="10110" style="width:70px">
+      <button class="btn" onclick="aisConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="aisDisconnect()">STOP</button>
+    </div>
+  </div>
+</div>
+<div class="grid-3" style="margin-top:8px">
+  <!-- Meshtastic -->
+  <div class="bridge-card" id="lora-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="lora-dot"></span><span class="bridge-name">Meshtastic</span></div>
+      <span class="badge badge-yellow">LoRa</span>
+    </div>
+    <div id="lora-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <select id="lora-type" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="serial">Serial</option><option value="tcp">TCP</option><option value="ble">BLE</option></select>
+      <input type="text" id="lora-device" placeholder="Device" value="/dev/ttyACM0" style="width:120px">
+      <button class="btn" onclick="loraConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="loraDisconnect()">STOP</button>
+    </div>
+    <div style="margin-top:6px">
+      <input type="text" id="lora-msg" placeholder="Message..." style="width:170px">
+      <button class="btn" onclick="loraSend()" style="margin-left:4px">SEND</button>
+    </div>
+  </div>
+  <!-- RemoteID -->
+  <div class="bridge-card" id="rid-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="rid-dot"></span><span class="bridge-name">RemoteID</span></div>
+      <span class="badge badge-red">FAA</span>
+    </div>
+    <div id="rid-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <button class="btn" onclick="ridConnect()">SCAN</button>
+      <button class="btn btn-red" onclick="ridDisconnect()">STOP</button>
+    </div>
+  </div>
+</div>
+
 <!-- Link 16 Detail -->
 <div class="grid-2" style="margin-top:8px">
   <div class="card"><h3>LINK 16 — PARTICIPANTS</h3>
@@ -66,24 +148,58 @@
 {% endblock %}
 {% block scripts %}
 <script>
+function _dot(id,on){document.getElementById(id).className='bridge-dot '+(on?'on':'off');}
+function _info(id,html){document.getElementById(id).innerHTML=html;}
+function _stat(label,val){return '<div class="bridge-stat">'+label+': <span>'+val+'</span></div>';}
+
 async function refreshBridges(){
     const d=await apiFetch('/api/v1/bridge/all');
     // PX4
     const px4=d.px4||{};
-    document.getElementById('px4-dot').className='bridge-dot '+(px4.connected?'on':'off');
-    document.getElementById('px4-info').innerHTML=px4.connected
-        ?'<div class="bridge-stat">Status: <span>Connected</span></div><div class="bridge-stat">Vehicles: <span>'+(px4.vehicles||0)+'</span></div>'
-        :'<div style="color:#ff4444">Offline — No PX4 SITL detected</div>';
+    _dot('px4-dot',px4.connected);
+    _info('px4-info',px4.connected
+        ?_stat('Status','Connected')+_stat('Vehicles',px4.vehicles||0)
+        :'<div style="color:#ff4444">Offline — No PX4 SITL detected</div>');
     // TAK
     const tak=d.tak||{};
-    document.getElementById('tak-dot').className='bridge-dot '+(tak.connected?'on':'off');
-    document.getElementById('tak-info').innerHTML=tak.connected
-        ?'<div class="bridge-stat">Protocol: <span>'+tak.protocol+'</span></div><div class="bridge-stat">Host: <span>'+tak.host+':'+tak.port+'</span></div><div class="bridge-stat">Sent: <span>'+tak.sent+'</span></div>'
-        :'<div style="color:#888">Not connected — configure below</div>';
+    _dot('tak-dot',tak.connected);
+    _info('tak-info',tak.connected
+        ?_stat('Protocol',tak.protocol)+_stat('Host',tak.host+':'+tak.port)+_stat('Sent',tak.sent)
+        :'<div style="color:#888">Not connected — configure below</div>');
     // Link 16
     const l16=d.link16||{};
-    document.getElementById('l16-dot').className='bridge-dot '+(l16.participants>0?'on':'off');
-    document.getElementById('l16-info').innerHTML='<div class="bridge-stat">Net: <span>'+(l16.net_id||'—')+'</span></div><div class="bridge-stat">Participants: <span>'+(l16.participants||0)+'</span></div><div class="bridge-stat">Tracks: <span>'+(l16.tracks||0)+'</span></div><div class="bridge-stat">Messages: <span>'+(l16.messages_sent||0)+'</span></div>';
+    _dot('l16-dot',l16.participants>0);
+    _info('l16-info',_stat('Net',l16.net_id||'—')+_stat('Participants',l16.participants||0)+_stat('Tracks',l16.tracks||0)+_stat('Messages',l16.messages_sent||0));
+    // ADS-B
+    const ab=d.adsb||{};
+    _dot('adsb-dot',ab.connected);
+    _info('adsb-info',ab.connected
+        ?_stat('Aircraft',ab.aircraft_count||ab.tracks||0)+_stat('Messages',ab.messages||0)
+        :(ab.available?'<div style="color:#888">Ready — configure source below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // APRS
+    const ap=d.aprs||{};
+    _dot('aprs-dot',ap.connected);
+    _info('aprs-info',ap.connected
+        ?_stat('Server',ap.server||'APRS-IS')+_stat('Stations',ap.station_count||ap.packets||0)
+        :(ap.available?'<div style="color:#888">Ready — enter callsign below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // AIS
+    const ai=d.ais||{};
+    _dot('ais-dot',ai.connected);
+    _info('ais-info',ai.connected
+        ?_stat('Vessels',ai.vessel_count||ai.vessels||0)+_stat('Sentences',ai.sentences||0)
+        :(ai.available?'<div style="color:#888">Ready — configure NMEA source</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // LoRa/Meshtastic
+    const lr=d.lora||{};
+    _dot('lora-dot',lr.connected);
+    _info('lora-info',lr.connected
+        ?_stat('Nodes',lr.node_count||lr.nodes||0)+_stat('Messages',lr.messages||0)
+        :(lr.available?'<div style="color:#888">Ready — select connection type</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // RemoteID
+    const ri=d.remoteid||{};
+    _dot('rid-dot',ri.connected);
+    _info('rid-info',ri.connected
+        ?_stat('Beacons',ri.beacon_count||ri.beacons||0)+_stat('UAS detected',ri.uas_count||0)
+        :(ri.available?'<div style="color:#888">Ready — click SCAN to start</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
 }
 
 async function refreshL16(){
@@ -118,6 +234,42 @@ async function l16Join(){
     await apiPost('/api/v1/bridge/link16/join',{asset_id:aid});
     refreshL16();
 }
+// Sensor bridge controls
+async function adsbConnect(){
+    await apiPost('/api/v1/bridge/adsb/connect',{
+        host:document.getElementById('adsb-host').value,
+        port:parseInt(document.getElementById('adsb-port').value),
+        protocol:document.getElementById('adsb-proto').value
+    }); refreshBridges();
+}
+async function adsbDisconnect(){await apiPost('/api/v1/bridge/adsb/disconnect',{});refreshBridges();}
+async function aprsConnect(){
+    await apiPost('/api/v1/bridge/aprs/connect',{
+        callsign:document.getElementById('aprs-call').value,
+        server:document.getElementById('aprs-server').value
+    }); refreshBridges();
+}
+async function aprsDisconnect(){await apiPost('/api/v1/bridge/aprs/disconnect',{});refreshBridges();}
+async function aisConnect(){
+    await apiPost('/api/v1/bridge/ais/connect',{
+        host:document.getElementById('ais-host').value,
+        port:parseInt(document.getElementById('ais-port').value)
+    }); refreshBridges();
+}
+async function aisDisconnect(){await apiPost('/api/v1/bridge/ais/disconnect',{});refreshBridges();}
+async function loraConnect(){
+    await apiPost('/api/v1/bridge/lora/connect',{
+        connection_type:document.getElementById('lora-type').value,
+        device:document.getElementById('lora-device').value
+    }); refreshBridges();
+}
+async function loraDisconnect(){await apiPost('/api/v1/bridge/lora/disconnect',{});refreshBridges();}
+async function loraSend(){
+    const msg=document.getElementById('lora-msg').value;
+    if(msg){await apiPost('/api/v1/bridge/lora/send',{text:msg});document.getElementById('lora-msg').value='';}
+}
+async function ridConnect(){await apiPost('/api/v1/bridge/remoteid/connect',{});refreshBridges();}
+async function ridDisconnect(){await apiPost('/api/v1/bridge/remoteid/disconnect',{});refreshBridges();}
 
 refreshBridges(); refreshL16();
 setInterval(refreshBridges,5000);
