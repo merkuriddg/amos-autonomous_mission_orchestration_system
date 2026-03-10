@@ -26,6 +26,9 @@ Thumbs.db
 *.swo
 *~
 
+# Backups
+*.bak
+
 # Logs
 *.log
 *.deb
