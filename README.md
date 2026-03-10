@@ -208,6 +208,35 @@ amos/
 - Unified integration hub, mission analytics dashboard
 - Real-time metrics: threat progress, fleet health, COA decisions, risk trend
 
+### Phase 5 — Real-Time Alert System
+- WebSocket-pushed operator alerts with 30s per-type cooldown
+- Risk level, low battery, comms degradation, pending HAL approval triggers
+- Configurable alert routing to specific UI pages
+
+### Phase 6 — Threat Intelligence Database
+- In-memory threat intel tracking (engagements, neutralizations, positions)
+- Per-type aggregation with first/last seen timestamps
+- Position history for pattern-of-life analysis
+
+### Phase 7 — Rule Engine + Exercise Mode
+- Automation rules: threat count, risk level, battery, elapsed time triggers
+- Actions: alert, RTB all, speed change, rule disable
+- Exercise mode with timed scenario injects (spawn threats, degrade comms, drain battery)
+- Inject scoring and event logging
+
+### Phase 8 — Map Overlays
+- Threat heatmap (Leaflet.heat)
+- Engagement zone circles per armed asset
+- Sensor coverage arcs with bearing and range
+- Domain sector boundaries
+- Weather overlay with wind arrows and visibility fog
+
+### Phase 9 — Mission Planning + Training + Metrics
+- Mission plan templates with waypoints, phases, and pace settings
+- Operator training records with scoring and pass/fail
+- API endpoint metrics (request count, errors, latency per route)
+- System uptime monitoring with periodic health snapshots
+
 ### Phase 10 — Core Platform
 - 25 simulated assets (air/ground/maritime) with real-time movement
 - 22 threats with autonomous detection and tracking
