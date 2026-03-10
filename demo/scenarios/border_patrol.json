@@ -1,0 +1,94 @@
+{
+  "name": "Border Patrol — Sector Intrusion Response",
+  "description": "A distributed sensor network detects movement along a remote border sector. AMOS coordinates aerial and ground assets to investigate, track, and respond while keeping a human operator in the loop.",
+  "audience": "Border security, DHS, infrastructure protection teams",
+  "duration_sec": 120,
+  "injects": [
+    {
+      "type": "message",
+      "trigger_at_offset": 3,
+      "message": "SECTOR 7 ACTIVE — Ground sensor network online. Autonomous patrol initiated.",
+      "description": "Mission start announcement",
+      "points": 5
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 12,
+      "threat_type": "ground_vehicle",
+      "lat_offset": 0.04,
+      "lng_offset": -0.03,
+      "speed_kts": 15,
+      "description": "Unidentified vehicle detected crossing perimeter",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 18,
+      "message": "ALERT: Movement detected Sector 7-Bravo. ISR drone FALCON-01 auto-tasked to investigate.",
+      "description": "ISR cueing notification",
+      "points": 5
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 30,
+      "threat_type": "personnel",
+      "lat_offset": 0.035,
+      "lng_offset": -0.025,
+      "speed_kts": 3,
+      "description": "Dismounted personnel detected near vehicle",
+      "points": 15
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 38,
+      "message": "TARGET CLASSIFIED: 1x vehicle + 2x dismounted personnel. Ground robot BADGER-01 dispatched for close inspection.",
+      "description": "Classification update",
+      "points": 10
+    },
+    {
+      "type": "degrade_comms",
+      "trigger_at_offset": 50,
+      "amount": 25,
+      "description": "Comms degradation — remote terrain, relay gap",
+      "points": 15
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 55,
+      "message": "WARNING: Comms strength degraded in Sector 7. Mesh relay node repositioning.",
+      "description": "Comms degradation alert",
+      "points": 5
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 70,
+      "threat_type": "ground_vehicle",
+      "lat_offset": 0.05,
+      "lng_offset": -0.04,
+      "speed_kts": 20,
+      "description": "Second vehicle detected — possible coordinated crossing",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 78,
+      "message": "INTEL UPDATE: Second vehicle detected. Pattern suggests coordinated border crossing. HAL recommends expanding surveillance zone.",
+      "description": "Pattern analysis",
+      "points": 10
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 95,
+      "message": "OPERATOR REVIEW: All targets under continuous track. Ground team enroute. Requesting commander approval for zone expansion.",
+      "description": "Human-in-the-loop checkpoint",
+      "points": 10
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 115,
+      "message": "MISSION COMPLETE: 3 targets tracked, 0 lost. Sector 7 secured. Full report generated.",
+      "description": "Mission conclusion",
+      "points": 5
+    }
+  ]
+}

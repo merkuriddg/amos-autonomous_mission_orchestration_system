@@ -1,0 +1,115 @@
+{
+  "name": "Disaster Response — Search and Rescue Coordination",
+  "description": "Following a simulated natural disaster, AMOS coordinates drones and ground robots to search damaged infrastructure, locate survivors, and relay communications.",
+  "audience": "Robotics developers, emergency response agencies, infrastructure operators",
+  "duration_sec": 120,
+  "injects": [
+    {
+      "type": "message",
+      "trigger_at_offset": 3,
+      "message": "DISASTER ALERT: Magnitude 6.2 earthquake reported. Search and rescue operation initiated. All assets deploying.",
+      "description": "Disaster declaration",
+      "points": 5
+    },
+    {
+      "type": "degrade_comms",
+      "trigger_at_offset": 8,
+      "amount": 30,
+      "description": "Infrastructure damage — cell towers offline, comms degraded",
+      "points": 15
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 12,
+      "message": "COMMS IMPACT: Regional communications degraded. AMOS mesh network activated as backup relay.",
+      "description": "Mesh network activation",
+      "points": 5
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 22,
+      "message": "AERIAL SURVEY: Drones mapping damage zone. Grid search pattern initiated — 6 sectors assigned.",
+      "description": "Aerial mapping start",
+      "points": 5
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 30,
+      "threat_type": "structural_collapse",
+      "lat_offset": 0.02,
+      "lng_offset": -0.01,
+      "speed_kts": 0,
+      "description": "Collapsed structure detected — possible survivors",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 36,
+      "message": "DETECTION: Collapsed structure identified in Sector 3. Thermal signatures detected — possible survivors. Ground robot dispatched.",
+      "description": "Survivor detection",
+      "points": 10
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 50,
+      "threat_type": "gas_leak",
+      "lat_offset": 0.015,
+      "lng_offset": 0.02,
+      "speed_kts": 0,
+      "description": "Gas leak detected — hazard zone established",
+      "points": 15
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 56,
+      "message": "HAZARD: Gas leak detected Sector 2. CBRN sensor confirms. Exclusion zone established. Rerouting ground teams.",
+      "description": "Hazard identification",
+      "points": 10
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 70,
+      "threat_type": "structural_collapse",
+      "lat_offset": -0.01,
+      "lng_offset": 0.03,
+      "speed_kts": 0,
+      "description": "Second collapse site — heat signatures detected",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 76,
+      "message": "PRIORITY UPDATE: Second collapse site found. 4 thermal signatures. AMOS prioritizing — dispatching nearest available assets.",
+      "description": "Priority tasking",
+      "points": 10
+    },
+    {
+      "type": "drain_battery",
+      "trigger_at_offset": 85,
+      "amount": 25,
+      "description": "Extended operations — battery drain on survey drones",
+      "points": 10
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 90,
+      "message": "LOGISTICS: 3 drones below 30% battery. Auto-rotation schedule activated — continuous coverage maintained.",
+      "description": "Battery management",
+      "points": 5
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 110,
+      "message": "MISSION UPDATE: 2 collapse sites located, 6+ potential survivors identified, 1 hazard zone mapped. Rescue teams guided to priority sites.",
+      "description": "Mission summary",
+      "points": 10
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 118,
+      "message": "MISSION COMPLETE: Full damage assessment delivered. Rescue coordination active. SITREP transmitted to incident command.",
+      "description": "Mission conclusion",
+      "points": 5
+    }
+  ]
+}

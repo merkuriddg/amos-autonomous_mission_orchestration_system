@@ -36,6 +36,28 @@ AMOS orchestrates assets, sensors, autonomy engines, and communications to execu
 
 ---
 
+## Run the Demo
+
+Launch a fully simulated autonomous mission with one command:
+
+```bash
+git clone https://github.com/merkuriddg/amos-autonomous_mission_orchestration_system.git
+cd amos-autonomous_mission_orchestration_system
+./run_demo.sh
+```
+
+Browser opens automatically. Login: `commander` / `amos_op1` — watch the mission unfold in real time.
+
+**Demo Scenarios:**
+
+- `./run_demo.sh border_patrol` — Sensor network detects border intrusion, drones and ground robots investigate, track, and report *(default)*
+- `./run_demo.sh swarm_recon` — Drone swarm deploys into contested zone, adapts to jamming and battery loss, tracks high-value target
+- `./run_demo.sh disaster_response` — Earthquake SAR: drones map damage, robots inspect structures, AMOS prioritizes rescue tasks
+
+Each scenario runs ~2 minutes with timed mission events, autonomous coordination, and human-in-the-loop checkpoints.
+
+---
+
 
 ## Quick Start
 
