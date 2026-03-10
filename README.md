@@ -43,7 +43,7 @@ Per-feature overrides let you enable individual enterprise modules in open mode 
 
 ## Architecture
 
-![AMOS Architecture](docs/images/amos_architecture_advanced.png)
+![AMOS Architecture](docs/images/amos_architecture.png)
 
 ```
 amos/
