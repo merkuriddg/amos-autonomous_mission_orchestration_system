@@ -34,7 +34,7 @@ from core.geo_utils import (haversine, vincenty, bearing, destination_point,
 #  USERS (DB-backed with fallback)
 # ═══════════════════════════════════════════════════════════
 _FALLBACK_USERS = {
-    "commander": {"password": "mavrix2026", "role": "commander",
+    "commander": {"password": "amos_op1", "role": "commander",
                    "name": "CDR Mitchell", "domain": "all",
                    "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin","fusion","cognitive","contested","redforce"]},
     "pilot":     {"password": "wings2026", "role": "pilot",
@@ -152,12 +152,159 @@ for a in config.get("assets", []):
                      "ammo_rounds": random.randint(50, 200) if a.get("weapons") else 0,
                      "water_hr": random.randint(8, 48), "rations_hr": random.randint(12, 72)},
     }
-print(f"[AMOS] Loaded {len(sim_assets)} assets")
+print(f"[AMOS] Loaded {len(sim_assets)} assets (config)")
 
 sim_threats = {}
 for t in config.get("threats", []):
     sim_threats[t["id"]] = {**t, "neutralized": False, "detected_by": [], "first_detected": None}
-print(f"[AMOS] Loaded {len(sim_threats)} threats")
+print(f"[AMOS] Loaded {len(sim_threats)} threats (config)")
+
+
+# ═══════════════════════════════════════════════════════════
+#  THEATER PLATOON GENERATOR — spawn forces at every location
+# ═══════════════════════════════════════════════════════════
+_THEATER_PLATOON = {
+    # Each tuple: (id_suffix, type, domain, role, tier, sensors, weapons, endurance, lat_off, lng_off, alt_ft)
+    "air": [
+        ("HAWK",  "MQ-9B",        "air", "isr_strike",    3, ["EO/IR","SAR","SIGINT","AESA_RADAR"], ["GBU-38","AGM-114"], 27, 0.006, 0.008, 15000),
+        ("HAWK2", "MQ-9B",        "air", "isr_strike",    3, ["EO/IR","SAR","SIGINT","AESA_RADAR"], ["GBU-38","AGM-114"], 27, 0.011, 0.003, 18000),
+        ("SPT1",  "small_uas",    "air", "recon",         4, ["EO/IR","SIGINT"],                      [],                   6,  -0.001, 0.013, 400),
+        ("SPT2",  "small_uas",    "air", "ew",            4, ["EO/IR","EW_JAMMER"],                   [],                   5,  -0.002, 0.018, 500),
+        ("SPT3",  "small_uas",    "air", "recon",         4, ["EO/IR","SIGINT"],                      [],                   6,  -0.003, 0.023, 400),
+        ("WING1", "loyal_wingman", "air", "air_superiority",3,["AESA_RADAR","RWR","EO/IR"],           ["AIM-120_SIM"],      3,  0.021, -0.012, 20000),
+        ("EYE1",  "high_alt_uas", "air", "airborne_c2",   3, ["AEW_RADAR","SIGINT","COMINT","ELINT"],[],                   24, 0.031, -0.032, 35000),
+    ],
+    "ground": [
+        ("CLAW1", "armed_ugv",    "ground", "direct_action", 2, ["EO/IR","LIDAR","ACOUSTIC"], ["M240_RWS"], 0, -0.009, 0.006, 0),
+        ("CLAW2", "armed_ugv",    "ground", "direct_action", 2, ["EO/IR","LIDAR","ACOUSTIC"], ["M240_RWS"], 0, -0.011, 0.010, 0),
+        ("CLAW3", "armed_ugv",    "ground", "direct_action", 2, ["EO/IR","LIDAR","ACOUSTIC"], ["MK19_RWS"], 0, -0.013, 0.014, 0),
+        ("PACK1", "logistics_ugv", "ground", "resupply",     3, ["LIDAR","GPS"],               [],           0, -0.007, 0.002, 0),
+        ("PACK2", "logistics_ugv", "ground", "resupply",     3, ["LIDAR","GPS"],               [],           0, -0.008, 0.004, 0),
+        ("PACK3", "logistics_ugv", "ground", "medevac",      3, ["LIDAR","GPS"],               [],           0, -0.010, 0.008, 0),
+        ("EARS1", "sensor_ugv",   "ground", "sigint",        4, ["SIGINT","ELINT","COMINT","DIRECTION_FINDING"], [], 0, -0.017, 0.022, 0),
+        ("EARS2", "sensor_ugv",   "ground", "cbrn",          4, ["CBRN","SIGINT","LIDAR"],    [],           0, -0.021, 0.030, 0),
+    ],
+    "maritime": [
+        ("SURF1", "usv",  "maritime", "coastal_patrol",    3, ["RADAR","EO/IR","SONAR","AIS"], [], 72, 0.061, 0.088, 0),
+        ("SURF2", "usv",  "maritime", "coastal_patrol",    3, ["RADAR","EO/IR","SONAR","AIS"], [], 72, 0.051, 0.108, 0),
+        ("DEEP1", "uuv",  "maritime", "subsurface_recon",  4, ["SONAR","MAGNETIC","ACOUSTIC"], [], 48, 0.041, 0.128, 0),
+    ],
+}
+
+# Domain emphasis per theater — multiplier for how many extra of each domain
+_THEATER_EMPHASIS = {
+    "tampa":           {"air": 1, "ground": 1, "maritime": 1},
+    "south_china_sea": {"air": 1, "ground": 0, "maritime": 2},  # extra maritime, no ground
+    "eastern_europe":  {"air": 1, "ground": 2, "maritime": 0},  # extra ground, no maritime
+    "test_base":       {"air": 1, "ground": 1, "maritime": 0},
+}
+
+_THEATER_PREFIX = {
+    "tampa": "TB", "south_china_sea": "SCS", "eastern_europe": "EU", "test_base": "TST",
+}
+
+_THREAT_TEMPLATES = [
+    {"type": "drone",      "rf_freq_mhz": 915.0,    "speed_kts": 45, "dlat": -0.069, "dlng": 0.138},
+    {"type": "drone",      "rf_freq_mhz": 2437.0,   "speed_kts": 35, "dlat": 0.041,  "dlng": -0.092},
+    {"type": "drone",      "rf_freq_mhz": 5805.0,   "speed_kts": 50, "dlat": -0.039, "dlng": 0.188},
+    {"type": "gps_jammer", "rf_freq_mhz": 1575.42,  "power_dbm": 40, "dlat": 0.021,  "dlng": 0.068},
+    {"type": "gps_jammer", "rf_freq_mhz": 1575.42,  "power_dbm": 35, "dlat": -0.029, "dlng": -0.032},
+    {"type": "rf_emitter", "rf_freq_mhz": 433.0,    "power_dbm": 25, "dlat": 0.011,  "dlng": 0.108},
+]
+
+
+def _generate_theater_forces():
+    """Generate assets + threats for all non-primary theaters from locations.json."""
+    from web.extensions import load_locations
+    loc_data = load_locations()
+    primary = loc_data.get("active", "tehran")
+    generated_assets = 0
+    generated_threats = 0
+
+    for key, loc in loc_data.get("locations", {}).items():
+        if key == primary or key == "tehran":  # Tehran already has YAML assets
+            continue
+        prefix = _THEATER_PREFIX.get(key)
+        if not prefix:
+            continue
+        emphasis = _THEATER_EMPHASIS.get(key, {"air": 1, "ground": 1, "maritime": 1})
+        clat, clng = loc["lat"], loc["lng"]
+
+        # Generate assets per domain
+        for domain, templates in _THEATER_PLATOON.items():
+            count = emphasis.get(domain, 1)
+            if count == 0:
+                continue
+            for tmpl in templates:
+                suffix, atype, dom, role, tier, sensors, weapons, endurance, dlat, dlng, alt = tmpl
+                for rep in range(count):
+                    rep_tag = f"-{rep+2}" if rep > 0 else ""
+                    aid = f"{prefix}-{suffix}{rep_tag}"
+                    is_air = dom == "air"
+                    lat = clat + dlat + random.uniform(-0.003, 0.003)
+                    lng = clng + dlng + random.uniform(-0.003, 0.003)
+                    if rep > 0:
+                        lat += random.uniform(-0.008, 0.008)
+                        lng += random.uniform(-0.008, 0.008)
+                    sim_assets[aid] = {
+                        "id": aid, "type": atype, "domain": dom,
+                        "role": role, "autonomy_tier": tier,
+                        "sensors": list(sensors), "weapons": list(weapons),
+                        "endurance_hr": endurance,
+                        "position": {"lat": round(lat, 6), "lng": round(lng, 6), "alt_ft": alt},
+                        "status": "operational",
+                        "health": {"battery_pct": random.randint(85, 100),
+                                   "comms_strength": random.randint(75, 100),
+                                   "cpu_temp_c": random.randint(35, 55), "gps_fix": True},
+                        "speed_kts": random.randint(80, 200) if is_air else random.randint(5, 30),
+                        "heading_deg": random.randint(0, 359),
+                        "supplies": {"fuel_pct": random.randint(70, 100),
+                                     "ammo_rounds": random.randint(50, 200) if weapons else 0,
+                                     "water_hr": random.randint(8, 48),
+                                     "rations_hr": random.randint(12, 72)},
+                        "theater": key,
+                    }
+                    generated_assets += 1
+
+        # Generate threats
+        # Maritime theaters get vessel threats; land theaters get ground threats
+        for i, tt in enumerate(_THREAT_TEMPLATES):
+            if tt["type"] == "drone" and emphasis.get("air", 0) == 0:
+                continue
+            tid = f"{prefix}-THR-{i+1:03d}"
+            tlat = clat + tt["dlat"] + random.uniform(-0.01, 0.01)
+            tlng = clng + tt["dlng"] + random.uniform(-0.01, 0.01)
+            threat_data = {
+                "id": tid, "type": tt["type"],
+                "lat": round(tlat, 4), "lng": round(tlng, 4),
+                "rf_freq_mhz": tt.get("rf_freq_mhz", 0),
+                "neutralized": False, "detected_by": [], "first_detected": None,
+            }
+            if "speed_kts" in tt:
+                threat_data["speed_kts"] = tt["speed_kts"]
+            if "power_dbm" in tt:
+                threat_data["power_dbm"] = tt["power_dbm"]
+            sim_threats[tid] = threat_data
+            generated_threats += 1
+
+        # Add vessel threats for maritime-heavy theaters
+        if emphasis.get("maritime", 0) > 0:
+            for vi in range(2):
+                vid = f"{prefix}-VES-{vi+1:03d}"
+                sim_threats[vid] = {
+                    "id": vid, "type": "vessel",
+                    "lat": round(clat + 0.08 + random.uniform(-0.02, 0.02), 4),
+                    "lng": round(clng + 0.05 + random.uniform(-0.02, 0.02), 4),
+                    "speed_kts": random.randint(15, 25),
+                    "neutralized": False, "detected_by": [], "first_detected": None,
+                }
+                generated_threats += 1
+
+    print(f"[AMOS] Generated {generated_assets} theater assets + {generated_threats} theater threats")
+
+
+_generate_theater_forces()
+print(f"[AMOS] Total: {len(sim_assets)} assets, {len(sim_threats)} threats")
 
 # Auto-populate EOB from threats
 for tid, t in sim_threats.items():

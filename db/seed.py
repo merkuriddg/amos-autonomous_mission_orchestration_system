@@ -21,7 +21,7 @@ base_pos = platoon["base"]
 
 # ── Users (from hardcoded USERS dict) ───────────────────
 USERS = {
-    "commander": {"password": "mavrix2026", "role": "commander",
+    "commander": {"password": "amos_op1", "role": "commander",
                    "name": "CDR Mitchell", "domain": "all",
                    "access": ["c2","twin","ew","sigint","cyber","cm","hal","plan","aar","awacs","field","voice","admin","fusion","cognitive","contested","redforce"]},
     "pilot":     {"password": "wings2026", "role": "pilot",

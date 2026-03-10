@@ -11,13 +11,13 @@ source .venv/bin/activate
 python3 web/app.py
 ```
 
-Open **http://localhost:2600** — Login: `commander` / `mavrix2026`
+Open **http://localhost:2600** — Login: `commander` / `amos_op1`
 
 ### All Users
 
 | Username | Password | Role | Domain |
 |----------|----------|------|--------|
-| commander | mavrix2026 | Commander | All |
+| commander | amos_op1 | Commander | All |
 | pilot | wings2026 | Pilot | Air |
 | grunt | hooah2026 | Ground Op | Ground |
 | sailor | anchor2026 | Maritime Op | Maritime |

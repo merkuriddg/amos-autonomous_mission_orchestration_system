@@ -179,3 +179,7 @@ def scripts_page(): return render_template("scripts.html", **ctx())
 @bp.route("/edition")
 @login_required
 def edition_page(): return render_template("edition.html", **ctx())
+
+@bp.route("/manual")
+@login_required
+def manual_page(): return render_template("manual.html", **ctx())

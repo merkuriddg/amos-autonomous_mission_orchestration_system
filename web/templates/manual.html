@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+{% block title %}Instruction Manual{% endblock %}
+{% block head %}<style>
+/* ── Layout: sidebar + content ── */
+.man-wrap{display:flex;gap:0;min-height:calc(100vh - 44px);font-size:.84em;line-height:1.6}
+.man-nav{width:220px;min-width:220px;background:#0a0a0a;border-right:1px solid #1a1a1a;position:sticky;top:38px;height:calc(100vh - 38px);overflow-y:auto;padding:12px 0;scrollbar-width:thin;scrollbar-color:#222 #0a0a0a}
+.man-nav::-webkit-scrollbar{width:4px}
+.man-nav::-webkit-scrollbar-track{background:#0a0a0a}
+.man-nav::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+.man-nav .nav-hdr{color:#555;font-size:.7em;text-transform:uppercase;letter-spacing:1px;padding:10px 14px 3px;margin-top:4px;user-select:none}
+.man-nav .nav-hdr:first-child{margin-top:0;padding-top:4px}
+.man-nav a{display:block;padding:3px 14px 3px 18px;color:#888;text-decoration:none;font-size:.82em;border-left:2px solid transparent;transition:all .15s}
+.man-nav a:hover{color:#00ff41;background:#111}
+.man-nav a.active{color:#00ff41;border-left-color:#00ff41;background:#0d1a0d}
+/* ── Content area ── */
+.man-body{flex:1;max-width:780px;padding:16px 28px 60px}
+.man-body h1{color:#00ff41;font-size:1.2em;margin:0 0 2px;border-bottom:1px solid #222;padding-bottom:6px}
+.man-body .man-sub{color:#666;font-size:.9em;margin-bottom:20px}
+.man-body h2{color:#00ff41;font-size:1em;margin:28px 0 4px;padding:6px 0 4px;border-bottom:1px solid #1a1a1a}
+.man-body .cat-hdr{color:#ffaa00;font-size:.75em;text-transform:uppercase;letter-spacing:2px;margin:32px 0 8px;padding:4px 0;border-top:1px solid #222}
+.man-body .cat-hdr:first-of-type{margin-top:20px}
+.man-body h3{color:#ffaa00;margin:12px 0 4px;font-size:.9em}
+.man-body p{color:#ccc;margin:4px 0 8px}
+.man-body ul{padding-left:18px;color:#bbb}
+.man-body li{margin:3px 0}
+.man-body code{background:#1a1a1a;color:#00ff41;padding:1px 5px;border-radius:3px;font-size:.9em}
+.man-body .key{color:#4488ff;font-weight:bold}
+.man-body .warn{color:#ff4444}
+.man-body .note{color:#ffaa00;font-style:italic}
+.man-section{border:1px solid #1a1a1a;padding:12px 16px;margin:6px 0;border-radius:4px;background:#080808}
+/* ── Responsive: collapse sidebar on narrow screens ── */
+@media(max-width:860px){.man-nav{display:none}.man-body{padding:12px 14px}}
+</style>{% endblock %}
+{% block content %}
+<div class="man-wrap">
+<!-- ══ Sidebar Navigation ══ -->
+<nav class="man-nav" id="man-nav">
+ <div class="nav-hdr">Getting Started</div>
+ <a href="#getting-started" data-s="getting-started">Overview &amp; Login</a>
+ <a href="#theaters" data-s="theaters">Theaters &amp; Locations</a>
+ <div class="nav-hdr">Operations</div>
+ <a href="#c2-console" data-s="c2-console">C2 Console</a>
+ <a href="#digital-twin" data-s="digital-twin">Digital Twin</a>
+ <a href="#tactical" data-s="tactical">Tactical View</a>
+ <a href="#field-3d" data-s="field-3d">Field 3D View</a>
+ <div class="nav-hdr">Intelligence</div>
+ <a href="#ew" data-s="ew">Electronic Warfare</a>
+ <a href="#sigint" data-s="sigint">SIGINT</a>
+ <a href="#cyber" data-s="cyber">Cyber Ops</a>
+ <a href="#awacs" data-s="awacs">AWACS</a>
+ <a href="#fusion" data-s="fusion">Sensor Fusion</a>
+ <a href="#commsnet" data-s="commsnet">Comms Network</a>
+ <a href="#predictions" data-s="predictions">Predictions</a>
+ <div class="nav-hdr">Combat</div>
+ <a href="#countermeasures" data-s="countermeasures">Countermeasures</a>
+ <a href="#hal" data-s="hal">HAL Autonomy</a>
+ <a href="#roe" data-s="roe">Rules of Engagement</a>
+ <a href="#killweb" data-s="killweb">Kill Web</a>
+ <a href="#bda" data-s="bda">BDA</a>
+ <a href="#effects" data-s="effects">Effects Chain</a>
+ <a href="#wargame" data-s="wargame">Wargaming</a>
+ <div class="nav-hdr">Autonomy</div>
+ <a href="#swarm" data-s="swarm">Swarm Intelligence</a>
+ <a href="#isr" data-s="isr">ISR / ATR</a>
+ <a href="#hmt" data-s="hmt">Human-Machine Teaming</a>
+ <a href="#space" data-s="space">Space / JADC2</a>
+ <a href="#mesh" data-s="mesh">Mesh Network</a>
+ <div class="nav-hdr">Support</div>
+ <a href="#logistics" data-s="logistics">Logistics &amp; Supply</a>
+ <a href="#weather" data-s="weather">Weather</a>
+ <a href="#docs" data-s="docs">Documents</a>
+ <a href="#integrations" data-s="integrations">Integrations</a>
+ <div class="nav-hdr">System &amp; Admin</div>
+ <a href="#scripts" data-s="scripts">System Scripts</a>
+ <a href="#edition" data-s="edition">Edition Dashboard</a>
+ <a href="#settings" data-s="settings">Settings</a>
+ <a href="#api" data-s="api">API Reference</a>
+</nav>
+<!-- ══ Main Content ══ -->
+<div class="man-body">
+<h1>AMOS — INSTRUCTION MANUAL</h1>
+<div class="man-sub">Autonomous Mission Orchestration System v5.1 — Complete Operator Guide</div>
+
+<!-- ── GETTING STARTED ── -->
+<div class="cat-hdr">Getting Started</div>
+<div class="man-section" id="getting-started">
+<h2>GETTING STARTED</h2>
+<h3>Login</h3>
+<p>Navigate to <code>http://localhost:2600</code>. Six operator accounts are available, each with a different role and access level:</p>
+<ul>
+ <li><span class="key">commander</span> / <code>amos_op1</code> — CDR Mitchell. Full access to all modules, HAL approval, ROE, admin, System Scripts, Edition Dashboard</li>
+ <li><span class="key">pilot</span> / <code>wings2026</code> — CPT Torres. Air domain focus — C2, EW, SIGINT, HAL, AWACS, Sensor Fusion</li>
+ <li><span class="key">grunt</span> / <code>hooah2026</code> — SGT Reeves. Ground ops — C2, Countermeasures, HAL, field view</li>
+ <li><span class="key">sailor</span> / <code>anchor2026</code> — PO1 Chen. Maritime ops — C2, SIGINT, HAL, field view</li>
+ <li><span class="key">observer</span> / <code>watch2026</code> — Analyst Kim. Read-only intel — C2, EW, SIGINT, Cyber, AWACS, Red Force, Cognitive Engine</li>
+ <li><span class="key">field</span> / <code>tactical2026</code> — SPC Davis. Tactical field view + voice commands + countermeasures (redirects to Field 3D on login)</li>
+</ul>
+<h3>Navigation</h3>
+<p>Click the <span class="key">☰ MENU</span> button in the top bar to access the full module grid. The top bar also shows:</p>
+<ul>
+ <li><span class="key">Theater selector</span> — Switch between operational theaters (map flies to selected location)</li>
+ <li><span class="key">Operator pips</span> — Colored dots showing online operators</li>
+ <li><span class="key">💬 Chat</span> — Team chat with 4 channels (general, command, intel, fires)</li>
+ <li><span class="key">🎤 Voice</span> — Voice commands (Chrome only)</li>
+ <li><span class="key">LIVE</span> — Real-time simulation status</li>
+</ul>
+<h3>Simulation</h3>
+<p>AMOS runs a real-time simulation with autonomous assets, threats, and environmental effects. The simulation speed can be adjusted from the C2 Console (0.5x to 10x). Assets move, threats patrol, weather changes, and cyber events generate automatically.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div class="man-section" id="theaters">
+<h2>THEATERS &amp; LOCATIONS</h2>
+<p>AMOS supports multiple operational theaters, each with its own force composition:</p>
+<ul>
+ <li><span class="key">FOB Tehran</span> — Primary theater. Full 25-asset platoon (air/ground/maritime). 10 threats including hostile drones, GPS jammers, vessels, and cyber.</li>
+ <li><span class="key">MacDill AFB (Tampa)</span> — Balanced force. Air, ground, and maritime assets. Training/CONUS scenario.</li>
+ <li><span class="key">South China Sea</span> — Maritime-heavy. Double maritime assets, no ground forces. FONOPS/carrier ops scenario.</li>
+ <li><span class="key">Eastern Europe</span> — Ground-heavy. Double ground forces, no maritime. NATO Eastern Flank combined arms.</li>
+ <li><span class="key">Test Base</span> — Air + ground only. Development/testing scenario.</li>
+</ul>
+<p>Switch theaters via the dropdown in the top bar. The map will fly to the selected location. All assets across all theaters are always live in the simulation.</p>
+<h3>Adding Locations</h3>
+<p>Go to <span class="key">Settings → Locations</span> to add custom theaters with lat/lng coordinates and AO boundaries.</p>
+</div>
+
+<!-- ── OPERATIONS ── -->
+<div class="cat-hdr">Operations</div>
+<div class="man-section" id="c2-console">
+<h2>C2 CONSOLE (Home)</h2>
+<p>The main command interface. Shows the tactical map with all assets (colored by domain) and threats.</p>
+<h3>Map Controls</h3>
+<ul>
+ <li><span class="key">📍 WP MODE</span> — Click map to set waypoints for the selected asset</li>
+ <li><span class="key">CLR WP</span> — Clear waypoints</li>
+ <li><span class="key">Overlays</span> — Toggle threat heatmap, engagement zones, sensor coverage, domain sectors, weather</li>
+</ul>
+<h3>C2 Command Panel</h3>
+<p>Select assets (filter by domain), choose an action (formations, commands, swarm ops), and click <span class="key">▶ EXEC</span>.</p>
+<ul>
+ <li><span class="key">Formations</span> — LINE, COLUMN, WEDGE, DIAMOND, SPREAD, ORBIT</li>
+ <li><span class="key">Commands</span> — HOLD, RTB (return to base), PATROL</li>
+ <li><span class="key">Swarm</span> — CREATE (new swarm group), CLEAR (dissolve)</li>
+</ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div class="man-section" id="digital-twin">
+<h2>DIGITAL TWIN</h2>
+<p>Full platoon roster with real-time status: battery, comms, fuel, ammo, speed, and domain breakdown chart. Use this for fleet-level situational awareness.</p>
+</div>
+
+<div class="man-section" id="tactical">
+<h2>TACTICAL VIEW</h2>
+<p>Full-screen map optimized for mobile/tablet. Bottom drawer shows asset/threat counts, risk level, alerts, and pending HAL approvals with one-tap APPROVE/DENY buttons.</p>
+</div>
+
+<div class="man-section" id="field-3d">
+<h2>FIELD 3D VIEW</h2>
+<p>CesiumJS-based 3D globe view. Click any asset or threat in the side panels to fly the camera to it. Filter by domain (ALL/AIR/GROUND/MARITIME). Mesh links show nearby asset connections.</p>
+</div>
+
+<!-- ── INTELLIGENCE ── -->
+<div class="cat-hdr">Intelligence</div>
+<div class="man-section" id="ew">
+<h2>ELECTRONIC WARFARE</h2>
+<p>Monitor and control EW operations. View EW-capable assets, active jamming operations, and intercepts.</p>
+<ul>
+ <li><span class="key">Jam</span> — Select a jammer asset, target frequency, and technique (barrage/spot/sweep)</li>
+ <li><span class="key">Stop</span> — Cease specific jamming operations</li>
+ <li>Intercepts are automatically generated by EW-capable sensors</li>
+</ul>
+</div>
+
+<div class="man-section" id="sigint">
+<h2>SIGINT</h2>
+<p>Signals intelligence dashboard. Shows intercept log, emitter map, emitter database. Intercepts are classified as HOSTILE, SUSPECT, or UNKNOWN based on frequency analysis.</p>
+</div>
+
+<div class="man-section" id="cyber">
+<h2>CYBER OPS</h2>
+<p>Network topology visualization, kill chain analysis, and active threat management.</p>
+<ul>
+ <li><span class="key">Topology</span> — Interactive network graph showing HQ, mesh, control, and sensor nodes</li>
+ <li><span class="key">Kill Chain</span> — Maps events to RECON → WEAPONIZE → DELIVER → EXPLOIT → C2 → EXECUTE stages</li>
+ <li><span class="key">Block</span> — Block IPs or specific threat events</li>
+</ul>
+</div>
+
+<!-- ── COMBAT ── -->
+<div class="cat-hdr">Combat</div>
+<div class="man-section" id="countermeasures">
+<h2>COUNTERMEASURES</h2>
+<p>Engage threats with available assets. Subject to ROE compliance — the system will block engagements that violate current rules of engagement. Successful engagements auto-generate BDA reports.</p>
+</div>
+
+<div class="man-section" id="hal">
+<h2>HAL AUTONOMY ENGINE</h2>
+<p>The cognitive engine generates recommendations for the commander based on the current tactical picture. Each recommendation shows the asset, target, confidence level, and reasoning.</p>
+<ul>
+ <li><span class="key">APPROVE</span> — Execute the recommended action</li>
+ <li><span class="key">DENY</span> — Reject the recommendation</li>
+ <li>Pending recommendations also appear in the Tactical View bottom drawer</li>
+</ul>
+</div>
+
+<div class="man-section" id="roe">
+<h2>RULES OF ENGAGEMENT</h2>
+<p>Manage ROE posture and custom rules. <span class="warn">Commander only.</span></p>
+<ul>
+ <li><span class="key">WEAPONS HOLD</span> — Fire only in self-defense</li>
+ <li><span class="key">WEAPONS TIGHT</span> — Fire only at positively identified threats</li>
+ <li><span class="key">WEAPONS FREE</span> — Fire at any target not identified as friendly</li>
+</ul>
+<p>Custom rules can enforce range limits, domain restrictions, and time windows. All violations are logged.</p>
+</div>
+
+<div class="man-section" id="killweb">
+<h2>KILL WEB</h2>
+<p>F2T2EA kill chain pipeline: Find → Fix → Track → Target → Engage → Assess. Visualizes the sensor-to-shooter chain with human approval gates at the ENGAGE stage.</p>
+</div>
+
+<div class="man-section" id="bda">
+<h2>BATTLE DAMAGE ASSESSMENT</h2>
+<p>Submit and review BDA reports. Auto-generated from countermeasure engagements. Analytics show effectiveness by weapon type, damage level, and confidence distribution.</p>
+</div>
+
+<div class="man-section" id="wargame">
+<h2>MONTE CARLO WARGAMING</h2>
+<p>Run 1000+ iteration simulations on current force posture. Compares 5 approach strategies × 3 tempos with Markov chain force attrition modeling. Results show win probability, expected casualties, and risk assessment.</p>
+</div>
+
+<!-- ── AUTONOMY ── -->
+<div class="cat-hdr">Autonomy</div>
+<div class="man-section" id="swarm">
+<h2>SWARM INTELLIGENCE</h2>
+<p>Reynolds flocking physics with behavioral DNA profiles. 5 base behaviors + 6 emergent behaviors (surround, funnel, pincer, screen, relay, decoy). Create swarms from the C2 Console or Mission Planner.</p>
+</div>
+
+<div class="man-section" id="isr">
+<h2>ISR/ATR PIPELINE</h2>
+<p>Automatic Target Recognition with multi-sensor confidence scoring. Pattern-of-Life analysis tracks 8 states (STATIC through TRANSITING). Change detection triggers alerts.</p>
+</div>
+
+<div class="man-section" id="effects">
+<h2>EFFECTS CHAIN</h2>
+<p>Cross-domain effects orchestration: Cyber → EW → SIGINT → Kinetic → ISR. 5 templates: SEAD, CYBER_KINETIC, QUICK_STRIKE, FULL_SPECTRUM, EW_CORRIDOR. Auto-replans on stage failure.</p>
+</div>
+
+<div class="man-section" id="space">
+<h2>SPACE / JADC2</h2>
+<p>9 orbital assets (GPS, SATCOM, ISR, early warning, SIGINT, relay). Keplerian orbital propagation, SATCOM link budgets, GPS denial zones. JADC2 mesh connects space ↔ air ↔ ground ↔ maritime.</p>
+</div>
+
+<div class="man-section" id="hmt">
+<h2>HUMAN-MACHINE TEAMING</h2>
+<p>5 autonomy levels: Manual → Advisory → Consensual → Monitored → Autonomous. Trust calibration per domain, workload classification, fatigue assessment. The system adapts autonomy based on operator state.</p>
+</div>
+
+<div class="man-section" id="mesh">
+<h2>MESH NETWORK</h2>
+<p>MANET simulation with 7 frequency bands. Dijkstra routing, frequency hopping (32-element sequences), store-and-forward queuing. Priority classes: FLASH / IMMEDIATE / PRIORITY / ROUTINE. Network resilience scored A–F.</p>
+</div>
+
+<!-- ── SUPPORT ── -->
+<div class="cat-hdr">Support</div>
+<div class="man-section" id="logistics">
+<h2>LOGISTICS &amp; SUPPLY</h2>
+<p>Per-asset supply tracking: fuel, ammo, water, rations. Color-coded GREEN/AMBER/RED status. Resupply assets via the interface. Supply consumption history tracks usage over time.</p>
+</div>
+
+<div class="man-section" id="weather">
+<h2>WEATHER</h2>
+<p>Real-time weather conditions with domain-specific impact scores (air/ground/maritime/cyber). Weather overlay on the map shows localized conditions. Mission recommendation: GO / CAUTION / HOLD.</p>
+</div>
+
+<div class="man-section" id="predictions">
+<h2>THREAT PREDICTIONS</h2>
+<p>AI-powered threat trajectory prediction with confidence intervals. Movement pattern detection (STATIC, CIRCLING, LINEAR_APPROACH, EVASIVE). Intercept window calculation with feasibility rating.</p>
+</div>
+
+<div class="man-section" id="commsnet">
+<h2>COMMS NETWORK</h2>
+<p>Visualize communication links between all assets. Shows link quality, bandwidth usage, and mesh topology. Identifies disconnected nodes and single points of failure.</p>
+</div>
+
+<div class="man-section" id="awacs">
+<h2>AWACS</h2>
+<p>Airborne command drone management. Shows AWACS assets, radar coverage circles (proportional to altitude), battery status, and coverage area in nautical miles.</p>
+</div>
+
+<div class="man-section" id="fusion">
+<h2>SENSOR FUSION</h2>
+<p>Multi-sensor track correlation and kill chain visualization. Fuses data from EO/IR, RADAR, SIGINT, SONAR, and other sensors to create a unified tactical picture.</p>
+</div>
+
+<div class="man-section" id="docs">
+<h2>DOCUMENTS</h2>
+<p>Generate 5-paragraph OPORDs and CONOPs from live mission state. Mission briefing generator. All documents can be downloaded.</p>
+</div>
+
+<div class="man-section" id="integrations">
+<h2>INTEGRATIONS</h2>
+<p>Integration hub for external systems:</p>
+<ul>
+ <li><span class="key">PX4 SITL</span> — MAVLink bridge for simulated drones</li>
+ <li><span class="key">TAK/ATAK</span> — Cursor-on-Target XML exchange (UDP/TCP)</li>
+ <li><span class="key">Link 16</span> — TADIL J tactical data link simulation</li>
+ <li><span class="key">ROS 2</span> — rclpy bridge for robotic systems</li>
+ <li><span class="key">MQTT / DDS / Kafka</span> — Message bus adapters</li>
+ <li><span class="key">VMF / STANAG / NFFI / OGC</span> — Military standard bridges</li>
+</ul>
+</div>
+
+<!-- ── SYSTEM & ADMIN ── -->
+<div class="cat-hdr">System &amp; Admin</div>
+<div class="man-section" id="scripts">
+<h2>SYSTEM SCRIPTS</h2>
+<p class="warn">Commander access required. Enabled only when AMOS_ENV=dev or AMOS_ALLOW_GIT_UI=true.</p>
+<p>Git operations interface for managing the AMOS codebase from the UI.</p>
+<h3>Status Tab</h3>
+<p>Shows current branch, modified/staged/untracked files, and diff preview. Refresh to see latest changes.</p>
+<h3>Commit Tab</h3>
+<ul>
+ <li>Select specific files to stage (no blind stage-all)</li>
+ <li>Enter commit message and click <span class="key">COMMIT</span></li>
+ <li>Optional: check "Push after commit" to auto-push</li>
+ <li>All commits are audited with operator name</li>
+</ul>
+<h3>Branches Tab</h3>
+<ul>
+ <li>View all branches with current branch highlighted</li>
+ <li>Switch branches via the <span class="key">CHECKOUT</span> button</li>
+ <li class="warn">Checkout is a danger-zone operation — requires confirmation</li>
+</ul>
+<h3>Log Tab</h3>
+<p>Recent commit history with hash, author, date, and message.</p>
+<h3>Push / Pull</h3>
+<ul>
+ <li class="warn">Push and Pull are danger-zone operations</li>
+ <li>Both require confirmation modal before executing</li>
+ <li>Only one git operation can run at a time (operation lock)</li>
+</ul>
+<h3>Security</h3>
+<ul>
+ <li>All operations are rate-limited to one at a time via threading lock</li>
+ <li>No arbitrary shell execution — only whitelisted git subcommands</li>
+ <li>Every mutation is logged to the audit trail</li>
+ <li>Disabled in production unless explicitly enabled via environment variable</li>
+</ul>
+</div>
+
+<div class="man-section" id="edition">
+<h2>EDITION DASHBOARD</h2>
+<p>View and manage AMOS edition features.</p>
+<h3>Edition Status</h3>
+<p>Shows current edition (Open or Enterprise), total features, and enabled count.</p>
+<h3>Feature Bundles</h3>
+<p>Features are grouped into 5 bundles:</p>
+<ul>
+ <li><span class="key">Mission Intelligence</span> — Cognitive engine, NLP, COA, commander support, learning, HAL, predictions, wargame, red force, docs</li>
+ <li><span class="key">Swarm &amp; Autonomy</span> — Swarm intelligence, autonomous behaviors</li>
+ <li><span class="key">Secure Operations</span> — COMSEC encryption, security audit logging</li>
+ <li><span class="key">Defense Integration</span> — TAK, Link 16, VMF, STANAG, NFFI, OGC, Kafka bridges</li>
+ <li><span class="key">Simulation &amp; Effects</span> — Effects chain, ISR/ATR, space, HMT, kill web, EW, SIGINT, cyber, contested</li>
+</ul>
+<h3>Toggling Features</h3>
+<ul>
+ <li>Runtime-safe features can be toggled on/off instantly via the UI</li>
+ <li class="warn">Integration features (TAK, Link 16, COMSEC, etc.) require a server restart to change</li>
+ <li>Toggle switches are greyed out for restart-required features</li>
+ <li>All toggles are audited and <span class="warn">commander only</span></li>
+</ul>
+<p class="note">The edition itself (Open vs Enterprise) cannot be switched at runtime. Update AMOS_EDITION in .env and restart.</p>
+</div>
+
+<div class="man-section" id="settings">
+<h2>SETTINGS</h2>
+<h3>Locations</h3>
+<p>Add, edit, delete, and activate theater locations. Each location has lat/lng, AO boundaries, zoom level, and description.</p>
+<h3>Users</h3>
+<p>Commander can create, update, and manage user accounts. Set roles, domains, and access permissions.</p>
+<h3>Profile</h3>
+<p>Change your display name and password.</p>
+<h3>System Info</h3>
+<p>View system status: asset count, threat count, active location, uptime, integration status.</p>
+</div>
+
+<div class="man-section" id="api">
+<h2>API REFERENCE</h2>
+<p>All API routes are versioned at <code>/api/v1/</code>. Legacy <code>/api/</code> routes still work but include deprecation headers.</p>
+<h3>Key Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/assets</code> — All assets with position, health, supplies</li>
+ <li><code>GET /api/v1/threats</code> — Active and neutralized threats</li>
+ <li><code>GET /api/v1/theater/list</code> — All theater locations</li>
+ <li><code>POST /api/v1/theater/switch</code> — Switch active theater</li>
+ <li><code>GET /api/v1/healthz</code> — Liveness probe (no auth)</li>
+ <li><code>GET /api/v1/readyz</code> — Readiness probe (no auth)</li>
+ <li><code>POST /api/v1/voice/command</code> — Voice command processing</li>
+ <li><code>GET /api/v1/edition/status</code> — Edition and feature flags</li>
+ <li><code>GET /api/v1/scripts/git/status</code> — Git repository status</li>
+</ul>
+<p>See <code>docs/platform/API_VERSIONING.md</code> for the full versioning policy.</p>
+</div>
+
+</div><!-- /man-body -->
+</div><!-- /man-wrap -->
+<script>
+// Scroll-spy: highlight active sidebar link
+(function(){
+ var nav=document.getElementById('man-nav'); if(!nav) return;
+ var links=nav.querySelectorAll('a[data-s]');
+ var sections=[];
+ links.forEach(function(a){var el=document.getElementById(a.dataset.s);if(el)sections.push({el:el,a:a});});
+ function update(){
+  var scrollY=window.scrollY||document.documentElement.scrollTop;
+  var current=null;
+  for(var i=sections.length-1;i>=0;i--){if(sections[i].el.offsetTop<=scrollY+80){current=sections[i];break;}}
+  links.forEach(function(a){a.classList.remove('active');});
+  if(current)current.a.classList.add('active');
+ }
+ window.addEventListener('scroll',update,{passive:true});
+ update();
+})();
+</script>
+{% endblock %}

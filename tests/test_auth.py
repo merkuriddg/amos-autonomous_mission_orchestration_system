@@ -11,7 +11,7 @@ def test_login_valid_credentials(client):
     """POST /login with valid creds redirects to /."""
     resp = client.post("/login", data={
         "username": "commander",
-        "password": "mavrix2026",
+        "password": "amos_op1",
     }, follow_redirects=False)
     assert resp.status_code == 302
     assert resp.headers.get("Location", "").endswith("/")

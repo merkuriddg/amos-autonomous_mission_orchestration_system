@@ -26,7 +26,7 @@ http://localhost:2600
 
 Login with:
 username: commander
-password: mavrix2026
+password: amos_op1
 
 
 ⸻

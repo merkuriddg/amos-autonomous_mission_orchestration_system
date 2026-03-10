@@ -11,7 +11,7 @@ PAGES = [
     "/docs", "/integrations", "/video", "/analytics", "/missionplan",
     "/syscmd", "/training", "/commsnet", "/logistics", "/weather",
     "/bda", "/eob", "/wargame", "/swarm", "/isr", "/effects",
-    "/space", "/hmt", "/mesh", "/scripts", "/edition",
+    "/space", "/hmt", "/mesh", "/scripts", "/edition", "/manual",
 ]
 
 
