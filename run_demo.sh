@@ -13,7 +13,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCENARIO="${1:-border_patrol}"
-SCENARIO_FILE="$SCRIPT_DIR/demo/scenarios/${SCENARIO}.json"
+# Look in examples/ first (new layout), fall back to demo/scenarios/ (legacy)
+if [[ -f "$SCRIPT_DIR/examples/${SCENARIO}/scenario.json" ]]; then
+    SCENARIO_FILE="$SCRIPT_DIR/examples/${SCENARIO}/scenario.json"
+elif [[ -f "$SCRIPT_DIR/examples/${SCENARIO}.json" ]]; then
+    SCENARIO_FILE="$SCRIPT_DIR/examples/${SCENARIO}.json"
+elif [[ -f "$SCRIPT_DIR/demo/scenarios/${SCENARIO}.json" ]]; then
+    SCENARIO_FILE="$SCRIPT_DIR/demo/scenarios/${SCENARIO}.json"
+else
+    SCENARIO_FILE="$SCRIPT_DIR/examples/${SCENARIO}/scenario.json"
+fi
 PORT=2600
 URL="http://localhost:$PORT"
 PYTHON="$SCRIPT_DIR/.venv/bin/python3"
@@ -34,6 +43,9 @@ echo ""
 [[ -f "$SCENARIO_FILE" ]] || {
     fail "Scenario not found: $SCENARIO_FILE"
     echo "  Available scenarios:"
+    for d in "$SCRIPT_DIR"/examples/*/; do
+        [[ -f "$d/scenario.json" ]] && echo "    $(basename "$d")"
+    done
     ls "$SCRIPT_DIR/demo/scenarios/"*.json 2>/dev/null | while read -r f; do
         echo "    $(basename "$f" .json)"
     done

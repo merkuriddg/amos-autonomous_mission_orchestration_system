@@ -1,0 +1,101 @@
+{
+  "name": "Autonomous Swarm Recon — Contested Zone",
+  "description": "A small team deploys a drone swarm to perform reconnaissance over a contested area. AMOS coordinates swarm movement, distributes tasks, and adapts when assets are degraded.",
+  "audience": "Special operations, defense innovation groups, robotics research teams",
+  "duration_sec": 120,
+  "injects": [
+    {
+      "type": "message",
+      "trigger_at_offset": 3,
+      "message": "SWARM DEPLOY: 8-element recon swarm launched. Spreading to reconnaissance formation.",
+      "description": "Swarm deployment",
+      "points": 5
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 15,
+      "message": "SWARM STATUS: Formation established. Sector scan initiated — coverage 78%.",
+      "description": "Formation established",
+      "points": 5
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 25,
+      "threat_type": "rf_emitter",
+      "lat_offset": 0.03,
+      "lng_offset": 0.02,
+      "speed_kts": 0,
+      "description": "RF emitter detected — potential C2 node",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 32,
+      "message": "SIGINT: RF emission detected. ELINT drone redirected for signal classification. Swarm auto-repositioning for triangulation.",
+      "description": "SIGINT cueing",
+      "points": 10
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 42,
+      "threat_type": "radar",
+      "lat_offset": 0.045,
+      "lng_offset": 0.015,
+      "speed_kts": 0,
+      "description": "Air defense radar detected — threat to swarm",
+      "points": 25
+    },
+    {
+      "type": "degrade_comms",
+      "trigger_at_offset": 50,
+      "amount": 35,
+      "description": "EW jamming detected — comms degradation across swarm",
+      "points": 20
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 55,
+      "message": "WARNING: EW jamming detected. Swarm switching to frequency-hop mode. 2 drones operating in autonomous fallback.",
+      "description": "Jamming adaptation",
+      "points": 10
+    },
+    {
+      "type": "drain_battery",
+      "trigger_at_offset": 65,
+      "amount": 30,
+      "description": "Extended patrol — battery drain on forward elements",
+      "points": 15
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 72,
+      "message": "SWARM ADAPT: 2 drones RTB for battery. Formation self-healing — remaining 6 expanding coverage.",
+      "description": "Self-healing formation",
+      "points": 10
+    },
+    {
+      "type": "spawn_threat",
+      "trigger_at_offset": 85,
+      "threat_type": "vehicle_convoy",
+      "lat_offset": 0.05,
+      "lng_offset": 0.03,
+      "speed_kts": 25,
+      "description": "Vehicle convoy detected — high-value target",
+      "points": 25
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 92,
+      "message": "HVT DETECTED: 3-vehicle convoy. Swarm converging for persistent track. COA generated: SURVEIL + report.",
+      "description": "HVT tracking",
+      "points": 10
+    },
+    {
+      "type": "message",
+      "trigger_at_offset": 115,
+      "message": "MISSION COMPLETE: 3 targets identified, 1 HVT under persistent track. Intel package transmitted. Swarm RTB.",
+      "description": "Mission conclusion",
+      "points": 5
+    }
+  ]
+}
