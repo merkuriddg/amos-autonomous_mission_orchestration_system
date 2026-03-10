@@ -152,7 +152,8 @@ amos/
 ├── services/                — 36 autonomous subsystems
 ├── integrations/            — PX4, TAK, Link 16, MQTT, DDS, Kafka bridges
 ├── plugins/                 — Plugin system (PX4, ROS 2, example drone)
-├── demo/                    — Demo scenarios (border patrol, swarm, disaster)
+├── demo/
+│   └── scenarios/           — border_patrol, swarm_recon, disaster_response
 ├── db/                      — MariaDB schema + setup script (36 tables)
 ├── config/                  — Platoon config + theater locations
 ├── tests/                   — 209 automated tests
