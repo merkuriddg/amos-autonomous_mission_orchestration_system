@@ -8,6 +8,7 @@ Enterprise subsystem ticks are conditional on availability (not None).
 import time, random, uuid
 
 from web.extensions import socketio, base_pos
+from web.websockets import broadcast_state_diff
 from web.state import (
     sim_assets, sim_threats, sim_clock, now_iso,
     waypoint_nav, geofence_mgr, ros2_bridge, task_allocator,
@@ -109,12 +110,14 @@ def sim_tick():
             cap = [a for a in sim_assets.values() if a.get("weapons") or "EW_JAMMER" in (a.get("sensors") or [])]
             if cap:
                 a = random.choice(cap)
-                hal_recommendations.append({"id": f"HAL-{uuid.uuid4().hex[:8]}", "timestamp": now_iso(),
+                rec = {"id": f"HAL-{uuid.uuid4().hex[:8]}", "timestamp": now_iso(),
                     "type": random.choice(["ENGAGE", "JAM", "INTERCEPT", "RELOCATE", "SURVEIL"]),
                     "asset": a["id"], "target": th["id"],
                     "confidence": round(random.uniform(0.6, 0.98), 2),
                     "reasoning": f"Threat {th['id']} ({th['type']}) detected — recommend {a['id']}",
-                    "status": "pending", "tier": a.get("autonomy_tier", 2)})
+                    "status": "pending", "tier": a.get("autonomy_tier", 2)}
+                hal_recommendations.append(rec)
+                broadcast_state_diff("hal_recommendation", rec, domain=a.get("domain"))
 
         # ── ROS2 bridge ──
         if ros2_bridge.available:

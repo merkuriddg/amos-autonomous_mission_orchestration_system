@@ -1053,9 +1053,28 @@ def api_operators_online():
     ops = []
     for sid, info in online_ops.items():
         ops.append({"user": info["user"], "name": info["name"], "role": info["role"],
+                    "domain": info.get("domain", "all"),
                     "page": info.get("page", ""), "color": info.get("color"),
+                    "cursor": info.get("cursor"),
                     "connected_at": info["connected_at"]})
     return jsonify(ops)
+
+@bp.route("/collaboration/status")
+@login_required
+def api_collaboration_status():
+    """Collaboration summary: online operators, locks, cursors."""
+    ops = []
+    cursors = []
+    for sid, info in online_ops.items():
+        ops.append({"user": info["user"], "name": info["name"], "role": info["role"],
+                    "domain": info.get("domain", "all"), "page": info.get("page", ""),
+                    "color": info.get("color")})
+        if info.get("cursor") and info["cursor"].get("lat") is not None:
+            cursors.append({"user": info["user"], "name": info["name"],
+                            "color": info.get("color"), **info["cursor"]})
+    locks = [{"asset_id": aid, **lk} for aid, lk in asset_locks.items()]
+    return jsonify({"operators": ops, "operator_count": len(ops),
+                    "cursors": cursors, "locks": locks, "lock_count": len(locks)})
 
 @bp.route("/chat/history")
 @login_required
