@@ -358,3 +358,70 @@ def api_commsnet_heatmap():
                                "lng": a["position"]["lng"] + random.uniform(-0.01, 0.01),
                                "intensity": round(intensity * 0.6, 2)})
     return jsonify({"points": points, "count": len(points)})
+
+@bp.route("/commsnet/freq-hop")
+@login_required
+def api_commsnet_freq_hop():
+    """Frequency hopping status for each mesh band."""
+    bands = mesh_network.get_stats().get("bands", {}) if mesh_network else {}
+    hop_status = []
+    _FREQ_BANDS = [
+        ("HF", 3.0, 30.0), ("VHF", 30.0, 300.0), ("UHF", 300.0, 3000.0),
+        ("L-Band", 1000.0, 2000.0), ("S-Band", 2000.0, 4000.0),
+        ("C-Band", 4000.0, 8000.0), ("Ku-Band", 12000.0, 18000.0),
+    ]
+    for name, lo, hi in _FREQ_BANDS:
+        active = random.random() > 0.3
+        current_freq = round(random.uniform(lo, hi), 2) if active else 0
+        hop_rate = random.choice([50, 100, 200, 500, 1000]) if active else 0
+        jammed = random.random() < 0.1 if active else False
+        hop_status.append({
+            "band": name, "range_mhz": [lo, hi],
+            "active": active, "current_freq_mhz": current_freq,
+            "hop_rate_hz": hop_rate, "jammed": jammed,
+            "assets_using": random.randint(2, 15) if active else 0,
+            "encryption": "AES-256-FHSS" if active else "N/A",
+        })
+    return jsonify(hop_status)
+
+@bp.route("/commsnet/bandwidth")
+@login_required
+def api_commsnet_bandwidth():
+    """Bandwidth allocation per domain and link type."""
+    domains = {"air": [], "ground": [], "maritime": []}
+    for aid, a in sim_assets.items():
+        d = a.get("domain", "ground")
+        cs = a["health"]["comms_strength"]
+        bw_total = 2048 if d == "air" else 1024 if d == "ground" else 512
+        bw_used = round(bw_total * random.uniform(0.1, 0.9) * (cs / 100))
+        if d in domains:
+            domains[d].append({"asset_id": aid, "bw_total_kbps": bw_total,
+                               "bw_used_kbps": bw_used, "utilization_pct": round(bw_used / bw_total * 100, 1)})
+    summary = {}
+    for d, assets in domains.items():
+        total = sum(a["bw_total_kbps"] for a in assets)
+        used = sum(a["bw_used_kbps"] for a in assets)
+        summary[d] = {"total_kbps": total, "used_kbps": used,
+                      "utilization_pct": round(used / max(1, total) * 100, 1),
+                      "asset_count": len(assets)}
+    return jsonify({"by_domain": summary, "details": domains})
+
+@bp.route("/commsnet/mesh-health")
+@login_required
+def api_commsnet_mesh_health():
+    """Mesh network health summary from mesh_network service."""
+    stats = mesh_network.get_stats() if mesh_network else {}
+    total = len(sim_assets)
+    good = sum(1 for a in sim_assets.values() if a["health"]["comms_strength"] > 60)
+    degraded = sum(1 for a in sim_assets.values() if 25 < a["health"]["comms_strength"] <= 60)
+    denied = sum(1 for a in sim_assets.values() if a["health"]["comms_strength"] <= 25)
+    avg_comms = sum(a["health"]["comms_strength"] for a in sim_assets.values()) / max(1, total)
+    return jsonify({
+        "total_nodes": total, "good": good, "degraded": degraded, "denied": denied,
+        "avg_comms_pct": round(avg_comms, 1),
+        "resilience_grade": stats.get("resilience_grade", "B"),
+        "routing_algorithm": stats.get("routing_algorithm", "Dijkstra"),
+        "store_and_forward_queue": stats.get("queue_depth", 0),
+        "active_frequencies": stats.get("active_frequencies", 7),
+        "mesh_stats": stats,
+    })
