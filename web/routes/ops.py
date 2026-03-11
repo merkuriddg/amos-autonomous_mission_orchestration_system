@@ -881,6 +881,87 @@ def api_cot_inject():
 
 
 # ═══════════════════════════════════════════════════════════
+#  GeoJSON / KML OVERLAY IMPORT
+# ═══════════════════════════════════════════════════════════
+from core.geo_import import (
+    import_file as geo_import_file,
+    list_overlays, get_overlay, delete_overlay, update_overlay,
+)
+
+@bp.route("/overlays")
+@login_required
+def api_overlay_list():
+    """List all imported geo overlays."""
+    return jsonify(list_overlays())
+
+@bp.route("/overlays/<overlay_id>")
+@login_required
+def api_overlay_get(overlay_id):
+    """Get full overlay including GeoJSON features."""
+    ov = get_overlay(overlay_id)
+    if not ov:
+        return jsonify({"error": "Overlay not found"}), 404
+    return jsonify(ov)
+
+@bp.route("/overlays/<overlay_id>/geojson")
+@login_required
+def api_overlay_geojson(overlay_id):
+    """Return overlay as a pure GeoJSON FeatureCollection."""
+    ov = get_overlay(overlay_id)
+    if not ov:
+        return jsonify({"error": "Overlay not found"}), 404
+    return jsonify({"type": "FeatureCollection", "features": ov["features"]})
+
+@bp.route("/overlays/import", methods=["POST"])
+@login_required
+def api_overlay_import():
+    """Import GeoJSON or KML. Accepts JSON body or multipart file upload."""
+    # Multipart file upload
+    if request.files.get("file"):
+        f = request.files["file"]
+        raw = f.read().decode("utf-8", errors="ignore")
+        fname = f.filename or "upload"
+        name = request.form.get("name", "")
+        color = request.form.get("color", "#00ff41")
+    else:
+        d = request.json or {}
+        raw = d.get("data", d.get("geojson", d.get("kml", "")))
+        fname = d.get("filename", "import.geojson")
+        name = d.get("name", "")
+        color = d.get("color", "#00ff41")
+    if not raw:
+        return jsonify({"error": "No file data provided"}), 400
+    try:
+        ov = geo_import_file(raw, filename=fname, name=name, color=color)
+        return jsonify({"status": "ok", "overlay": {
+            "id": ov["id"], "name": ov["name"],
+            "source_format": ov["source_format"],
+            "feature_count": len(ov["features"]),
+        }})
+    except Exception as e:
+        return jsonify({"error": f"Parse failed: {e}"}), 400
+
+@bp.route("/overlays/<overlay_id>", methods=["PATCH"])
+@login_required
+def api_overlay_update(overlay_id):
+    """Update overlay metadata (name, visible, color)."""
+    d = request.json or {}
+    ov = update_overlay(overlay_id, d)
+    if not ov:
+        return jsonify({"error": "Overlay not found"}), 404
+    return jsonify({"status": "ok", "id": overlay_id})
+
+@bp.route("/overlays/<overlay_id>", methods=["DELETE"])
+@login_required
+def api_overlay_delete(overlay_id):
+    """Delete an imported overlay."""
+    ok = delete_overlay(overlay_id)
+    if not ok:
+        return jsonify({"error": "Overlay not found"}), 404
+    return jsonify({"status": "ok"})
+
+
+# ═══════════════════════════════════════════════════════════
 #  THREAT INTELLIGENCE
 # ═══════════════════════════════════════════════════════════
 @bp.route("/threat-intel")
