@@ -56,7 +56,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var cnMap, cnMarkers={}, cnLinkLines=[], cnHeatLayer=null;
+var cnMap, cnMarkers={}, cnLinkLines=[], cnHeatLayer=null, cnInitialFit=true;
 
 function initMap(){
  cnMap=L.map('cn-map',{zoomControl:true}).setView([_amosTheater.lat,_amosTheater.lng],9);
@@ -118,11 +118,14 @@ async function refreshMap(){
   }
  }
 
- // Auto-fit
- var lats=topo.nodes.map(function(n){return n.lat;});
- var lngs=topo.nodes.map(function(n){return n.lng;});
- if(lats.length>1){
-  cnMap.fitBounds([[Math.min.apply(null,lats)-.01,Math.min.apply(null,lngs)-.01],[Math.max.apply(null,lats)+.01,Math.max.apply(null,lngs)+.01]]);
+ // Auto-fit only on first load so user doesn't lose map focus
+ if(cnInitialFit){
+  var lats=topo.nodes.map(function(n){return n.lat;});
+  var lngs=topo.nodes.map(function(n){return n.lng;});
+  if(lats.length>1){
+   cnMap.fitBounds([[Math.min.apply(null,lats)-.01,Math.min.apply(null,lngs)-.01],[Math.max.apply(null,lats)+.01,Math.max.apply(null,lngs)+.01]]);
+  }
+  cnInitialFit=false;
  }
 }
 
