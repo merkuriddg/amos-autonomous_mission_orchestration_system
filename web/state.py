@@ -670,6 +670,22 @@ try:
 except Exception as e:
     print(f"[AMOS] CoT Receiver: Not available ({e})")
 
+try:
+    from integrations.sdrpp_bridge import SDRppBridge
+    _sdrpp = SDRppBridge()
+    print("[AMOS] SDR++ Bridge: Ready")
+except Exception as e:
+    _sdrpp = None
+    print(f"[AMOS] SDR++ Bridge: Not available ({e})")
+
+try:
+    from integrations.sigdigger_bridge import SigDiggerBridge
+    _sigdigger = SigDiggerBridge()
+    print("[AMOS] SigDigger Bridge: Ready")
+except Exception as e:
+    _sigdigger = None
+    print(f"[AMOS] SigDigger Bridge: Not available ({e})")
+
 if feature_enabled("kafka"):
     try:
         from integrations.kafka_adapter import KafkaAdapter

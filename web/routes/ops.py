@@ -16,6 +16,7 @@ from web.state import (
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
     _adsb, _aprs, _ais, _lora, _remoteid, _dragonos, _zmeta, _cot_receiver,
+    _sdrpp, _sigdigger,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -225,6 +226,8 @@ def api_bridge_all():
         "dragonos": _ss(_dragonos),
         "zmeta": _ss(_zmeta),
         "cot": _ss(_cot_receiver),
+        "sdrpp": _ss(_sdrpp),
+        "sigdigger": _ss(_sigdigger),
     })
 
 # ── PX4 ──
@@ -729,6 +732,79 @@ def api_zmeta_emit_command():
         geometry=d.get("geometry"),
     )
     return jsonify({"status": "ok", "task_id": ev["payload"]["task_id"]})
+
+
+# ── SDR++ ──
+@bp.route("/bridge/sdrpp/status")
+@login_required
+def api_sdrpp_status():
+    if not _sdrpp:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_sdrpp.get_status())
+
+@bp.route("/bridge/sdrpp/connect", methods=["POST"])
+@login_required
+def api_sdrpp_connect():
+    if not _sdrpp:
+        return jsonify({"error": "SDR++ bridge not loaded"}), 503
+    d = request.json or {}
+    _sdrpp.host = d.get("host", _sdrpp.host)
+    _sdrpp.port = int(d.get("port", _sdrpp.port))
+    _sdrpp.base_url = f"http://{_sdrpp.host}:{_sdrpp.port}"
+    ok = _sdrpp.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _sdrpp.connected})
+
+@bp.route("/bridge/sdrpp/disconnect", methods=["POST"])
+@login_required
+def api_sdrpp_disconnect():
+    if _sdrpp:
+        _sdrpp.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/sdrpp/tune", methods=["POST"])
+@login_required
+def api_sdrpp_tune():
+    if not _sdrpp or not _sdrpp.connected:
+        return jsonify({"error": "SDR++ not connected"}), 503
+    d = request.json or {}
+    freq = d.get("frequency_hz", d.get("freq", 0))
+    if not freq:
+        return jsonify({"error": "frequency_hz required"}), 400
+    ok = _sdrpp.set_frequency(int(freq))
+    return jsonify({"status": "ok" if ok else "failed", "frequency_hz": int(freq)})
+
+# ── SigDigger ──
+@bp.route("/bridge/sigdigger/status")
+@login_required
+def api_sigdigger_status():
+    if not _sigdigger:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_sigdigger.get_status())
+
+@bp.route("/bridge/sigdigger/connect", methods=["POST"])
+@login_required
+def api_sigdigger_connect():
+    if not _sigdigger:
+        return jsonify({"error": "SigDigger bridge not loaded"}), 503
+    d = request.json or {}
+    _sigdigger.listen_port = int(d.get("listen_port", _sigdigger.listen_port))
+    ok = _sigdigger.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _sigdigger.connected})
+
+@bp.route("/bridge/sigdigger/disconnect", methods=["POST"])
+@login_required
+def api_sigdigger_disconnect():
+    if _sigdigger:
+        _sigdigger.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/sigdigger/detections")
+@login_required
+def api_sigdigger_detections():
+    if not _sigdigger or not _sigdigger.connected:
+        return jsonify([])
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(_sigdigger.get_detections(limit))
 
 
 # ── CoT (Cursor-on-Target) Receiver ──

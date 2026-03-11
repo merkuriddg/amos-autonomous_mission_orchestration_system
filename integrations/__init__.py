@@ -27,6 +27,8 @@ Comms & Tactical:
 
 SDR Platform:
   - dragonos_bridge  : DragonOS / WarDragon SDR (MQTT + Kismet)
+  - sdrpp_bridge     : SDR++ HTTP API (frequency, VFO, spectrum)
+  - sigdigger_bridge : SigDigger UDP signal detections
 
 ISR Metadata:
   - zmeta_bridge     : ZMeta v1.0 ISR metadata standard (UDP ingest + egress)

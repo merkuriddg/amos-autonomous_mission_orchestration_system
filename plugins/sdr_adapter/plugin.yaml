@@ -1,0 +1,25 @@
+name: sdr_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  Unified SDR adapter — wraps SDR++, SigDigger, and DragonOS/WarDragon
+  into a single sensor plugin for spectrum monitoring and signal detection.
+  Works without the full DragonOS stack.
+author: Merkuri DG
+license: MIT
+entry_point: SDRAdapterPlugin
+requires:
+  - integrations.sdrpp_bridge
+  - integrations.sigdigger_bridge
+capabilities:
+  - spectrum_monitoring
+  - signal_detection
+  - frequency_control
+  - multi_backend
+  - health
+config:
+  sdrpp_host: "localhost"
+  sdrpp_port: 8080
+  sigdigger_port: 5557
+  enable_sdrpp: false
+  enable_sigdigger: false

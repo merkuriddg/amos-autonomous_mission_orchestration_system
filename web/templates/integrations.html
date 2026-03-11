@@ -147,6 +147,42 @@
   </div>
 </div>
 
+<!-- SDR Bridges -->
+<div class="card" style="margin-top:8px"><h3>SDR PLATFORMS — Software Defined Radio</h3></div>
+<div class="grid-3">
+  <!-- SDR++ -->
+  <div class="bridge-card" id="sdrpp-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="sdrpp-dot"></span><span class="bridge-name">SDR++</span></div>
+      <span class="badge badge-cyan">HTTP API</span>
+    </div>
+    <div id="sdrpp-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="sdrpp-host" placeholder="Host" value="localhost" style="width:100px">
+      <input type="number" id="sdrpp-port" placeholder="Port" value="8080" style="width:70px">
+      <button class="btn" onclick="sdrppConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="sdrppDisconnect()">STOP</button>
+    </div>
+    <div style="margin-top:6px">
+      <input type="number" id="sdrpp-freq" placeholder="Freq (MHz)" value="144.39" style="width:100px" step="0.001">
+      <button class="btn" onclick="sdrppTune()" style="margin-left:4px">TUNE</button>
+    </div>
+  </div>
+  <!-- SigDigger -->
+  <div class="bridge-card" id="sigdig-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="sigdig-dot"></span><span class="bridge-name">SigDigger</span></div>
+      <span class="badge badge-yellow">UDP</span>
+    </div>
+    <div id="sigdig-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="number" id="sigdig-port" placeholder="UDP Port" value="5557" style="width:80px">
+      <button class="btn" onclick="sigdigConnect()" style="margin-left:4px">LISTEN</button>
+      <button class="btn btn-red" onclick="sigdigDisconnect()">STOP</button>
+    </div>
+  </div>
+</div>
+
 <!-- CoT Ingest -->
 <div class="card" style="margin-top:8px"><h3>TACTICAL DATA LINKS — CoT / Blue Force Tracking</h3></div>
 <div class="grid-3">
@@ -284,6 +320,18 @@ async function refreshBridges(){
     _info('zmeta-info',zm.connected
         ?_stat('Recv',zs.received||0)+_stat('Fwd',zs.forwarded||0)+_stat('Emit',zs.emitted||0)+_stat('Obs',zb.observations||0)+_stat('Tracks',zb.track_states||0)+_stat('Fusions',zb.fusions||0)+_stat('Cmds In',zb.commands_in||0)+_stat('Cmds Out',zb.commands_out||0)+_stat('Profile',zm.profile||'—')
         :(zm.available?'<div style="color:#888">Ready — configure ports below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // SDR++
+    const sp=d.sdrpp||{};
+    _dot('sdrpp-dot',sp.connected);
+    _info('sdrpp-info',sp.connected
+        ?_stat('Freq',((sp.frequency_mhz||0)+' MHz'))+_stat('Mode',sp.mode||'—')+_stat('BW',sp.bandwidth_hz||0)+_stat('Polls',sp.polls||0)
+        :(sp.available?'<div style="color:#888">Ready — enter SDR++ host below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // SigDigger
+    const sd=d.sigdigger||{};
+    _dot('sigdig-dot',sd.connected);
+    _info('sigdig-info',sd.connected
+        ?_stat('Detections',sd.detections||0)+_stat('Recv',sd.received||0)+_stat('Errors',sd.errors||0)
+        :(sd.available?'<div style="color:#888">Ready — click LISTEN to start</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
 }
 
 async function refreshL16(){
@@ -379,6 +427,24 @@ async function zmetaConnect(){
     }); refreshBridges();
 }
 async function zmetaDisconnect(){await apiPost('/api/v1/bridge/zmeta/disconnect',{});refreshBridges();}
+async function sdrppConnect(){
+    await apiPost('/api/v1/bridge/sdrpp/connect',{
+        host:document.getElementById('sdrpp-host').value,
+        port:parseInt(document.getElementById('sdrpp-port').value)
+    }); refreshBridges();
+}
+async function sdrppDisconnect(){await apiPost('/api/v1/bridge/sdrpp/disconnect',{});refreshBridges();}
+async function sdrppTune(){
+    const mhz=parseFloat(document.getElementById('sdrpp-freq').value)||0;
+    await apiPost('/api/v1/bridge/sdrpp/tune',{frequency_hz:Math.round(mhz*1e6)});
+    refreshBridges();
+}
+async function sigdigConnect(){
+    await apiPost('/api/v1/bridge/sigdigger/connect',{
+        listen_port:parseInt(document.getElementById('sigdig-port').value)
+    }); refreshBridges();
+}
+async function sigdigDisconnect(){await apiPost('/api/v1/bridge/sigdigger/disconnect',{});refreshBridges();}
 
 refreshBridges(); refreshL16();
 setInterval(refreshBridges,5000);
