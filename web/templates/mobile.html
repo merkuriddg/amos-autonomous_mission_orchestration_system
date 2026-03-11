@@ -4,6 +4,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#00ff41">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/amos-192.png">
 <title>AMOS — Field Operator</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="/static/css/mobile.css">
@@ -95,7 +98,18 @@
 
 </div><!-- /m-main -->
 
+<!-- Offline banner -->
+<div id="offline-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#ff4444;color:#fff;text-align:center;padding:6px;font-size:.8rem;z-index:9999">OFFLINE MODE — data may be stale</div>
+
 <script>
+/* ── PWA Service Worker Registration ── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/static/sw.js').then(function(reg){
+    console.log('[AMOS] SW registered, scope:',reg.scope);
+  }).catch(function(err){console.log('[AMOS] SW registration failed:',err);});
+}
+window.addEventListener('online',function(){document.getElementById('offline-banner').style.display='none';});
+window.addEventListener('offline',function(){document.getElementById('offline-banner').style.display='block';});
 /* ── Globals ─────────────────────────────────────────── */
 let map, assetMarkers={}, threatMarkers={}, lastAlertId=0;
 let activeTheater={lat:{{theater_lat}},lng:{{theater_lng}},zoom:{{theater_zoom}}};
