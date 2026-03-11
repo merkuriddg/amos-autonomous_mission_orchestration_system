@@ -1,18 +1,17 @@
-"""AMOS Enterprise Route Blueprints (stub).
+"""AMOS Enterprise Route Blueprints.
 
-Enterprise modules are available under commercial license from Merkuri LLC.
-See ENTERPRISE.md for details.
-
-In open-core mode, this module is a no-op — enterprise APIs return 404.
+Registers the enterprise API blueprint providing REST access to all
+enterprise subsystems (cognitive engine, wargame, swarm intel, ISR,
+effects chain, space domain, HMT, kill web, etc.).
 """
 
 
 def register_enterprise_blueprints(app):
-    """Register enterprise blueprints.
-
-    Open-core edition: no enterprise modules are included.
-    Enterprise edition: install the private amos-enterprise overlay
-    to populate this package with the full enterprise blueprints.
-    """
-    print("[AMOS] Edition: OPEN — enterprise blueprints not installed")
-    print("[AMOS] See ENTERPRISE.md for licensing information")
+    """Register enterprise blueprints with dual API mount."""
+    try:
+        from web.enterprise.routes import bp as enterprise_bp
+        app.register_blueprint(enterprise_bp, url_prefix="/api/v1", name="enterprise_v1")
+        app.register_blueprint(enterprise_bp, url_prefix="/api", name="enterprise_compat")
+        print("[AMOS] Enterprise blueprints: Registered (80+ endpoints)")
+    except Exception as e:
+        print(f"[AMOS] Enterprise blueprints: Not available ({e})")
