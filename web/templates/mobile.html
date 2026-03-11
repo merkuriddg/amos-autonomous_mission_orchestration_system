@@ -17,6 +17,7 @@
   <span></span><span></span><span></span>
  </button>
  <span class="brand">AMOS FIELD</span>
+ <select id="theater-sel" onchange="switchTheater(this.value)" style="background:#111;color:#ffaa00;border:1px solid #ffaa00;padding:2px 6px;font-size:.7rem;font-family:inherit;border-radius:3px;max-width:120px"></select>
  <span style="font-size:.75rem;color:#888">{{ name }}</span>
 </div>
 
@@ -60,6 +61,17 @@
    <button class="m-btn red" onclick="qcmd('rtb_all')">🏠 RTB ALL</button>
    <button class="m-btn yellow" onclick="refreshAll()">🔄 REFRESH</button>
    <button class="m-btn blue" onclick="centerMap()">📍 CENTER</button>
+   <button class="m-btn" id="wp-mode-btn" onclick="toggleWpMode()" style="border-color:#ff00ff;color:#ff00ff">📌 DROP WP</button>
+   <button class="m-btn" onclick="clearWaypoints()" style="border-color:#888;color:#888">✖ CLR WP</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+   <span style="font-size:.75em;color:#888;white-space:nowrap">SIM SPEED</span>
+   <button class="m-btn" onclick="setSimSpeed(1)" style="padding:3px 8px;font-size:.75em" id="spd-1">1x</button>
+   <button class="m-btn" onclick="setSimSpeed(5)" style="padding:3px 8px;font-size:.75em" id="spd-5">5x</button>
+   <button class="m-btn" onclick="setSimSpeed(10)" style="padding:3px 8px;font-size:.75em" id="spd-10">10x</button>
+   <button class="m-btn" onclick="setSimSpeed(20)" style="padding:3px 8px;font-size:.75em" id="spd-20">20x</button>
+   <span id="spd-val" style="font-size:.75em;color:#00ff41;font-weight:bold">1x</span>
+   <span id="wp-count" style="font-size:.7em;color:#ff00ff;margin-left:auto"></span>
   </div>
  </div>
 
@@ -86,7 +98,9 @@
 <script>
 /* ── Globals ─────────────────────────────────────────── */
 let map, assetMarkers={}, threatMarkers={}, lastAlertId=0;
+let activeTheater={lat:{{theater_lat}},lng:{{theater_lng}},zoom:{{theater_zoom}}};
 const API='/api/v1';
+let wpMode=false, wpMarkers=[], wpLines={}, cachedAssets=[];
 
 /* ── Nav ─────────────────────────────────────────────── */
 function toggleNav(){
@@ -97,9 +111,10 @@ function toggleNav(){
 
 /* ── Map init ────────────────────────────────────────── */
 function initMap(){
-  map=L.map('m-map',{zoomControl:false,attributionControl:false}).setView([28.0,-82.5],10);
+  map=L.map('m-map',{zoomControl:false,attributionControl:false}).setView([activeTheater.lat,activeTheater.lng],activeTheater.zoom);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
   L.control.zoom({position:'bottomright'}).addTo(map);
+  map.on('click',onMapClick);
 }
 
 /* ── Data fetch ──────────────────────────────────────── */
@@ -108,17 +123,25 @@ async function fetchJSON(url){
 }
 
 async function refreshAll(){
-  // Metrics
-  const m=await fetchJSON(API+'/metrics');
-  if(m){
-    document.getElementById('s-assets').textContent=m.assets_detail?m.assets_detail.length:'—';
-    document.getElementById('s-threats').textContent=(m.threats_active||0)+(m.threats_tracking||0);
-    document.getElementById('s-missions').textContent=m.threats_neutralized||0;
-    updateAssets(m.assets_detail||[]);
+  // Assets
+  const assets=await fetchJSON(API+'/assets');
+  if(assets){
+    const list=Object.entries(assets).map(([k,a])=>({
+      id:a.id||k, callsign:a.callsign||a.id||k, type:a.type||'',
+      lat:a.position?a.position.lat:a.lat||0, lng:a.position?a.position.lng:a.lng||0,
+      battery:a.health?Math.round(a.health.battery_pct):a.battery||100,
+      status:a.status||'active'
+    }));
+    document.getElementById('s-assets').textContent=list.length;
+    cachedAssets=list;
+    updateAssets(list);
   }
   // Threats
   const t=await fetchJSON(API+'/threats');
   if(t) updateThreats(Array.isArray(t)?t:Object.values(t));
+  // Missions count
+  const summary=await fetchJSON(API+'/assets/summary');
+  if(summary) document.getElementById('s-missions').textContent=summary.total||0;
   // Alerts
   const a=await fetchJSON(API+'/alerts?since='+lastAlertId);
   if(a&&a.length) updateAlerts(a);
@@ -173,7 +196,140 @@ async function qcmd(cmd){
 }
 
 function panTo(lat,lng){if(map&&lat&&lng) map.setView([lat,lng],14);}
-function centerMap(){if(map) map.setView([28.0,-82.5],10);}
+function centerMap(){if(map) map.flyTo([activeTheater.lat,activeTheater.lng],activeTheater.zoom,{duration:1});}
+
+/* ── Toast ───────────────────────────────────────────── */
+function toast(msg,color){
+  const d=document.createElement('div');
+  d.textContent=msg;
+  d.style.cssText='position:fixed;top:50px;left:50%;transform:translateX(-50%);background:'+(color||'#ff00ff')+';color:#000;padding:6px 16px;border-radius:4px;font-size:.85em;font-weight:bold;z-index:9999;opacity:1;transition:opacity .5s';
+  document.body.appendChild(d);
+  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),500);},2000);
+}
+
+/* ── Sim speed ──────────────────────────────────────── */
+async function setSimSpeed(s){
+  await fetch(API+'/sim/speed',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({speed:s})});
+  document.getElementById('spd-val').textContent=s+'x';
+  [1,5,10,20].forEach(v=>{const b=document.getElementById('spd-'+v);if(b){b.style.background=v===s?'#00ff41':'';b.style.color=v===s?'#000':'';}})
+  toast('SIM SPEED '+s+'x','#00ff41');
+}
+
+/* ── Waypoint mode ───────────────────────────────────── */
+function toggleWpMode(){
+  wpMode=!wpMode;
+  const btn=document.getElementById('wp-mode-btn');
+  btn.style.background=wpMode?'#ff00ff':''; btn.style.color=wpMode?'#000':'#ff00ff';
+  document.getElementById('m-map').style.cursor=wpMode?'crosshair':'';
+}
+
+function _dist(a,b,c,d){const R=6371,dL=((c-a)*Math.PI/180),dG=((d-b)*Math.PI/180),x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+
+function onMapClick(e){
+  if(!wpMode) return;
+  const lat=Math.round(e.latlng.lat*10000)/10000;
+  const lng=Math.round(e.latlng.lng*10000)/10000;
+  // filter to assets visible in current map view, then sort by distance
+  const bounds=map.getBounds();
+  const inView=cachedAssets.filter(a=>a.lat&&a.lng&&bounds.contains([a.lat,a.lng]));
+  const sorted=inView.map(a=>({...a,dist:_dist(a.lat,a.lng,lat,lng)})).sort((a,b)=>a.dist-b.dist).slice(0,12);
+  let html='<div style="font-size:.85em;max-height:220px;overflow-y:auto">';
+  html+='<div style="color:#ff00ff;font-weight:bold;margin-bottom:4px">SEND TO '+lat+', '+lng+'</div>';
+  html+='<div style="margin-bottom:6px;font-size:.7em;color:#888">Tap name = go &nbsp;|&nbsp; <span style="color:#ffaa00">+</span> = append to route</div>';
+  if(!sorted.length){html+='<div style="color:#888">No assets loaded</div>';}
+  sorted.forEach(a=>{
+    const dTxt=a.dist<1?(a.dist*1000).toFixed(0)+'m':a.dist.toFixed(1)+'km';
+    html+='<div style="display:flex;gap:4px;margin:3px 0;align-items:center">';
+    html+='<button onclick="sendWp(\''+a.id+'\','+lat+','+lng+',false)" style="flex:1;background:#1a1a2e;color:#ff00ff;border:1px solid #ff00ff;padding:5px 6px;border-radius:3px;font-size:.8em;cursor:pointer;text-align:left">'+(a.callsign||a.id)+'<span style="color:#666;font-size:.8em;float:right">'+dTxt+'</span></button>';
+    html+='<button onclick="sendWp(\''+a.id+'\','+lat+','+lng+',true)" style="background:#1a1a2e;color:#ffaa00;border:1px solid #ffaa00;padding:5px 8px;border-radius:3px;font-size:.85em;cursor:pointer;font-weight:bold" title="Append to route">+</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  L.popup({maxWidth:280,className:'wp-popup'}).setLatLng(e.latlng).setContent(html).openOn(map);
+}
+
+async function sendWp(aid,lat,lng,append){
+  map.closePopup();
+  const endpoint=append?'/waypoints/add':'/waypoints/set';
+  const r=await fetch(API+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({asset_id:aid,lat:lat,lng:lng})});
+  const d=await r.json();
+  if(d.status==='ok'){
+    const nm=_dist(cachedAssets.find(a=>a.id===aid)?.lat||0,cachedAssets.find(a=>a.id===aid)?.lng||0,lat,lng);
+    const asset=cachedAssets.find(a=>a.id===aid);
+    const spd=asset?.speed||15;
+    const etaMin=nm>0?Math.round(nm/spd*60):0;
+    toast((append?'WP ADDED → ':'WP SET → ')+aid+(etaMin?' · ETA ~'+etaMin+'min':''),'#ff00ff');
+    // draw waypoint marker
+    const m=L.circleMarker([lat,lng],{radius:5,color:'#ff00ff',fillColor:'#ff00ff',fillOpacity:.6,weight:1}).addTo(map).bindTooltip(aid,{direction:'top',className:'wp-tip'});
+    wpMarkers.push(m);
+    // draw line from asset to waypoint
+    if(asset&&asset.lat&&asset.lng){
+      const pts=[[asset.lat,asset.lng],[lat,lng]];
+      if(wpLines[aid]) map.removeLayer(wpLines[aid]);
+      wpLines[aid]=L.polyline(pts,{color:'#ff00ff',weight:1.5,dashArray:'6,4',opacity:.6}).addTo(map);
+    }
+    refreshWaypoints();
+  }
+}
+
+async function clearWaypoints(){
+  await fetch(API+'/waypoints/clear',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({})});
+  wpMarkers.forEach(m=>map.removeLayer(m)); wpMarkers=[];
+  Object.values(wpLines).forEach(l=>map.removeLayer(l)); wpLines={};
+}
+
+async function refreshWaypoints(){
+  const wps=await fetchJSON(API+'/waypoints');
+  if(!wps) return;
+  const ct=Object.values(wps).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0);
+  const el=document.getElementById('wp-count');
+  if(el) el.textContent=ct?ct+' active WP'+( ct>1?'s':''):'';
+  // clear old wp visuals
+  wpMarkers.forEach(m=>map.removeLayer(m)); wpMarkers=[];
+  Object.values(wpLines).forEach(l=>map.removeLayer(l)); wpLines={};
+  // draw each asset's waypoints
+  for(const [aid,pts] of Object.entries(wps)){
+    if(!Array.isArray(pts)||!pts.length) continue;
+    const asset=cachedAssets.find(a=>a.id===aid);
+    const coords=[];
+    if(asset&&asset.lat) coords.push([asset.lat,asset.lng]);
+    pts.forEach((wp,i)=>{
+      const wlat=wp.lat||0, wlng=wp.lng||0;
+      if(!wlat&&!wlng) return;
+      coords.push([wlat,wlng]);
+      const m=L.circleMarker([wlat,wlng],{radius:4,color:'#ff00ff',fillColor:'#ff00ff',fillOpacity:.5,weight:1})
+        .addTo(map).bindTooltip(aid+' WP'+(i+1),{direction:'top'});
+      wpMarkers.push(m);
+    });
+    if(coords.length>1){
+      wpLines[aid]=L.polyline(coords,{color:'#ff00ff',weight:1.5,dashArray:'6,4',opacity:.5}).addTo(map);
+    }
+  }
+}
+
+/* ── Theater selector ────────────────────────────────── */
+async function loadTheaters(){
+  const ts=await fetchJSON(API+'/theater/list');
+  const sel=document.getElementById('theater-sel');
+  if(!ts||!sel)return;
+  sel.innerHTML='';
+  ts.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.key;o.textContent=t.name;
+    if(t.active){o.selected=true;activeTheater={lat:t.lat,lng:t.lng,zoom:t.zoom};}
+    sel.appendChild(o);
+  });
+}
+async function switchTheater(key){
+  try{
+    const resp=await fetch(API+'/theater/switch',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key})});
+    const d=await resp.json();
+    if(d.status==='ok'){
+      activeTheater={lat:d.lat,lng:d.lng,zoom:d.zoom};
+      map.flyTo([d.lat,d.lng],d.zoom,{duration:2});
+    }
+  }catch(e){}
+}
 
 /* ── SocketIO live updates ───────────────────────────── */
 let sock;
@@ -181,11 +337,18 @@ try{
   sock=io({transports:['websocket','polling']});
   sock.on('amos_alert',function(d){updateAlerts([d]);});
   sock.on('asset_update',function(){refreshAll();});
+  sock.on('theater_changed',function(d){
+    activeTheater={lat:d.lat,lng:d.lng,zoom:d.zoom};
+    var sel=document.getElementById('theater-sel');if(sel)sel.value=d.key;
+    map.flyTo([d.lat,d.lng],d.zoom,{duration:2});
+  });
 }catch(e){}
 
 /* ── Init ────────────────────────────────────────────── */
 initMap();
+loadTheaters();
 refreshAll();
 setInterval(refreshAll,5000);
+setInterval(refreshWaypoints,10000);
 </script>
 </body></html>

@@ -168,8 +168,12 @@ class KillWeb:
             if p.stage == "FIND":
                 # Check if fusion tracks correlate
                 for ft in fusion_tracks:
-                    if ft.get("threat_id") == p.threat_id or (
-                        ft.get("sources", 0) >= 2 and
+                    if not isinstance(ft, dict):
+                        continue
+                    src = ft.get("sources", 0)
+                    src_count = len(src) if isinstance(src, list) else (src if isinstance(src, (int, float)) else 0)
+                    if ft.get("threat_id") == p.threat_id or ft.get("associated_threat_id") == p.threat_id or (
+                        src_count >= 2 and
                         ft.get("classification") in ("HOSTILE", "SUSPECT")
                     ):
                         # Find nearest sensor asset

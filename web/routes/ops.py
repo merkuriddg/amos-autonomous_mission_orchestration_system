@@ -15,7 +15,7 @@ from web.state import (
     cyber_events, cyber_blocked_ips, supply_history,
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
-    _adsb, _aprs, _ais, _lora, _remoteid, _dragonos,
+    _adsb, _aprs, _ais, _lora, _remoteid, _dragonos, _zmeta,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -223,6 +223,7 @@ def api_bridge_all():
         "adsb": _ss(_adsb), "aprs": _ss(_aprs), "ais": _ss(_ais),
         "lora": _ss(_lora), "remoteid": _ss(_remoteid),
         "dragonos": _ss(_dragonos),
+        "zmeta": _ss(_zmeta),
     })
 
 # ── PX4 ──
@@ -634,6 +635,99 @@ def api_dragonos_kismet():
     if not _dragonos or not _dragonos.connected:
         return jsonify({})
     return jsonify(_dragonos.get_kismet_devices())
+
+
+# ── ZMeta ISR Metadata ──
+@bp.route("/bridge/zmeta/status")
+@login_required
+def api_zmeta_status():
+    if not _zmeta:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_zmeta.get_status())
+
+@bp.route("/bridge/zmeta/connect", methods=["POST"])
+@login_required
+def api_zmeta_connect():
+    if not _zmeta:
+        return jsonify({"error": "ZMeta bridge not loaded"}), 503
+    d = request.json or {}
+    _zmeta.listen_host = d.get("listen_host", _zmeta.listen_host)
+    _zmeta.listen_port = int(d.get("listen_port", _zmeta.listen_port))
+    _zmeta.forward_host = d.get("forward_host", _zmeta.forward_host)
+    _zmeta.forward_port = int(d.get("forward_port", _zmeta.forward_port))
+    if d.get("profile"): _zmeta.profile = d["profile"].upper()
+    if d.get("platform_id"): _zmeta.platform_id = d["platform_id"]
+    ok = _zmeta.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _zmeta.connected})
+
+@bp.route("/bridge/zmeta/disconnect", methods=["POST"])
+@login_required
+def api_zmeta_disconnect():
+    if _zmeta:
+        _zmeta.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/zmeta/events")
+@login_required
+def api_zmeta_events():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify([])
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(_zmeta.get_all_events(limit))
+
+@bp.route("/bridge/zmeta/tracks")
+@login_required
+def api_zmeta_tracks():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify([])
+    return jsonify(_zmeta.get_track_states() + _zmeta.get_fusions())
+
+@bp.route("/bridge/zmeta/commands")
+@login_required
+def api_zmeta_commands():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify({"inbound": [], "outbound": []})
+    return jsonify({"inbound": _zmeta.get_commands_in(), "outbound": _zmeta.get_commands_out()})
+
+@bp.route("/bridge/zmeta/link-status")
+@login_required
+def api_zmeta_link_status():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify([])
+    return jsonify(_zmeta.get_link_status())
+
+@bp.route("/bridge/zmeta/emit-state", methods=["POST"])
+@login_required
+def api_zmeta_emit_state():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify({"error": "ZMeta not connected"}), 503
+    d = request.json or {}
+    ev = _zmeta.emit_track_state(
+        track_id=d.get("track_id", ""),
+        lat=d.get("lat", 0), lng=d.get("lng", 0),
+        alt_m=d.get("alt_m", 0),
+        heading_deg=d.get("heading_deg"),
+        speed_mps=d.get("speed_mps"),
+        confidence=d.get("confidence", 0.8),
+        entity_class=d.get("entity_class"),
+        valid_for_ms=d.get("valid_for_ms", 5000),
+    )
+    return jsonify({"status": "ok", "event_id": ev["event"]["event_id"]})
+
+@bp.route("/bridge/zmeta/emit-command", methods=["POST"])
+@login_required
+def api_zmeta_emit_command():
+    if not _zmeta or not _zmeta.connected:
+        return jsonify({"error": "ZMeta not connected"}), 503
+    d = request.json or {}
+    ev = _zmeta.emit_command(
+        task_type=d.get("task_type", "GOTO"),
+        lat=d.get("lat", 0), lng=d.get("lng", 0),
+        valid_for_ms=d.get("valid_for_ms", 600000),
+        priority=d.get("priority", "MED"),
+        geometry=d.get("geometry"),
+    )
+    return jsonify({"status": "ok", "task_id": ev["payload"]["task_id"]})
 
 
 # ═══════════════════════════════════════════════════════════

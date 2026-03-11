@@ -166,7 +166,7 @@ def sim_tick():
 
         if kill_web:
             kw_events = kill_web.tick(sim_threats, sigint_intercepts,
-                sensor_fusion.get_tracks(), cm_log, bda_reports, sim_assets, dt)
+                list(sensor_fusion.get_tracks().values()), cm_log, bda_reports, sim_assets, dt)
             for kwe in kw_events:
                 aar_events.append({"type": "killweb", "timestamp": now_iso(),
                     "elapsed": sim_clock["elapsed_sec"], "details": kwe})

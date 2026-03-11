@@ -147,6 +147,29 @@
   </div>
 </div>
 
+<!-- ISR Metadata -->
+<div class="card" style="margin-top:8px"><h3>ISR METADATA — Standards-Based Interop</h3></div>
+<div class="grid-3">
+  <!-- ZMeta -->
+  <div class="bridge-card" id="zmeta-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="zmeta-dot"></span><span class="bridge-name">ZMeta</span></div>
+      <span class="badge badge-cyan">ISR v1.0</span>
+    </div>
+    <div id="zmeta-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="number" id="zmeta-listen" placeholder="Listen Port" value="5555" style="width:90px">
+      <input type="text" id="zmeta-fwd-host" placeholder="Fwd Host" value="127.0.0.1" style="width:90px">
+      <input type="number" id="zmeta-fwd-port" placeholder="Fwd Port" value="5556" style="width:80px">
+      <select id="zmeta-profile" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px"><option value="H">H (Full)</option><option value="M">M (IP Radio)</option><option value="L">L (LoRa)</option></select>
+    </div>
+    <div style="margin-top:6px">
+      <button class="btn" onclick="zmetaConnect()">CONNECT</button>
+      <button class="btn btn-red" onclick="zmetaDisconnect()">STOP</button>
+    </div>
+  </div>
+</div>
+
 <!-- Link 16 Detail -->
 <div class="grid-2" style="margin-top:8px">
   <div class="card"><h3>LINK 16 — PARTICIPANTS</h3>
@@ -223,6 +246,14 @@ async function refreshBridges(){
     _info('dragon-info',dg.connected
         ?_stat('Drones',db.drone_detections||0)+_stat('RemoteID',db.remoteid_decodes||0)+_stat('Spectrum',db.spectrum_events||0)+_stat('DF',db.df_bearings||0)+_stat('Kismet',db.kismet_devices||0)+_stat('MQTT msgs',ds.mqtt_messages||0)
         :(dg.available?'<div style="color:#888">Ready — enter MQTT broker below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // ZMeta
+    const zm=d.zmeta||{};
+    _dot('zmeta-dot',zm.connected);
+    const zs=zm.stats||{};
+    const zb=zm.buffers||{};
+    _info('zmeta-info',zm.connected
+        ?_stat('Recv',zs.received||0)+_stat('Fwd',zs.forwarded||0)+_stat('Emit',zs.emitted||0)+_stat('Obs',zb.observations||0)+_stat('Tracks',zb.track_states||0)+_stat('Fusions',zb.fusions||0)+_stat('Cmds In',zb.commands_in||0)+_stat('Cmds Out',zb.commands_out||0)+_stat('Profile',zm.profile||'—')
+        :(zm.available?'<div style="color:#888">Ready — configure ports below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
 }
 
 async function refreshL16(){
@@ -301,6 +332,15 @@ async function dragonConnect(){
     }); refreshBridges();
 }
 async function dragonDisconnect(){await apiPost('/api/v1/bridge/dragonos/disconnect',{});refreshBridges();}
+async function zmetaConnect(){
+    await apiPost('/api/v1/bridge/zmeta/connect',{
+        listen_port:parseInt(document.getElementById('zmeta-listen').value),
+        forward_host:document.getElementById('zmeta-fwd-host').value,
+        forward_port:parseInt(document.getElementById('zmeta-fwd-port').value),
+        profile:document.getElementById('zmeta-profile').value
+    }); refreshBridges();
+}
+async function zmetaDisconnect(){await apiPost('/api/v1/bridge/zmeta/disconnect',{});refreshBridges();}
 
 refreshBridges(); refreshL16();
 setInterval(refreshBridges,5000);

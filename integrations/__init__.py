@@ -27,6 +27,9 @@ Comms & Tactical:
 SDR Platform:
   - dragonos_bridge  : DragonOS / WarDragon SDR (MQTT + Kismet)
 
+ISR Metadata:
+  - zmeta_bridge     : ZMeta v1.0 ISR metadata standard (UDP ingest + egress)
+
 Data Transport:
   - mqtt_adapter     : MQTT pub/sub
   - dds_adapter      : DDS (Data Distribution Service)

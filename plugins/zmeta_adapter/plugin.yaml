@@ -1,0 +1,33 @@
+name: zmeta_adapter
+version: "1.0"
+type: isr_metadata_adapter
+description: >
+  ZMeta ISR metadata adapter — ingests and emits ZMeta v1.0 events
+  (observations, inferences, fusion tracks, state snapshots, commands,
+  and system health) via UDP.  Supports bidirectional ISR interop with
+  external sensors, drones, and partner C2 systems.
+author: Merkuri DG
+license: MIT
+entry_point: __init__:ZMetaAdapterPlugin
+requires:
+  - integrations.zmeta_bridge
+capabilities:
+  - zmeta_ingest
+  - zmeta_egress
+  - observation_rf
+  - observation_eoir
+  - inference
+  - fusion_tracks
+  - track_state
+  - link_status
+  - task_ack
+  - command_emit
+  - state_emit
+  - health
+config:
+  listen_host: "0.0.0.0"
+  listen_port: 5555
+  forward_host: "127.0.0.1"
+  forward_port: 5556
+  profile: "H"
+  platform_id: "amos-gateway"

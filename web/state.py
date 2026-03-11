@@ -560,6 +560,7 @@ _ais = None
 _lora = None
 _remoteid = None
 _dragonos = None
+_zmeta = None
 _mqtt_adapter = None
 _dds_adapter = None
 _kafka_adapter = None
@@ -653,6 +654,13 @@ try:
     print("[AMOS] DragonOS/WarDragon: Ready")
 except Exception as e:
     print(f"[AMOS] DragonOS/WarDragon: Not available ({e})")
+
+try:
+    from integrations.zmeta_bridge import ZMetaBridge
+    _zmeta = ZMetaBridge()
+    print("[AMOS] ZMeta ISR Metadata: Ready")
+except Exception as e:
+    print(f"[AMOS] ZMeta ISR Metadata: Not available ({e})")
 
 if feature_enabled("kafka"):
     try:
