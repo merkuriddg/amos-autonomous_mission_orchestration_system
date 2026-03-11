@@ -13,8 +13,12 @@ from web.state import (sim_assets, sim_threats, sim_clock, base_pos, waypoint_na
                        fetchall, now_iso, persist_sitrep,
                        db_check, mission_plans)
 from web.extensions import api_metrics
+from services.aar_recorder import AARRecorder
 
 bp = Blueprint("simulation", __name__)
+
+# Singleton AAR recorder
+_aar_recorder = AARRecorder(interval_sec=5.0)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -351,6 +355,60 @@ def api_aar_timeline():
     return jsonify({"events": events, "type_counts": type_counts,
                     "density": buckets, "total": len(aar_events),
                     "max_elapsed": round(max_elapsed, 1)})
+
+
+# ── AAR Replay (snapshot-based) ──
+@bp.route("/aar/replay/status")
+@login_required
+def api_aar_replay_status():
+    return jsonify(_aar_recorder.get_summary())
+
+@bp.route("/aar/replay/start", methods=["POST"])
+@login_required
+def api_aar_replay_start():
+    d = request.json or {}
+    interval = float(d.get("interval_sec", 5.0))
+    _aar_recorder.interval_sec = interval
+    sid = _aar_recorder.start(sim_assets, sim_threats, aar_events, sim_clock)
+    return jsonify({"status": "ok", "session_id": sid})
+
+@bp.route("/aar/replay/stop", methods=["POST"])
+@login_required
+def api_aar_replay_stop():
+    summary = _aar_recorder.stop()
+    return jsonify({"status": "ok", "summary": summary})
+
+@bp.route("/aar/replay/frames")
+@login_required
+def api_aar_replay_frames():
+    start = request.args.get("start", 0, type=int)
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(_aar_recorder.get_frames(start, limit))
+
+@bp.route("/aar/replay/frame/<int:frame_id>")
+@login_required
+def api_aar_replay_frame(frame_id):
+    frame = _aar_recorder.get_frame(frame_id)
+    if not frame:
+        return jsonify({"error": "Frame not found"}), 404
+    return jsonify(frame)
+
+@bp.route("/aar/replay/seek")
+@login_required
+def api_aar_replay_seek():
+    elapsed = request.args.get("elapsed_sec", 0, type=float)
+    frame = _aar_recorder.get_frame_at(elapsed)
+    if not frame:
+        return jsonify({"error": "No frames recorded"}), 404
+    return jsonify(frame)
+
+@bp.route("/aar/replay/export")
+@login_required
+def api_aar_replay_export():
+    from flask import Response
+    data = _aar_recorder.export_json()
+    return Response(data, mimetype="application/json",
+                    headers={"Content-Disposition": "attachment; filename=aar_replay.json"})
 
 
 # ═══════════════════════════════════════════════════════════
