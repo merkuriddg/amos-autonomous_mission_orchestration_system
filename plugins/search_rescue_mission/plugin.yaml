@@ -6,7 +6,7 @@ description: >
   and creeping line ahead patterns with casualty detection workflow.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:SearchRescueMissionPlugin
+entry_point: SearchRescueMissionPlugin
 capabilities:
   - mission_templates
   - waypoint_generation

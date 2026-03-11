@@ -6,7 +6,7 @@ description: >
   topics and ingests telemetry from external robotic nodes.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:ROS2AdapterPlugin
+entry_point: ROS2AdapterPlugin
 requires:
   - integrations.ros2_integration
 capabilities:

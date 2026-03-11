@@ -8,7 +8,7 @@ description: >
   external sensors, drones, and partner C2 systems.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:ZMetaAdapterPlugin
+entry_point: ZMetaAdapterPlugin
 requires:
   - integrations.zmeta_bridge
 capabilities:

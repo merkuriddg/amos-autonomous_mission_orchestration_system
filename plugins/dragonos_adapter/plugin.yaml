@@ -8,7 +8,7 @@ description: >
   air, ground, or maritime assets.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:DragonOSAdapterPlugin
+entry_point: DragonOSAdapterPlugin
 requires:
   - integrations.dragonos_bridge
 capabilities:

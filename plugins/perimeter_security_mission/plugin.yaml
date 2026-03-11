@@ -6,7 +6,7 @@ description: >
   and layered tripwire zones with QRF breach response.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:PerimeterSecurityMissionPlugin
+entry_point: PerimeterSecurityMissionPlugin
 capabilities:
   - mission_templates
   - waypoint_generation

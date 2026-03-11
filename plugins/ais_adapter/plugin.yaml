@@ -7,7 +7,7 @@ description: >
   for maritime domain awareness.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:AisAdapterPlugin
+entry_point: AisAdapterPlugin
 requires:
   - integrations.ais_receiver
 capabilities:

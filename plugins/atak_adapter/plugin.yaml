@@ -6,7 +6,7 @@ description: >
   Publishes blue-force and hostile markers over TAK multicast or TCP.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:AtakAdapterPlugin
+entry_point: AtakAdapterPlugin
 requires:
   - integrations.tak_bridge
 capabilities:

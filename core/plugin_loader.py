@@ -197,7 +197,9 @@ class PluginLoader:
         entry_point = manifest.get("entry_point")
 
         if entry_point:
-            # Explicit entry point
+            # Handle module:class notation (e.g. "__init__:MyPlugin")
+            if ":" in entry_point:
+                entry_point = entry_point.split(":", 1)[1]
             cls = getattr(module, entry_point, None)
             if cls is None:
                 raise ImportError(

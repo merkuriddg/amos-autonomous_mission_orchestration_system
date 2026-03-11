@@ -6,7 +6,7 @@ description: >
   between PX4 SITL / hardware and the AMOS event bus.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:PX4AdapterPlugin
+entry_point: PX4AdapterPlugin
 requires:
   - integrations.px4_bridge
 capabilities:

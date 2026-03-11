@@ -7,7 +7,7 @@ description: >
   text messages.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:MeshtasticAdapterPlugin
+entry_point: MeshtasticAdapterPlugin
 requires:
   - integrations.lora_bridge
 capabilities:

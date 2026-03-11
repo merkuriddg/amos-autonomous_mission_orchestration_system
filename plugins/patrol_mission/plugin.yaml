@@ -6,7 +6,7 @@ description: >
   and sector sweep templates with dynamic threat rerouting.
 author: Merkuri DG
 license: MIT
-entry_point: __init__:PatrolMissionPlugin
+entry_point: PatrolMissionPlugin
 capabilities:
   - mission_templates
   - waypoint_generation
