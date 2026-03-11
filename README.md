@@ -156,13 +156,14 @@ amos/
 │   ├── swarm_recon/         — Swarm reconnaissance demo
 │   ├── disaster_response/   — Earthquake SAR demo
 │   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
-├── plugins/                 — 18 plugins (adapters, mission packs, examples)
+├── plugins/                 — 19 plugins (adapters, mission packs, examples)
 │   ├── adsb_adapter/        — ADS-B aircraft surveillance
 │   ├── aprs_adapter/        — APRS amateur radio position tracking
 │   ├── atak_adapter/        — ATAK/TAK blue force & CoT
 │   ├── ais_adapter/         — AIS maritime vessel tracking
 |   ├── dragonos_adapter/    — DragonOS/WarDragon SDR sensor platform
 |   ├── sdr_adapter/         — Unified SDR (SDR++ / SigDigger / DragonOS)
+|   ├── remoteid_adapter/    — OpenDroneID / FAA RemoteID drone identification
 |   ├── cot_adapter/         — Cursor-on-Target XML ingest (UDP multicast + TCP)
 |   ├── zmeta_adapter/       — ZMeta v1.0 ISR metadata (UDP ingest + egress)
 │   ├── meshtastic_adapter/

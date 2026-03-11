@@ -1,0 +1,22 @@
+name: remoteid_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  OpenDroneID / FAA RemoteID adapter -- receives Wi-Fi NAN, BLE, and
+  network-aggregated Remote Identification broadcasts to track nearby
+  drones, identify operators, and maintain airspace awareness.
+author: Merkuri DG
+license: MIT
+entry_point: RemoteIDAdapterPlugin
+requires:
+  - integrations.remoteid_bridge
+capabilities:
+  - remoteid_receive
+  - drone_identification
+  - operator_location
+  - airspace_awareness
+  - health
+config:
+  host: ""
+  port: 7070
+  mode: "network"
