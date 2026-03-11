@@ -18,7 +18,8 @@ Ground Domain:
   - nav2_bridge      : ROS 2 Navigation2 stack for ground UGVs
 
 Comms & Tactical:
-  - tak_bridge       : TAK (Android Team Awareness Kit) CoT feed
+  - tak_bridge       : TAK (Android Team Awareness Kit) CoT egress
+  - cot_receiver     : Cursor-on-Target XML ingest (UDP multicast + TCP)
   - link16_sim       : Link-16 tactical data link simulator
   - aprs_bridge      : APRS amateur radio position/messaging
   - lora_bridge      : LoRa / Meshtastic mesh networking

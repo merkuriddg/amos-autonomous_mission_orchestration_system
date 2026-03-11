@@ -15,7 +15,7 @@ from web.state import (
     cyber_events, cyber_blocked_ips, supply_history,
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
-    _adsb, _aprs, _ais, _lora, _remoteid, _dragonos, _zmeta,
+    _adsb, _aprs, _ais, _lora, _remoteid, _dragonos, _zmeta, _cot_receiver,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -224,6 +224,7 @@ def api_bridge_all():
         "lora": _ss(_lora), "remoteid": _ss(_remoteid),
         "dragonos": _ss(_dragonos),
         "zmeta": _ss(_zmeta),
+        "cot": _ss(_cot_receiver),
     })
 
 # ── PX4 ──
@@ -728,6 +729,79 @@ def api_zmeta_emit_command():
         geometry=d.get("geometry"),
     )
     return jsonify({"status": "ok", "task_id": ev["payload"]["task_id"]})
+
+
+# ── CoT (Cursor-on-Target) Receiver ──
+@bp.route("/bridge/cot/status")
+@login_required
+def api_cot_status():
+    if not _cot_receiver:
+        return jsonify({"available": False, "connected": False})
+    return jsonify(_cot_receiver.get_status())
+
+@bp.route("/bridge/cot/connect", methods=["POST"])
+@login_required
+def api_cot_connect():
+    if not _cot_receiver:
+        return jsonify({"error": "CoT receiver not loaded"}), 503
+    d = request.json or {}
+    _cot_receiver.listen_addr = d.get("listen_addr", _cot_receiver.listen_addr)
+    _cot_receiver.udp_port = int(d.get("udp_port", _cot_receiver.udp_port))
+    _cot_receiver.tcp_port = int(d.get("tcp_port", _cot_receiver.tcp_port))
+    if d.get("mcast_group"): _cot_receiver.mcast_group = d["mcast_group"]
+    _cot_receiver.enable_udp = d.get("enable_udp", _cot_receiver.enable_udp)
+    _cot_receiver.enable_tcp = d.get("enable_tcp", _cot_receiver.enable_tcp)
+    ok = _cot_receiver.connect()
+    return jsonify({"status": "ok" if ok else "failed", "connected": _cot_receiver.connected})
+
+@bp.route("/bridge/cot/disconnect", methods=["POST"])
+@login_required
+def api_cot_disconnect():
+    if _cot_receiver:
+        _cot_receiver.disconnect()
+    return jsonify({"status": "ok"})
+
+@bp.route("/bridge/cot/events")
+@login_required
+def api_cot_events():
+    if not _cot_receiver or not _cot_receiver.connected:
+        return jsonify([])
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(_cot_receiver.get_all_events(limit))
+
+@bp.route("/bridge/cot/tracks")
+@login_required
+def api_cot_tracks():
+    if not _cot_receiver or not _cot_receiver.connected:
+        return jsonify([])
+    return jsonify(_cot_receiver.get_all_tracks())
+
+@bp.route("/bridge/cot/friendlies")
+@login_required
+def api_cot_friendlies():
+    if not _cot_receiver or not _cot_receiver.connected:
+        return jsonify([])
+    return jsonify(_cot_receiver.get_friendlies())
+
+@bp.route("/bridge/cot/hostiles")
+@login_required
+def api_cot_hostiles():
+    if not _cot_receiver or not _cot_receiver.connected:
+        return jsonify([])
+    return jsonify(_cot_receiver.get_hostiles())
+
+@bp.route("/bridge/cot/inject", methods=["POST"])
+@login_required
+def api_cot_inject():
+    """Manually inject a CoT XML event (for testing)."""
+    if not _cot_receiver:
+        return jsonify({"error": "CoT receiver not loaded"}), 503
+    d = request.json or {}
+    xml = d.get("xml", "")
+    if not xml:
+        return jsonify({"error": "xml field required"}), 400
+    _cot_receiver.inject_cot_xml(xml)
+    return jsonify({"status": "ok", "injected": True})
 
 
 # ═══════════════════════════════════════════════════════════

@@ -1,0 +1,26 @@
+name: cot_adapter
+version: "1.0"
+type: sensor_adapter
+description: >
+  Cursor-on-Target (CoT) XML ingest adapter. Receives blue-force,
+  hostile, neutral, and event CoT messages from TAK/ATAK clients,
+  CoT gateways, and MIL-STD sources via UDP multicast and TCP.
+author: Merkuri DG
+license: MIT
+entry_point: CoTAdapterPlugin
+requires:
+  - integrations.cot_receiver
+capabilities:
+  - cot_ingest
+  - blue_force_tracking
+  - hostile_tracking
+  - cot_alerts
+  - cot_inject
+  - health
+config:
+  udp_port: 6969
+  tcp_port: 4242
+  mcast_group: "239.2.3.1"
+  enable_udp: true
+  enable_tcp: true
+  auto_connect: false

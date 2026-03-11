@@ -561,6 +561,7 @@ _lora = None
 _remoteid = None
 _dragonos = None
 _zmeta = None
+_cot_receiver = None
 _mqtt_adapter = None
 _dds_adapter = None
 _kafka_adapter = None
@@ -661,6 +662,13 @@ try:
     print("[AMOS] ZMeta ISR Metadata: Ready")
 except Exception as e:
     print(f"[AMOS] ZMeta ISR Metadata: Not available ({e})")
+
+try:
+    from integrations.cot_receiver import CoTReceiver
+    _cot_receiver = CoTReceiver()
+    print("[AMOS] CoT Receiver: Ready")
+except Exception as e:
+    print(f"[AMOS] CoT Receiver: Not available ({e})")
 
 if feature_enabled("kafka"):
     try:

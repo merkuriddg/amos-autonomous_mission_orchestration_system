@@ -156,13 +156,14 @@ amos/
 │   ├── swarm_recon/         — Swarm reconnaissance demo
 │   ├── disaster_response/   — Earthquake SAR demo
 │   └── quickstart/          — "Hello AMOS" API examples (Python + curl)
-├── plugins/                 — 16 plugins (adapters, mission packs, examples)
+├── plugins/                 — 17 plugins (adapters, mission packs, examples)
 │   ├── adsb_adapter/        — ADS-B aircraft surveillance
 │   ├── aprs_adapter/        — APRS amateur radio position tracking
 │   ├── atak_adapter/        — ATAK/TAK blue force & CoT
 │   ├── ais_adapter/         — AIS maritime vessel tracking
 │   ├── dragonos_adapter/    — DragonOS/WarDragon SDR sensor platform
-│   ├── zmeta_adapter/       — ZMeta v1.0 ISR metadata (UDP ingest + egress)
+|   ├── cot_adapter/         — Cursor-on-Target XML ingest (UDP multicast + TCP)
+|   ├── zmeta_adapter/       — ZMeta v1.0 ISR metadata (UDP ingest + egress)
 │   ├── meshtastic_adapter/
 │   ├── px4_adapter/         — PX4 MAVLink autopilot bridge
 │   ├── ros2_adapter/        — ROS 2 middleware bridge
@@ -235,7 +236,7 @@ amos/
 - **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB (optional — runs in-memory without it)
 - **Testing:** pytest (209 tests), GitHub Actions CI (Python 3.11 + 3.12)
-- **Integrations:** MAVLink, CoT XML, TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR, ZMeta ISR Metadata
+- **Integrations:** MAVLink, CoT XML (send + receive), TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR, ZMeta ISR Metadata
 - **Security:** AES-256-GCM encryption, HMAC, key lifecycle management
 
 ## Testing

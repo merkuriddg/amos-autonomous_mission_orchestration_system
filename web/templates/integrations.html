@@ -147,6 +147,28 @@
   </div>
 </div>
 
+<!-- CoT Ingest -->
+<div class="card" style="margin-top:8px"><h3>TACTICAL DATA LINKS — CoT / Blue Force Tracking</h3></div>
+<div class="grid-3">
+  <!-- CoT Receiver -->
+  <div class="bridge-card" id="cot-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="cot-dot"></span><span class="bridge-name">CoT Receiver</span></div>
+      <span class="badge badge-green">CoT XML</span>
+    </div>
+    <div id="cot-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="number" id="cot-udp" placeholder="UDP Port" value="6969" style="width:80px">
+      <input type="number" id="cot-tcp" placeholder="TCP Port" value="4242" style="width:80px">
+      <input type="text" id="cot-mcast" placeholder="Multicast" value="239.2.3.1" style="width:100px">
+    </div>
+    <div style="margin-top:6px">
+      <button class="btn" onclick="cotConnect()">LISTEN</button>
+      <button class="btn btn-red" onclick="cotDisconnect()">STOP</button>
+    </div>
+  </div>
+</div>
+
 <!-- ISR Metadata -->
 <div class="card" style="margin-top:8px"><h3>ISR METADATA — Standards-Based Interop</h3></div>
 <div class="grid-3">
@@ -246,6 +268,14 @@ async function refreshBridges(){
     _info('dragon-info',dg.connected
         ?_stat('Drones',db.drone_detections||0)+_stat('RemoteID',db.remoteid_decodes||0)+_stat('Spectrum',db.spectrum_events||0)+_stat('DF',db.df_bearings||0)+_stat('Kismet',db.kismet_devices||0)+_stat('MQTT msgs',ds.mqtt_messages||0)
         :(dg.available?'<div style="color:#888">Ready — enter MQTT broker below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // CoT
+    const cot=d.cot||{};
+    _dot('cot-dot',cot.connected);
+    const cs=cot.stats||{};
+    const ct=cot.tracks||{};
+    _info('cot-info',cot.connected
+        ?_stat('Recv',cs.raw_received||0)+_stat('Friendly',ct.friendly||0)+_stat('Hostile',ct.hostile||0)+_stat('Neutral',ct.neutral||0)+_stat('Alerts',ct.alerts||0)+_stat('Errors',cs.parse_errors||0)
+        :(cot.available?'<div style="color:#888">Ready — click LISTEN to start</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
     // ZMeta
     const zm=d.zmeta||{};
     _dot('zmeta-dot',zm.connected);
@@ -332,6 +362,14 @@ async function dragonConnect(){
     }); refreshBridges();
 }
 async function dragonDisconnect(){await apiPost('/api/v1/bridge/dragonos/disconnect',{});refreshBridges();}
+async function cotConnect(){
+    await apiPost('/api/v1/bridge/cot/connect',{
+        udp_port:parseInt(document.getElementById('cot-udp').value),
+        tcp_port:parseInt(document.getElementById('cot-tcp').value),
+        mcast_group:document.getElementById('cot-mcast').value
+    }); refreshBridges();
+}
+async function cotDisconnect(){await apiPost('/api/v1/bridge/cot/disconnect',{});refreshBridges();}
 async function zmetaConnect(){
     await apiPost('/api/v1/bridge/zmeta/connect',{
         listen_port:parseInt(document.getElementById('zmeta-listen').value),
