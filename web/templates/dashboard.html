@@ -14,7 +14,7 @@
   <div class="card stat"><div class="value" id="d-sea" style="color:#ff44ff">--</div><div class="label">MARITIME</div></div>
  </div>
  <div class="grid-2">
-  <div class="card"><h3>DOMAIN BREAKDOWN</h3><canvas id="domain-chart" height="180"></canvas></div>
+  <div class="card"><h3>DOMAIN BREAKDOWN</h3><div id="domain-bars" style="margin-top:6px"></div></div>
   <div class="card"><h3>FLEET SUPPLY OVERVIEW</h3><div id="fleet-supply"></div></div>
  </div>
  <div class="card" style="margin-top:8px"><h3>ASSET ROSTER</h3>
@@ -32,7 +32,6 @@
 {% endblock %}
 {% block scripts %}
 <script>
-var domChart=null;
 async function refreshTwin(){
  var assets=await apiFetch('/api/v1/assets');
  var summary=await apiFetch('/api/v1/assets/summary');
@@ -41,11 +40,17 @@ async function refreshTwin(){
  document.getElementById('d-air').textContent=summary.by_domain.air||0;
  document.getElementById('d-gnd').textContent=summary.by_domain.ground||0;
  document.getElementById('d-sea').textContent=summary.by_domain.maritime||0;
- if(domChart) domChart.destroy();
- var dL=Object.keys(summary.by_domain),dV=Object.values(summary.by_domain);
- var dC=dL.map(function(d){return d==='air'?'#00aaff':d==='ground'?'#00ff41':d==='maritime'?'#ff44ff':'#888';});
- domChart=new Chart(document.getElementById('domain-chart'),{type:'doughnut',data:{labels:dL,datasets:[{data:dV,backgroundColor:dC}]},
-  options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:10}}}}}});
+ var dC={air:'#00aaff',ground:'#00ff41',maritime:'#ff44ff'};
+ var maxD=Math.max.apply(null,Object.values(summary.by_domain))||1;
+ var bh='';Object.keys(summary.by_domain).forEach(function(d){
+  var v=summary.by_domain[d]||0,pct=Math.round(v/maxD*100),col=dC[d]||'#888';
+  bh+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.78em">'+
+   '<span style="width:70px;color:#aaa;text-transform:uppercase">'+d+'</span>'+
+   '<div style="flex:1;background:#111;border-radius:3px;height:18px;overflow:hidden">'+
+   '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px;transition:width .3s"></div></div>'+
+   '<span style="width:30px;text-align:right;color:'+col+';font-weight:bold">'+v+'</span></div>';
+ });
+ document.getElementById('domain-bars').innerHTML=bh;
  var tF=0,tA=0,lF=0,n=0;
  entries.forEach(function(e){var s=e[1].supplies||{};if(s.fuel_pct!=null){tF+=s.fuel_pct;tA+=s.ammo_rounds||0;n++;if(s.fuel_pct<25)lF++;}});
  var aF=n?Math.round(tF/n):0,aA=n?Math.round(tA/n):0;
@@ -68,6 +73,6 @@ async function refreshTwin(){
  });
  document.getElementById('twin-tbody').innerHTML=h;
 }
-refreshTwin();setInterval(refreshTwin,3000);
+refreshTwin();setInterval(refreshTwin,10000);
 </script>
 {% endblock %}

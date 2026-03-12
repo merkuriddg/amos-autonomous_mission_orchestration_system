@@ -23,15 +23,22 @@ class RemoteIDAdapterPlugin(PluginBase):
     """OpenDroneID / FAA RemoteID sensor-adapter plugin."""
 
     PLUGIN_NAME = "remoteid_adapter"
-    PLUGIN_VERSION = "1.0"
+    PLUGIN_VERSION = "1.1"
     PLUGIN_TYPE = "sensor_adapter"
 
     def __init__(self):
         super().__init__()
         self.bridge = None
+        self.drone_ref_db = None
         self._poll_thread = None
         self._running = False
         self._last_drone_ids = set()
+        # Load drone reference DB for enrichment
+        try:
+            from services.drone_reference import DroneReferenceDB
+            self.drone_ref_db = DroneReferenceDB()
+        except Exception:
+            pass
 
     # ── Lifecycle ─────────────────────────────────────────
 
@@ -132,9 +139,9 @@ class RemoteIDAdapterPlugin(PluginBase):
                             "operator_lng": op_pos["lng"],
                         })
 
-                    # New drone sighting
+                    # New drone sighting — enrich with reference DB
                     if tid not in self._last_drone_ids:
-                        self.emit("threat.drone_detected", {
+                        det = {
                             "source": "remoteid",
                             "track_id": tid,
                             "serial_number": d.get("serial_number", ""),
@@ -143,7 +150,16 @@ class RemoteIDAdapterPlugin(PluginBase):
                             "lng": d.get("position", {}).get("lng"),
                             "alt_ft": d.get("position", {}).get("alt_ft"),
                             "threat_level": "unknown",
-                        })
+                        }
+                        if self.drone_ref_db and self.drone_ref_db.loaded:
+                            self.drone_ref_db.enrich_track(det)
+                            if det.get("ref_threat_classification") == "hostile":
+                                det["threat_level"] = "high"
+                            elif det.get("ref_threat_classification") == "friendly":
+                                det["threat_level"] = "low"
+                            elif det.get("ref_matched"):
+                                det["threat_level"] = "medium"
+                        self.emit("threat.drone_detected", det)
 
                 self._last_drone_ids = current_ids
 

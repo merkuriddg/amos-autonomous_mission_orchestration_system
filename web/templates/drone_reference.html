@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Drone Reference{% endblock %}
+{% block head %}
+<style>
+.dr-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.dr-filters select,.dr-filters input{min-width:140px}
+.dr-row{display:flex;align-items:center;gap:6px;padding:5px 4px;border-bottom:1px solid #111;font-size:.78em;cursor:pointer}
+.dr-row:hover{background:#1a1a1a}
+.dr-cat-commercial{color:#4488ff}.dr-cat-tactical{color:#00ff41}.dr-cat-adversary{color:#ff4444}
+.dr-threat-hostile{color:#ff4444}.dr-threat-friendly{color:#00ff41}.dr-threat-commercial{color:#4488ff}.dr-threat-unknown{color:#ffaa00}
+.dr-detail{background:#0a0a0a;border:1px solid #222;padding:10px;font-size:.78em}
+.dr-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:6px}
+.dr-detail-grid .lbl{color:#666;font-size:.72em;text-transform:uppercase;letter-spacing:1px}
+.dr-detail-grid .val{color:#ccc}
+.dr-tag{display:inline-block;padding:1px 6px;font-size:.68em;border:1px solid;border-radius:2px;margin:1px}
+.dr-source{color:#555;font-size:.68em;margin-top:8px;border-top:1px solid #1a1a1a;padding-top:4px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1400px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">
+  DRONE REFERENCE DATABASE
+  <span style="color:#555;font-size:.7em;margin-left:8px" id="dr-version"></span>
+ </h2>
+
+ <!-- STATS -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="dr-total">--</div><div class="label">TOTAL ENTRIES</div></div>
+  <div class="card stat"><div class="value" style="color:#4488ff" id="dr-commercial">--</div><div class="label">COMMERCIAL</div></div>
+  <div class="card stat"><div class="value" style="color:#00ff41" id="dr-tactical">--</div><div class="label">MILITARY / TACTICAL</div></div>
+  <div class="card stat"><div class="value" style="color:#ff4444" id="dr-adversary">--</div><div class="label">ADVERSARY / THREAT</div></div>
+ </div>
+
+ <div style="display:grid;grid-template-columns:1fr 380px;gap:8px">
+  <!-- LEFT: SEARCH + LIST -->
+  <div>
+   <div class="card">
+    <h3>SEARCH &amp; FILTER</h3>
+    <div class="dr-filters">
+     <input type="text" id="dr-search" placeholder="Search drones..." oninput="debouncedRefresh()" style="flex:1;min-width:200px">
+     <select id="dr-cat-filter" onchange="refreshList()">
+      <option value="">All Categories</option>
+      <option value="commercial">Commercial</option>
+      <option value="tactical">Military/Tactical</option>
+      <option value="adversary">Adversary</option>
+     </select>
+     <select id="dr-threat-filter" onchange="refreshList()">
+      <option value="">All Threats</option>
+      <option value="hostile">Hostile</option>
+      <option value="friendly">Friendly</option>
+      <option value="commercial">Commercial</option>
+      <option value="unknown">Unknown</option>
+     </select>
+     <select id="dr-sort" onchange="refreshList()">
+      <option value="name">Sort: Name</option>
+      <option value="manufacturer">Sort: Manufacturer</option>
+      <option value="speed">Sort: Speed (fastest)</option>
+      <option value="endurance">Sort: Endurance (longest)</option>
+      <option value="weight">Sort: Weight (heaviest)</option>
+      <option value="range">Sort: Range (farthest)</option>
+     </select>
+     <span style="color:#666;font-size:.75em" id="dr-count">--</span>
+    </div>
+   </div>
+
+   <div class="card" style="margin-top:0">
+    <h3>DRONE ENTRIES</h3>
+    <div style="display:flex;gap:6px;padding:4px 4px 6px;font-size:.68em;color:#555;border-bottom:1px solid #222">
+     <span style="width:30px">#</span>
+     <span style="width:180px">NAME</span>
+     <span style="width:120px">MANUFACTURER</span>
+     <span style="width:70px">CATEGORY</span>
+     <span style="width:55px">TYPE</span>
+     <span style="width:55px">SPD kts</span>
+     <span style="width:55px">ENDUR</span>
+     <span style="width:55px">RANGE km</span>
+     <span style="width:60px">THREAT</span>
+    </div>
+    <div class="scroll-box" style="max-height:520px" id="dr-list"></div>
+   </div>
+  </div>
+
+  <!-- RIGHT: DETAIL PANEL -->
+  <div>
+   <div class="card">
+    <h3>DRONE DOSSIER</h3>
+    <div id="dr-detail" class="dr-detail">
+     <div style="color:#666;padding:12px;text-align:center">Select a drone to view details</div>
+    </div>
+   </div>
+
+   <!-- SERIAL LOOKUP -->
+   <div class="card" style="margin-top:8px">
+    <h3>SERIAL PREFIX LOOKUP</h3>
+    <div style="display:flex;gap:6px;align-items:center">
+     <input type="text" id="dr-serial-input" placeholder="Enter serial number..." style="flex:1" onkeydown="if(event.key==='Enter')lookupSerial()">
+     <button class="btn" onclick="lookupSerial()">IDENTIFY</button>
+    </div>
+    <div id="dr-serial-result" style="margin-top:6px;font-size:.78em"></div>
+   </div>
+
+   <!-- SOURCES -->
+   <div class="card" style="margin-top:8px">
+    <h3>DATA SOURCES</h3>
+    <div id="dr-sources" style="font-size:.78em;color:#888"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var drAll=[], drFiltered=[], drSelected=null;
+var _debounce=null;
+function debouncedRefresh(){clearTimeout(_debounce);_debounce=setTimeout(refreshList,200);}
+
+async function loadData(){
+ var stats=await apiFetch('/api/v1/drone-reference/stats');
+ document.getElementById('dr-total').textContent=stats.total||'--';
+ document.getElementById('dr-commercial').textContent=(stats.by_category||{}).commercial||0;
+ document.getElementById('dr-tactical').textContent=(stats.by_category||{}).tactical||0;
+ document.getElementById('dr-adversary').textContent=(stats.by_category||{}).adversary||0;
+ document.getElementById('dr-version').textContent='v'+stats.version+' | '+stats.manufacturers+' manufacturers';
+ // Sources
+ var sh='';
+ (stats.sources||[]).forEach(function(s){
+  sh+='<div style="margin-bottom:4px"><span style="color:#00ff41">'+s.name+'</span> — '+s.count+' entries';
+  if(s.license) sh+=' <span style="color:#555">('+s.license+')</span>';
+  sh+='</div>';
+ });
+ document.getElementById('dr-sources').innerHTML=sh;
+
+ var data=await apiFetch('/api/v1/drone-reference');
+ drAll=data.entries||[];
+ refreshList();
+}
+
+function refreshList(){
+ var q=(document.getElementById('dr-search').value||'').toLowerCase();
+ var cat=document.getElementById('dr-cat-filter').value;
+ var threat=document.getElementById('dr-threat-filter').value;
+ var sort=document.getElementById('dr-sort').value;
+
+ drFiltered=drAll.filter(function(e){
+  if(cat && e.category!==cat) return false;
+  if(threat && e.threat_classification!==threat) return false;
+  if(q){
+   var hay=(e.name+' '+e.manufacturer+' '+(e.id||'')+' '+(e.series||'')+' '+(e.notes||'')).toLowerCase();
+   var tokens=q.split(/\s+/);
+   for(var i=0;i<tokens.length;i++){if(hay.indexOf(tokens[i])<0) return false;}
+  }
+  return true;
+ });
+
+ drFiltered.sort(function(a,b){
+  if(sort==='name') return (a.name||'').localeCompare(b.name||'');
+  if(sort==='manufacturer') return (a.manufacturer||'').localeCompare(b.manufacturer||'');
+  if(sort==='speed') return (b.max_speed_kts||0)-(a.max_speed_kts||0);
+  if(sort==='endurance') return (b.endurance_min||0)-(a.endurance_min||0);
+  if(sort==='weight') return (b.weight_g||0)-(a.weight_g||0);
+  if(sort==='range') return (b.range_km||0)-(a.range_km||0);
+  return 0;
+ });
+
+ document.getElementById('dr-count').textContent=drFiltered.length+' of '+drAll.length;
+
+ var h='';
+ drFiltered.forEach(function(e,i){
+  var catCls='dr-cat-'+e.category;
+  var threatCls='dr-threat-'+(e.threat_classification||'unknown');
+  var sel=drSelected===e.id?' style="background:#1a1a1a"':'';
+  h+='<div class="dr-row"'+sel+' onclick="showDetail(\''+e.id+'\')">';
+  h+='<span style="width:30px;color:#555">'+(i+1)+'</span>';
+  h+='<span style="width:180px;color:#ccc;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+e.name+'">'+e.name+'</span>';
+  h+='<span style="width:120px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.manufacturer+'</span>';
+  h+='<span style="width:70px" class="'+catCls+'">'+e.category+'</span>';
+  h+='<span style="width:55px;color:#666">'+(e.platform_type||'--').replace('_',' ')+'</span>';
+  h+='<span style="width:55px;color:#ffaa00">'+(e.max_speed_kts||'--')+'</span>';
+  h+='<span style="width:55px;color:#4488ff">'+(e.endurance_min?e.endurance_min+'m':'--')+'</span>';
+  h+='<span style="width:55px;color:#00ccff">'+(e.range_km||'--')+'</span>';
+  h+='<span style="width:60px" class="'+threatCls+'">'+(e.threat_classification||'--')+'</span>';
+  h+='</div>';
+ });
+ document.getElementById('dr-list').innerHTML=h||'<div style="color:#666;padding:12px;text-align:center">No drones match the current filter</div>';
+}
+
+function showDetail(id){
+ drSelected=id;
+ var e=drAll.find(function(x){return x.id===id;});
+ if(!e){document.getElementById('dr-detail').innerHTML='<div style="color:#ff4444">Not found</div>';return;}
+ var catCls='dr-cat-'+e.category;
+ var threatCls='dr-threat-'+(e.threat_classification||'unknown');
+
+ var h='<div style="margin-bottom:8px">';
+ h+='<div style="font-size:1.1em;font-weight:bold;color:#ccc">'+e.name+'</div>';
+ h+='<div style="color:#888;font-size:.8em">'+e.manufacturer+' | <span class="'+catCls+'">'+e.category+'</span></div>';
+ h+='</div>';
+
+ h+='<div class="dr-detail-grid">';
+ var fields=[
+  {l:'Model ID',v:e.id},
+  {l:'Platform',v:(e.platform_type||'--').replace(/_/g,' ')},
+  {l:'Weight',v:e.weight_g?formatWeight(e.weight_g):'--'},
+  {l:'Max Speed',v:e.max_speed_kts?e.max_speed_kts+' kts ('+e.max_speed_ms+' m/s)':'--'},
+  {l:'Endurance',v:e.endurance_min?formatEndurance(e.endurance_min):'--'},
+  {l:'Range',v:e.range_km?e.range_km+' km':'--'},
+  {l:'Ceiling',v:e.ceiling_ft?e.ceiling_ft.toLocaleString()+' ft':'--'},
+  {l:'Camera',v:e.camera_mp?e.camera_mp+' MP':'--'},
+  {l:'IP Rating',v:e.ip_rating||'--'},
+  {l:'Temp Range',v:e.operating_temp||'--'},
+ ];
+ fields.forEach(function(f){
+  h+='<div><span class="lbl">'+f.l+'</span><br><span class="val">'+f.v+'</span></div>';
+ });
+ h+='</div>';
+
+ // Threat classification
+ h+='<div style="margin-top:8px;padding:6px;border:1px solid #222;background:#0d0d0d">';
+ h+='<span class="lbl">THREAT CLASS:</span> <span class="'+threatCls+'" style="font-weight:bold;font-size:1em">'+(e.threat_classification||'UNKNOWN').toUpperCase()+'</span>';
+ h+='</div>';
+
+ // Sensors
+ if(e.sensors&&e.sensors.length){
+  h+='<div style="margin-top:6px"><span class="lbl">SENSORS:</span> ';
+  e.sensors.forEach(function(s){h+='<span class="dr-tag" style="border-color:#00ff41;color:#00ff41">'+s+'</span>';});
+  h+='</div>';
+ }
+ // RF Bands
+ if(e.rf_bands&&e.rf_bands.length){
+  h+='<div style="margin-top:4px"><span class="lbl">RF BANDS:</span> ';
+  e.rf_bands.forEach(function(b){h+='<span class="dr-tag" style="border-color:#ffaa00;color:#ffaa00">'+b+'</span>';});
+  h+='</div>';
+ }
+ // GNSS
+ if(e.gnss&&e.gnss.length){
+  h+='<div style="margin-top:4px"><span class="lbl">GNSS:</span> ';
+  e.gnss.forEach(function(g){h+='<span class="dr-tag" style="border-color:#4488ff;color:#4488ff">'+g.toUpperCase()+'</span>';});
+  h+='</div>';
+ }
+ // TX Protocol
+ if(e.tx_protocol){
+  h+='<div style="margin-top:4px"><span class="lbl">TX PROTOCOL:</span> <span style="color:#ccc">'+e.tx_protocol+'</span></div>';
+ }
+ // Serial Prefixes
+ if(e.serial_prefixes&&e.serial_prefixes.length){
+  h+='<div style="margin-top:4px"><span class="lbl">SERIAL PREFIXES:</span> ';
+  e.serial_prefixes.forEach(function(p){h+='<span class="dr-tag" style="border-color:#00ccff;color:#00ccff">'+p+'</span>';});
+  h+='</div>';
+ }
+ // Notes
+ if(e.notes){
+  h+='<div style="margin-top:8px;padding-top:6px;border-top:1px solid #222;color:#888;font-size:.85em">'+e.notes+'</div>';
+ }
+ // Source
+ h+='<div class="dr-source">Source: '+e.source;
+ if(e.source_license) h+=' ('+e.source_license+')';
+ h+='</div>';
+
+ document.getElementById('dr-detail').innerHTML=h;
+ refreshList(); // highlight selected
+}
+
+function formatWeight(g){
+ if(g>=1000) return (g/1000).toFixed(1)+' kg ('+g+' g)';
+ return g+' g';
+}
+
+function formatEndurance(min){
+ if(min>=60) return (min/60).toFixed(1)+' hr ('+min+' min)';
+ return min+' min';
+}
+
+async function lookupSerial(){
+ var serial=document.getElementById('dr-serial-input').value.trim();
+ if(!serial){document.getElementById('dr-serial-result').innerHTML='<span style="color:#666">Enter a serial number</span>';return;}
+ var r=await apiFetch('/api/v1/drone-reference/lookup?serial='+encodeURIComponent(serial));
+ var el=document.getElementById('dr-serial-result');
+ if(r.matched&&r.entry){
+  var e=r.entry;
+  var threatCls='dr-threat-'+(e.threat_classification||'unknown');
+  el.innerHTML='<span style="color:#00ff41">✓ MATCH:</span> <b>'+e.name+'</b> ('+e.manufacturer+') — <span class="'+threatCls+'">'+e.threat_classification+'</span>';
+  showDetail(e.id);
+ }else{
+  el.innerHTML='<span style="color:#ff4444">✗ NO MATCH</span> — serial prefix not in database';
+ }
+}
+
+loadData();
+</script>
+{% endblock %}

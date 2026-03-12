@@ -187,3 +187,7 @@ def manual_page(): return render_template("manual.html", **ctx())
 @bp.route("/mobile")
 @login_required
 def mobile_page(): return render_template("mobile.html", **ctx())
+
+@bp.route("/drone-reference")
+@login_required
+def drone_reference_page(): return render_template("drone_reference.html", **ctx())

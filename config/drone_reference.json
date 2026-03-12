@@ -1,0 +1,4142 @@
+{
+  "version": "1.0",
+  "generated_by": "tools/build_drone_ref.py",
+  "sources": [
+    {
+      "name": "DroneCompare.org",
+      "license": "CC-BY-4.0",
+      "url": "https://dronecompare.org",
+      "count": 93
+    },
+    {
+      "name": "US Navy / AeroVironment (public)",
+      "license": "public domain",
+      "count": 7
+    },
+    {
+      "name": "OSINT / threat intelligence",
+      "license": "N/A",
+      "count": 5
+    }
+  ],
+  "total": 105,
+  "entries": [
+    {
+      "id": "dji_dji_mini_2",
+      "name": "Mini 2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 242,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 31,
+      "range_km": 4,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_4_pro",
+      "name": "Mini 4 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 34,
+      "range_km": 18,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_3",
+      "name": "Mini 3",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 248,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 38,
+      "range_km": 10,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_mini",
+      "name": "Mavic Mini",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 25.3,
+      "max_speed_ms": 13,
+      "endurance_min": 30,
+      "range_km": 4,
+      "ceiling_ft": 9843,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "5.8 GHz",
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Enhanced Wi-Fi",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3_classic",
+      "name": "Mavic 3 Classic",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 895,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 46,
+      "range_km": 15,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3+",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3",
+      "name": "Mavic 3",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 895,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 46,
+      "range_km": 15,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3+",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3_pro",
+      "name": "Mavic 3 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 958,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 43,
+      "range_km": 15,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3+",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3_enterprise",
+      "name": "Mavic 3 Enterprise",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 915,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 45,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3_thermal",
+      "name": "Mavic 3 Thermal",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 920,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 45,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "IR",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_3_multispectral",
+      "name": "Mavic 3 Multispectral",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 920,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 43,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "IR",
+        "RTK"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_4_enterprise",
+      "name": "Matrice 4 Enterprise",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1219,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 49,
+      "range_km": 35,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4-2.4835 GHz",
+        "5.725-5.850 GHz",
+        "5.150-5.250 GHz"
+      ],
+      "tx_protocol": "OcuSync 4E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_350_rtk",
+      "name": "Matrice 350 RTK",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 9200,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 55,
+      "range_km": 20,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 45.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": null,
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_2_pro",
+      "name": "Mavic 2 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 907,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 31,
+      "range_km": 18,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_2_zoom",
+      "name": "Mavic 2 Zoom",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 905,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 31,
+      "range_km": 18,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_4_pro_v2",
+      "name": "Phantom 4 Pro V2.0",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1375,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 30,
+      "range_km": 10,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync HD",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_4_rtk",
+      "name": "Phantom 4 RTK",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1391,
+      "max_speed_kts": 31.3,
+      "max_speed_ms": 16.11,
+      "endurance_min": 30,
+      "range_km": 7,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_air_3",
+      "name": "Air 3",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 720,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 46,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_air",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_pro",
+      "name": "Mavic Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 743,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 27,
+      "range_km": 13,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_3_standard",
+      "name": "Phantom 3 Standard",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1216,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 25,
+      "range_km": 1,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Wi-Fi",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_3_professional",
+      "name": "Phantom 3 Professional",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1280,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 23,
+      "range_km": 5,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_flycart_30",
+      "name": "FlyCart 30",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 42500,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 18,
+      "range_km": 16,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": "DJI O3",
+      "gnss": [
+        "gps",
+        "beidou",
+        "galileo",
+        "qzss"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_flycart",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_flycart_100",
+      "name": "FlyCart 100",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 55200,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 14,
+      "range_km": 12,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": "DJI O4",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_flycart",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "rigitech_rigitech_eiger",
+      "name": "Eiger",
+      "manufacturer": "RigiTech",
+      "category": "commercial",
+      "platform_type": "vtol",
+      "weight_g": null,
+      "max_speed_kts": 64.7,
+      "max_speed_ms": 33.3,
+      "endurance_min": 59,
+      "range_km": 100,
+      "ceiling_ft": 9843,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [],
+      "ip_rating": "none",
+      "operating_temp": null,
+      "serial_prefixes": [
+        "RGT"
+      ],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "striekair_striekair_carryair",
+      "name": "CarryAir",
+      "manufacturer": "StriekAir",
+      "category": "commercial",
+      "platform_type": "vtol",
+      "weight_g": null,
+      "max_speed_kts": 54.0,
+      "max_speed_ms": 27.8,
+      "endurance_min": null,
+      "range_km": 220,
+      "ceiling_ft": null,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [],
+      "ip_rating": "none",
+      "operating_temp": null,
+      "serial_prefixes": [],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "wingcopter_wingcopter_198",
+      "name": "198",
+      "manufacturer": "Wingcopter",
+      "category": "commercial",
+      "platform_type": "vtol",
+      "weight_g": 20000,
+      "max_speed_kts": 48.6,
+      "max_speed_ms": 25,
+      "endurance_min": 90,
+      "range_km": 75,
+      "ceiling_ft": null,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [],
+      "ip_rating": "none",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "WC-"
+      ],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "matternet_matternet_m2",
+      "name": "M2",
+      "manufacturer": "Matternet",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 9500,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 30,
+      "range_km": 20,
+      "ceiling_ft": null,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-17.7°C to 45°C",
+      "serial_prefixes": [],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "wingtra_wingtra_ray",
+      "name": "RAY",
+      "manufacturer": "Wingtra",
+      "category": "commercial",
+      "platform_type": "vtol",
+      "weight_g": null,
+      "max_speed_kts": 42.8,
+      "max_speed_ms": 22,
+      "endurance_min": 59,
+      "range_km": 10,
+      "ceiling_ft": 16405,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 Ghz"
+      ],
+      "tx_protocol": null,
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP53",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_se",
+      "name": "Mini SE",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 242,
+      "max_speed_kts": 25.3,
+      "max_speed_ms": 13,
+      "endurance_min": 30,
+      "range_km": 4,
+      "ceiling_ft": 9843,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Enhanced Wi-Fi",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_2_se",
+      "name": "Mini 2 SE",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 246,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 31,
+      "range_km": 10,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_3_pro",
+      "name": "Mini 3 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 34,
+      "range_km": 18,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_5_pro",
+      "name": "Mini 5 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249.9,
+      "max_speed_kts": 36.9,
+      "max_speed_ms": 19,
+      "endurance_min": 52,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 50.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4+",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_4_thermal",
+      "name": "Matrice 4 Thermal",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1219,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 49,
+      "range_km": 35,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "IR",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4-2.4835 GHz",
+        "5.725-5.850 GHz",
+        "5.150-5.250 GHz"
+      ],
+      "tx_protocol": "OcuSync 4E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_300_rtk",
+      "name": "Matrice 300 RTK",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 6300,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 55,
+      "range_km": 15,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 45.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP45",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_400",
+      "name": "Matrice 400",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 9740,
+      "max_speed_kts": 48.6,
+      "max_speed_ms": 25,
+      "endurance_min": 59,
+      "range_km": 49,
+      "ceiling_ft": 22967,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 45.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4E Enhanced",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_2_enterprise",
+      "name": "Mavic 2 Enterprise",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 905,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 31,
+      "range_km": 10,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_2_enterprise_advanced",
+      "name": "Mavic 2 Enterprise Advanced",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 909,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 31,
+      "range_km": 10,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_4",
+      "name": "Phantom 4",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1380,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 28,
+      "range_km": 5,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.4,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_4_advanced",
+      "name": "Phantom 4 Advanced",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1368,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 30,
+      "range_km": 7,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_4_pro",
+      "name": "Phantom 4 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1388,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 30,
+      "range_km": 7,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_air",
+      "name": "Mavic Air",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 430,
+      "max_speed_kts": 36.9,
+      "max_speed_ms": 19,
+      "endurance_min": 21,
+      "range_km": 10,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Enhanced Wi-Fi",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_air",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_air_2",
+      "name": "Mavic Air 2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 570,
+      "max_speed_kts": 36.9,
+      "max_speed_ms": 19,
+      "endurance_min": 34,
+      "range_km": 18.5,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_air",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_air_2s",
+      "name": "Air 2S",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 595,
+      "max_speed_kts": 36.9,
+      "max_speed_ms": 19,
+      "endurance_min": 31,
+      "range_km": 18.5,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_air",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_air_3s",
+      "name": "Air 3S",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 724,
+      "max_speed_kts": 40.8,
+      "max_speed_ms": 21,
+      "endurance_min": 45,
+      "range_km": 32,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 50.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_air",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_pro_platinum",
+      "name": "Mavic Pro Platinum",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 734,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 30,
+      "range_km": 13,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_phantom_3_advanced",
+      "name": "Phantom 3 Advanced",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1280,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 23,
+      "range_km": 5,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_phantom",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mavic_4_pro",
+      "name": "Mavic 4 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1063,
+      "max_speed_kts": 48.6,
+      "max_speed_ms": 25,
+      "endurance_min": 51,
+      "range_km": 41,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 100.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4+",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mavic",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_neo",
+      "name": "Neo",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 135,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 18,
+      "range_km": 7,
+      "ceiling_ft": 6562,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_neo",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_neo_2",
+      "name": "Neo 2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 151,
+      "max_speed_kts": 23.3,
+      "max_speed_ms": 12,
+      "endurance_min": 19,
+      "range_km": 7,
+      "ceiling_ft": 6562,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_neo",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_flip",
+      "name": "Flip",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 23.3,
+      "max_speed_ms": 12,
+      "endurance_min": 31,
+      "range_km": 14,
+      "ceiling_ft": 9843,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_fpv",
+      "name": "FPV",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 795,
+      "max_speed_kts": 75.8,
+      "max_speed_ms": 39,
+      "endurance_min": 20,
+      "range_km": 16.8,
+      "ceiling_ft": 19686,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_fpv",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_avata",
+      "name": "Avata",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 410,
+      "max_speed_kts": 52.5,
+      "max_speed_ms": 27,
+      "endurance_min": 18,
+      "range_km": 11.6,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_avata",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_avata_2",
+      "name": "Avata 2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 377,
+      "max_speed_kts": 52.5,
+      "max_speed_ms": 27,
+      "endurance_min": 23,
+      "range_km": 13,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 4",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_avata",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_spark",
+      "name": "Spark",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 300,
+      "max_speed_kts": 27.0,
+      "max_speed_ms": 13.9,
+      "endurance_min": 16,
+      "range_km": 2,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Enhanced Wi-Fi",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_inspire_1",
+      "name": "Inspire 1",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 2935,
+      "max_speed_kts": 42.8,
+      "max_speed_ms": 22,
+      "endurance_min": 18,
+      "range_km": 5,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_inspire",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_inspire_1_pro",
+      "name": "Inspire 1 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3060,
+      "max_speed_kts": 42.8,
+      "max_speed_ms": 22,
+      "endurance_min": 15,
+      "range_km": 5,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 16.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_inspire",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_inspire_2",
+      "name": "Inspire 2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3440,
+      "max_speed_kts": 50.5,
+      "max_speed_ms": 26,
+      "endurance_min": 27,
+      "range_km": 7,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.8,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge 2",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_inspire",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_inspire_3",
+      "name": "Inspire 3",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3995,
+      "max_speed_kts": 50.5,
+      "max_speed_ms": 26,
+      "endurance_min": 28,
+      "range_km": 15,
+      "ceiling_ft": 22967,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 44.7,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3 Pro",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_inspire",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_30",
+      "name": "Matrice 30",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3770,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 41,
+      "range_km": 15,
+      "ceiling_ft": 22967,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_30t",
+      "name": "Matrice 30T",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3770,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 41,
+      "range_km": 15,
+      "ceiling_ft": 22967,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_100",
+      "name": "Matrice 100",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 2431,
+      "max_speed_kts": 42.8,
+      "max_speed_ms": 22,
+      "endurance_min": 28,
+      "range_km": 5,
+      "ceiling_ft": 9843,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_200",
+      "name": "Matrice 200",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 4530,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 38,
+      "range_km": 7,
+      "ceiling_ft": 9843,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge 2",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_200_v2",
+      "name": "Matrice 200 V2",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 4690,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 38,
+      "range_km": 8,
+      "ceiling_ft": 9843,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_600",
+      "name": "Matrice 600",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 9100,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 35,
+      "range_km": 5,
+      "ceiling_ft": 8202,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge 2",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_matrice_600_pro",
+      "name": "Matrice 600 Pro",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 10000,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 38,
+      "range_km": 5,
+      "ceiling_ft": 8202,
+      "sensors": [],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Lightbridge 2",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_matrice",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_agras_t10",
+      "name": "Agras T10",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 13000,
+      "max_speed_kts": 19.4,
+      "max_speed_ms": 10,
+      "endurance_min": 17,
+      "range_km": 7,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP67",
+      "operating_temp": "0°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_agras",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_agras_t25",
+      "name": "Agras T25",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 25400,
+      "max_speed_kts": 19.4,
+      "max_speed_ms": 10,
+      "endurance_min": 14.5,
+      "range_km": 7,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_agras",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_agras_t30",
+      "name": "Agras T30",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 26400,
+      "max_speed_kts": 19.4,
+      "max_speed_ms": 10,
+      "endurance_min": 20.5,
+      "range_km": 7,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP67",
+      "operating_temp": "0°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_agras",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_agras_t40",
+      "name": "Agras T40",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 38000,
+      "max_speed_kts": 19.4,
+      "max_speed_ms": 10,
+      "endurance_min": 18,
+      "range_km": 7,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IPX6K",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_agras",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_agras_t50",
+      "name": "Agras T50",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 39900,
+      "max_speed_kts": 19.4,
+      "max_speed_ms": 10,
+      "endurance_min": 16.5,
+      "range_km": 7,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "RTK"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 3E",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IPX6K",
+      "operating_temp": "0°C to 45°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_agras",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "dji_dji_mini_4k",
+      "name": "Mini 4K",
+      "manufacturer": "DJI",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 246,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 31,
+      "range_km": 10,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync 2",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "1581F",
+        "1581E",
+        "1581D",
+        "3030",
+        "3032"
+      ],
+      "threat_classification": "commercial",
+      "series": "dji_mini",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "antigravity_antigravity_a1",
+      "name": "A1",
+      "manufacturer": "Antigravity",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 31.1,
+      "max_speed_ms": 16,
+      "endurance_min": 39,
+      "range_km": 23,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 55.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OmniLink 360",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "AG-"
+      ],
+      "threat_classification": "commercial",
+      "series": "",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_max_4n_v2",
+      "name": "EVO Max 4N V2",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1700,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 42,
+      "range_km": 25,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 2.3,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 3.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_max",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_max_4t",
+      "name": "EVO Max 4T",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1620,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 42,
+      "range_km": 25,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 3.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_max",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_max_4t_v2",
+      "name": "EVO Max 4T V2",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1666,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 42,
+      "range_km": 25,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 3.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_max",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_max_4t_xe",
+      "name": "EVO Max 4T-XE",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1640,
+      "max_speed_kts": 44.7,
+      "max_speed_ms": 23,
+      "endurance_min": 42,
+      "range_km": 25,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 3.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_max",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_ii_dual_640t_v3",
+      "name": "EVO II Dual 640T V3",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1209,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 38,
+      "range_km": 22,
+      "ceiling_ft": 22967,
+      "sensors": [
+        "EO",
+        "IR"
+      ],
+      "camera_mp": 50.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 2.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_ii",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_ii_pro_v3",
+      "name": "EVO II Pro V3",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1191,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 39,
+      "range_km": 25,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 2.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_ii",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_ii_rtk_v3",
+      "name": "EVO II Pro RTK V3",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1237,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 38,
+      "range_km": 25,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 2.0",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-10°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_ii",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_alpha",
+      "name": "Alpha",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 6480,
+      "max_speed_kts": 48.6,
+      "max_speed_ms": 25,
+      "endurance_min": 40,
+      "range_km": 30,
+      "ceiling_ft": 14764,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "900 MHz",
+        "2.4 GHz",
+        "5.1 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink 3.0",
+      "gnss": [
+        "gps",
+        "galileo",
+        "beidou",
+        "glonass"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_alpha",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_astro",
+      "name": "Astro",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3187,
+      "max_speed_kts": 29.2,
+      "max_speed_ms": 15,
+      "endurance_min": 37,
+      "range_km": 20,
+      "ceiling_ft": 15001,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 61.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Herelink 1.1",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_astro",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_astro_max",
+      "name": "Astro Max",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 3523,
+      "max_speed_kts": 29.2,
+      "max_speed_ms": 15,
+      "endurance_min": 43,
+      "range_km": 20,
+      "ceiling_ft": 15001,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 61.0,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Herelink 1.1",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_astro",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_alta_6",
+      "name": "Alta 6",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 4500,
+      "max_speed_kts": null,
+      "max_speed_ms": null,
+      "endurance_min": 10,
+      "range_km": null,
+      "ceiling_ft": null,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 7.5,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_alta",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_alta_8",
+      "name": "Alta 8",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 6200,
+      "max_speed_kts": 34.8,
+      "max_speed_ms": 17.9,
+      "endurance_min": 15,
+      "range_km": null,
+      "ceiling_ft": null,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 7.5,
+      "rf_bands": [],
+      "tx_protocol": null,
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_alta",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_alta_x",
+      "name": "Alta X",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 10860,
+      "max_speed_kts": 50.5,
+      "max_speed_ms": 26,
+      "endurance_min": 50,
+      "range_km": 20,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 19.9,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Herelink 1.1",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_alta",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "freefly_freefly_alta_x_gen2",
+      "name": "Alta X Gen2",
+      "manufacturer": "Freefly",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 10860,
+      "max_speed_kts": 50.5,
+      "max_speed_ms": 26,
+      "endurance_min": 50,
+      "range_km": 20,
+      "ceiling_ft": 16405,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 19.9,
+      "rf_bands": [
+        "2.4 GHz"
+      ],
+      "tx_protocol": "Herelink 1.1",
+      "gnss": [
+        "gps",
+        "glonass",
+        "beidou",
+        "galileo"
+      ],
+      "ip_rating": "IP43",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "FF-"
+      ],
+      "threat_classification": "commercial",
+      "series": "freefly_alta",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_nano",
+      "name": "EVO Nano",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 29.2,
+      "max_speed_ms": 15,
+      "endurance_min": 28,
+      "range_km": 10,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 48.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_nano",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_nano_plus",
+      "name": "EVO Nano+",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 249,
+      "max_speed_kts": 29.2,
+      "max_speed_ms": 15,
+      "endurance_min": 28,
+      "range_km": 10,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 50.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_nano",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_lite",
+      "name": "EVO Lite",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 835,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 40,
+      "range_km": 12,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 50.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_lite",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "autel_autel_evo_lite_plus",
+      "name": "EVO Lite+",
+      "manufacturer": "Autel",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 835,
+      "max_speed_kts": 35.0,
+      "max_speed_ms": 18,
+      "endurance_min": 40,
+      "range_km": 12,
+      "ceiling_ft": 13124,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20.0,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.2 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "SkyLink",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo"
+      ],
+      "ip_rating": "none",
+      "operating_temp": "0°C to 40°C",
+      "serial_prefixes": [
+        "AU-"
+      ],
+      "threat_classification": "commercial",
+      "series": "autel_evo_lite",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "skydio_skydio_x10",
+      "name": "Skydio X10",
+      "manufacturer": "Skydio",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 2110,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 40,
+      "range_km": 12,
+      "ceiling_ft": 15001,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 50.3,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "Skydio Connect SL",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "SDK",
+        "SKD"
+      ],
+      "threat_classification": "commercial",
+      "series": "skydio_x10",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "skydio_skydio_x10d",
+      "name": "Skydio X10D",
+      "manufacturer": "Skydio",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 2110,
+      "max_speed_kts": 38.9,
+      "max_speed_ms": 20,
+      "endurance_min": 40,
+      "range_km": 10,
+      "ceiling_ft": 15001,
+      "sensors": [
+        "EO",
+        "RTK"
+      ],
+      "camera_mp": 50.3,
+      "rf_bands": [],
+      "tx_protocol": "Skydio Connect MH",
+      "gnss": [
+        "gps",
+        "glonass",
+        "galileo",
+        "beidou"
+      ],
+      "ip_rating": "IP55",
+      "operating_temp": "-20°C to 45°C",
+      "serial_prefixes": [
+        "SDK",
+        "SKD"
+      ],
+      "threat_classification": "commercial",
+      "series": "skydio_x10",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "skydio_skydio_x2d",
+      "name": "Skydio X2D",
+      "manufacturer": "Skydio",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1325,
+      "max_speed_kts": 21.8,
+      "max_speed_ms": 11.2,
+      "endurance_min": 35,
+      "range_km": 10,
+      "ceiling_ft": 12008,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.3,
+      "rf_bands": [
+        "2.4 GHz",
+        "1.8 GHz"
+      ],
+      "tx_protocol": null,
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "IP54",
+      "operating_temp": "-10°C to 43°C",
+      "serial_prefixes": [
+        "SDK",
+        "SKD"
+      ],
+      "threat_classification": "commercial",
+      "series": "skydio_x2",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "skydio_skydio_x2e",
+      "name": "Skydio X2E",
+      "manufacturer": "Skydio",
+      "category": "commercial",
+      "platform_type": "multirotor",
+      "weight_g": 1325,
+      "max_speed_kts": 21.8,
+      "max_speed_ms": 11.2,
+      "endurance_min": 35,
+      "range_km": 6,
+      "ceiling_ft": 12008,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12.3,
+      "rf_bands": [
+        "5.8 GHz"
+      ],
+      "tx_protocol": null,
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "IP54",
+      "operating_temp": "-10°C to 43°C",
+      "serial_prefixes": [
+        "SDK",
+        "SKD"
+      ],
+      "threat_classification": "commercial",
+      "series": "skydio_x2",
+      "source": "dronecompare.org",
+      "source_license": "CC-BY-4.0",
+      "notes": null
+    },
+    {
+      "id": "rq11b_raven",
+      "name": "RQ-11B Raven",
+      "manufacturer": "AeroVironment",
+      "category": "tactical",
+      "platform_type": "fixed_wing",
+      "weight_g": 2132,
+      "max_speed_kts": 44,
+      "max_speed_ms": 22.6,
+      "endurance_min": 90,
+      "range_km": 10,
+      "ceiling_ft": 10000,
+      "sensors": [
+        "EO",
+        "IR"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "FHSS digital"
+      ],
+      "tx_protocol": "AeroVironment DDL",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "all-weather",
+      "operating_temp": "-30°C to 50°C",
+      "serial_prefixes": [
+        "AV-RVN",
+        "RQ11"
+      ],
+      "threat_classification": "friendly",
+      "series": "SURSS Group 1",
+      "source": "navy.mil",
+      "source_license": "public domain",
+      "notes": "Hand-launched, battery-powered. Standard US Army/Marine squad-level ISR."
+    },
+    {
+      "id": "rq12a_wasp",
+      "name": "RQ-12A Wasp IV",
+      "manufacturer": "AeroVironment",
+      "category": "tactical",
+      "platform_type": "fixed_wing",
+      "weight_g": 1361,
+      "max_speed_kts": 40,
+      "max_speed_ms": 20.6,
+      "endurance_min": 50,
+      "range_km": 5,
+      "ceiling_ft": 5000,
+      "sensors": [
+        "EO",
+        "IR"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "FHSS digital"
+      ],
+      "tx_protocol": "AeroVironment DDL",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "all-weather",
+      "operating_temp": "-30°C to 50°C",
+      "serial_prefixes": [
+        "AV-WSP",
+        "RQ12"
+      ],
+      "threat_classification": "friendly",
+      "series": "SURSS Group 1",
+      "source": "navy.mil",
+      "source_license": "public domain",
+      "notes": "Smallest SURSS UAS. Platoon/squad-level front-line recon."
+    },
+    {
+      "id": "rq20b_puma",
+      "name": "RQ-20B Puma AE",
+      "manufacturer": "AeroVironment",
+      "category": "tactical",
+      "platform_type": "fixed_wing",
+      "weight_g": 6124,
+      "max_speed_kts": 45,
+      "max_speed_ms": 23.1,
+      "endurance_min": 210,
+      "range_km": 28,
+      "ceiling_ft": 10500,
+      "sensors": [
+        "EO",
+        "IR",
+        "laser_illuminator"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "FHSS digital"
+      ],
+      "tx_protocol": "AeroVironment DDL",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "all-environment",
+      "operating_temp": "-30°C to 50°C",
+      "serial_prefixes": [
+        "AV-PMA",
+        "RQ20"
+      ],
+      "threat_classification": "friendly",
+      "series": "SURSS Group 1",
+      "source": "navy.mil",
+      "source_license": "public domain",
+      "notes": "Largest SURSS. Company-level persistent ISR. Waterproof, land/sea recovery."
+    },
+    {
+      "id": "switchblade_300",
+      "name": "Switchblade 300",
+      "manufacturer": "AeroVironment",
+      "category": "tactical",
+      "platform_type": "loitering_munition",
+      "weight_g": 2500,
+      "max_speed_kts": 85,
+      "max_speed_ms": 43.7,
+      "endurance_min": 15,
+      "range_km": 10,
+      "ceiling_ft": 5000,
+      "sensors": [
+        "EO",
+        "IR"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "FHSS digital"
+      ],
+      "tx_protocol": "AeroVironment DDL",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "field-rated",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "AV-SB3"
+      ],
+      "threat_classification": "friendly",
+      "series": "Switchblade",
+      "source": "wikipedia/public",
+      "source_license": "public domain",
+      "notes": "Man-portable loitering munition. Anti-personnel focused blast warhead."
+    },
+    {
+      "id": "switchblade_600",
+      "name": "Switchblade 600",
+      "manufacturer": "AeroVironment",
+      "category": "tactical",
+      "platform_type": "loitering_munition",
+      "weight_g": 22700,
+      "max_speed_kts": 100,
+      "max_speed_ms": 51.4,
+      "endurance_min": 40,
+      "range_km": 40,
+      "ceiling_ft": 10000,
+      "sensors": [
+        "EO",
+        "IR",
+        "laser_designator"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "FHSS digital",
+        "SATCOM"
+      ],
+      "tx_protocol": "AeroVironment DDL",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "field-rated",
+      "operating_temp": "-20°C to 50°C",
+      "serial_prefixes": [
+        "AV-SB6"
+      ],
+      "threat_classification": "friendly",
+      "series": "Switchblade",
+      "source": "wikipedia/public",
+      "source_license": "public domain",
+      "notes": "Anti-armor loitering munition. Multi-purpose warhead, Javelin-class."
+    },
+    {
+      "id": "pd100_black_hornet",
+      "name": "PD-100 Black Hornet 3",
+      "manufacturer": "FLIR/Teledyne",
+      "category": "tactical",
+      "platform_type": "nano_rotorcraft",
+      "weight_g": 33,
+      "max_speed_kts": 11.6,
+      "max_speed_ms": 6.0,
+      "endurance_min": 25,
+      "range_km": 2,
+      "ceiling_ft": 1000,
+      "sensors": [
+        "EO",
+        "IR"
+      ],
+      "camera_mp": 2,
+      "rf_bands": [
+        "digital encrypted"
+      ],
+      "tx_protocol": "proprietary encrypted",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "IP67",
+      "operating_temp": "-10°C to 43°C",
+      "serial_prefixes": [
+        "BH3"
+      ],
+      "threat_classification": "friendly",
+      "series": "Black Hornet",
+      "source": "flir.com/public",
+      "source_license": "public domain",
+      "notes": "Nano UAS for individual soldier. Virtually silent. GPS-denied capable."
+    },
+    {
+      "id": "scan_eagle",
+      "name": "ScanEagle",
+      "manufacturer": "Insitu/Boeing",
+      "category": "tactical",
+      "platform_type": "fixed_wing",
+      "weight_g": 18100,
+      "max_speed_kts": 70,
+      "max_speed_ms": 36.0,
+      "endurance_min": 1440,
+      "range_km": 100,
+      "ceiling_ft": 19500,
+      "sensors": [
+        "EO",
+        "IR",
+        "SIGINT"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "C-band",
+        "Ku-band"
+      ],
+      "tx_protocol": "proprietary",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "all-weather",
+      "operating_temp": "-30°C to 50°C",
+      "serial_prefixes": [
+        "INS-SE"
+      ],
+      "threat_classification": "friendly",
+      "series": "Group 2",
+      "source": "insitu.com/public",
+      "source_license": "public domain",
+      "notes": "Long-endurance Group 2 ISR. Catapult launched, SkyHook recovery."
+    },
+    {
+      "id": "fpv_racing_modified",
+      "name": "Modified FPV Racing Drone",
+      "manufacturer": "Various/DIY",
+      "category": "adversary",
+      "platform_type": "multirotor",
+      "weight_g": 800,
+      "max_speed_kts": 75,
+      "max_speed_ms": 38.6,
+      "endurance_min": 8,
+      "range_km": 5,
+      "ceiling_ft": 3000,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 2,
+      "rf_bands": [
+        "5.8 GHz",
+        "2.4 GHz",
+        "900 MHz"
+      ],
+      "tx_protocol": "analog/digital FPV",
+      "gnss": [],
+      "ip_rating": "none",
+      "operating_temp": null,
+      "serial_prefixes": [],
+      "threat_classification": "hostile",
+      "series": null,
+      "source": "OSINT",
+      "source_license": null,
+      "notes": "Weaponized FPV drone. Common in Ukraine conflict. Carries grenades/shaped charges."
+    },
+    {
+      "id": "dji_mavic_modified",
+      "name": "Modified DJI Mavic (weaponized)",
+      "manufacturer": "DJI (modified)",
+      "category": "adversary",
+      "platform_type": "multirotor",
+      "weight_g": 1200,
+      "max_speed_kts": 40,
+      "max_speed_ms": 20.6,
+      "endurance_min": 25,
+      "range_km": 8,
+      "ceiling_ft": 5000,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 20,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "OcuSync modified",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "none",
+      "operating_temp": null,
+      "serial_prefixes": [
+        "1581F",
+        "1581E"
+      ],
+      "threat_classification": "hostile",
+      "series": null,
+      "source": "OSINT",
+      "source_license": null,
+      "notes": "Commercial DJI drone modified as ISR/drop platform. Common threat profile."
+    },
+    {
+      "id": "generic_commercial_threat",
+      "name": "Unknown Commercial Drone (unclassified)",
+      "manufacturer": "Unknown",
+      "category": "adversary",
+      "platform_type": "multirotor",
+      "weight_g": 500,
+      "max_speed_kts": 35,
+      "max_speed_ms": 18.0,
+      "endurance_min": 25,
+      "range_km": 5,
+      "ceiling_ft": 4000,
+      "sensors": [
+        "EO"
+      ],
+      "camera_mp": 12,
+      "rf_bands": [
+        "2.4 GHz",
+        "5.8 GHz"
+      ],
+      "tx_protocol": "unknown",
+      "gnss": [
+        "gps"
+      ],
+      "ip_rating": "none",
+      "operating_temp": null,
+      "serial_prefixes": [],
+      "threat_classification": "unknown",
+      "series": null,
+      "source": "OSINT",
+      "source_license": null,
+      "notes": "Default profile for unidentified commercial-class drone in AO."
+    },
+    {
+      "id": "shahed_136",
+      "name": "Shahed-136 (Geran-2)",
+      "manufacturer": "HESA (Iran)",
+      "category": "adversary",
+      "platform_type": "loitering_munition",
+      "weight_g": 200000,
+      "max_speed_kts": 100,
+      "max_speed_ms": 51.4,
+      "endurance_min": 300,
+      "range_km": 2500,
+      "ceiling_ft": 12000,
+      "sensors": [
+        "GPS_INS"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "GPS L1"
+      ],
+      "tx_protocol": "pre-programmed/GPS",
+      "gnss": [
+        "gps",
+        "glonass"
+      ],
+      "ip_rating": "field-rated",
+      "operating_temp": null,
+      "serial_prefixes": [],
+      "threat_classification": "hostile",
+      "series": "Shahed",
+      "source": "OSINT",
+      "source_license": null,
+      "notes": "Delta-wing loitering munition. ~40 kg warhead. Used extensively in Ukraine."
+    },
+    {
+      "id": "orlan_10",
+      "name": "Orlan-10",
+      "manufacturer": "UZGA (Russia)",
+      "category": "adversary",
+      "platform_type": "fixed_wing",
+      "weight_g": 18000,
+      "max_speed_kts": 81,
+      "max_speed_ms": 41.7,
+      "endurance_min": 960,
+      "range_km": 120,
+      "ceiling_ft": 16400,
+      "sensors": [
+        "EO",
+        "IR",
+        "SIGINT",
+        "EW"
+      ],
+      "camera_mp": null,
+      "rf_bands": [
+        "UHF",
+        "L-band"
+      ],
+      "tx_protocol": "proprietary",
+      "gnss": [
+        "glonass",
+        "gps"
+      ],
+      "ip_rating": "field-rated",
+      "operating_temp": "-30°C to 40°C",
+      "serial_prefixes": [],
+      "threat_classification": "hostile",
+      "series": "Orlan",
+      "source": "OSINT",
+      "source_license": null,
+      "notes": "Russian tactical ISR/EW UAS. Can jam GPS, direct artillery. Common threat."
+    }
+  ]
+}

@@ -48,7 +48,9 @@ def _setup_db_mocks():
 _DB_PATCHES, _DB_MOCKS = _setup_db_mocks()
 
 # Now safe to import app (must go through web.app to register blueprints)
-os.environ.setdefault("AMOS_EDITION", "enterprise")
+# Force-set (not setdefault) because _setup_db_mocks triggers import of
+# db.connection which loads .env via python-dotenv, setting AMOS_EDITION=open
+os.environ["AMOS_EDITION"] = "enterprise"
 import web.app  # noqa: E402 — triggers blueprint registration
 from web.extensions import app as _flask_app  # noqa: E402
 

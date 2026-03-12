@@ -12,6 +12,7 @@ PAGES = [
     "/syscmd", "/training", "/commsnet", "/logistics", "/weather",
     "/bda", "/eob", "/wargame", "/swarm", "/isr", "/effects",
     "/space", "/hmt", "/mesh", "/scripts", "/edition", "/manual",
+    "/drone-reference",
 ]
 
 

@@ -22,6 +22,7 @@ from web.state import (
     db_execute, fetchall, db_check,
     now_iso, from_json, to_json,
     persist_bda, persist_engagement,
+    drone_ref_db,
 )
 
 bp = Blueprint("ops", __name__)
@@ -1632,3 +1633,67 @@ def api_cm_engage():
 @login_required
 def api_cm_log():
     return jsonify(cm_log)
+
+
+# ═══════════════════════════════════════════════════════════
+#  DRONE REFERENCE DATABASE API
+# ═══════════════════════════════════════════════════════════
+@bp.route("/drone-reference")
+@login_required
+def api_drone_ref_list():
+    """List all drone reference entries, optionally filtered by category."""
+    if not drone_ref_db or not drone_ref_db.loaded:
+        return jsonify({"error": "Drone reference DB not loaded"}), 503
+    cat = request.args.get("category")
+    if cat:
+        entries = drone_ref_db.get_by_category(cat)
+    else:
+        entries = drone_ref_db.entries
+    return jsonify({"total": len(entries), "entries": entries})
+
+@bp.route("/drone-reference/stats")
+@login_required
+def api_drone_ref_stats():
+    """Return summary statistics for the drone reference DB."""
+    if not drone_ref_db or not drone_ref_db.loaded:
+        return jsonify({"error": "Drone reference DB not loaded"}), 503
+    return jsonify(drone_ref_db.get_stats())
+
+@bp.route("/drone-reference/lookup")
+@login_required
+def api_drone_ref_lookup():
+    """Lookup a drone by serial number or model name."""
+    if not drone_ref_db or not drone_ref_db.loaded:
+        return jsonify({"error": "Drone reference DB not loaded"}), 503
+    serial = request.args.get("serial", "")
+    name = request.args.get("name", "")
+    result = None
+    if serial:
+        result = drone_ref_db.lookup_by_serial(serial)
+    elif name:
+        result = drone_ref_db.lookup_by_name(name)
+    if result:
+        return jsonify({"matched": True, "entry": result})
+    return jsonify({"matched": False, "entry": None})
+
+@bp.route("/drone-reference/search")
+@login_required
+def api_drone_ref_search():
+    """Free-text search across the drone reference database."""
+    if not drone_ref_db or not drone_ref_db.loaded:
+        return jsonify({"error": "Drone reference DB not loaded"}), 503
+    q = request.args.get("q", "")
+    limit = request.args.get("limit", 20, type=int)
+    results = drone_ref_db.search(q, limit=limit)
+    return jsonify({"query": q, "total": len(results), "results": results})
+
+@bp.route("/drone-reference/<model_id>")
+@login_required
+def api_drone_ref_detail(model_id):
+    """Get a single drone reference entry by model ID."""
+    if not drone_ref_db or not drone_ref_db.loaded:
+        return jsonify({"error": "Drone reference DB not loaded"}), 503
+    entry = drone_ref_db.lookup_by_model(model_id)
+    if entry:
+        return jsonify(entry)
+    return jsonify({"error": "Not found"}), 404

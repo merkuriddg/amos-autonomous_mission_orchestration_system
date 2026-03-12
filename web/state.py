@@ -535,6 +535,14 @@ if feature_enabled("hmt"):
     except ImportError:
         pass
 
+# Drone Reference Database (always loaded — no feature gate)
+drone_ref_db = None
+try:
+    from services.drone_reference import DroneReferenceDB
+    drone_ref_db = DroneReferenceDB()
+except Exception as e:
+    print(f"[AMOS] Drone Reference DB: Not available ({e})")
+
 # Document generators
 generate_opord = None
 generate_conop = None
