@@ -658,9 +658,16 @@ except Exception as e:
 _dimos_bridge = None
 try:
     from integrations.dimos_bridge import DimOSBridge
-    _dimos_bridge = DimOSBridge()
+    _dimos_ep = os.environ.get("DIMOS_ENDPOINT", "localhost:9090")
+    _dimos_host, _dimos_port = "localhost", 9090
+    if _dimos_ep and ":" in _dimos_ep:
+        _dimos_host, _dimos_port = _dimos_ep.rsplit(":", 1)
+        _dimos_port = int(_dimos_port)
+    elif _dimos_ep:
+        _dimos_host = _dimos_ep
+    _dimos_bridge = DimOSBridge(host=_dimos_host, port=_dimos_port)
     adapter_mgr.register(_dimos_bridge)
-    print("[AMOS] DimOS Bridge: Registered")
+    print(f"[AMOS] DimOS Bridge: Registered ({_dimos_host}:{_dimos_port})")
 except Exception as e:
     print(f"[AMOS] DimOS Bridge: Not available ({e})")
 

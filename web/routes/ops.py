@@ -16,7 +16,7 @@ from web.state import (
     cm_log, aar_events,
     _px4, _tak, _link16, ros2_bridge,
     _adsb, _aprs, _ais, _lora, _remoteid, _dragonos, _zmeta, _cot_receiver,
-    _sdrpp, _sigdigger,
+    _sdrpp, _sigdigger, _dimos_bridge,
     base_pos, AO_CENTER, platoon,
     roe_engine, USERS,
     db_execute, fetchall, db_check,
@@ -229,6 +229,7 @@ def api_bridge_all():
         "cot": _ss(_cot_receiver),
         "sdrpp": _ss(_sdrpp),
         "sigdigger": _ss(_sigdigger),
+        "dimos": _ss(_dimos_bridge),
     })
 
 # ── PX4 ──
@@ -372,6 +373,56 @@ def api_link16_command():
         d.get("from_id", ""), d.get("to_id", ""),
         d.get("command_type", "ENGAGE"), d.get("params", {}))
     return jsonify({"status": "ok" if msg else "failed", "message": msg})
+
+
+# ── DimOS Bridge ──
+@bp.route("/bridge/dimos/status")
+@login_required
+def api_dimos_bridge_status():
+    if not _dimos_bridge:
+        return jsonify({"connected": False, "error": "DimOS bridge not loaded"})
+    return jsonify(_dimos_bridge.get_status())
+
+@bp.route("/bridge/dimos/connect", methods=["POST"])
+@login_required
+def api_dimos_bridge_connect():
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not loaded"}), 503
+    d = request.json or {}
+    host = d.get("host", _dimos_bridge.host)
+    port = int(d.get("port", _dimos_bridge.port))
+    _dimos_bridge.host = host
+    _dimos_bridge.port = port
+    ok = _dimos_bridge.connect(host=host, port=port)
+    return jsonify({"status": "ok" if ok else "failed",
+                    "connected": _dimos_bridge.connected,
+                    "standalone": _dimos_bridge._standalone,
+                    "host": host, "port": port})
+
+@bp.route("/bridge/dimos/disconnect", methods=["POST"])
+@login_required
+def api_dimos_bridge_disconnect():
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not loaded"}), 503
+    _dimos_bridge.disconnect()
+    return jsonify({"status": "ok", "connected": False})
+
+@bp.route("/bridge/dimos/command", methods=["POST"])
+@login_required
+def api_dimos_bridge_command():
+    """Send a test command to a robot via the integrations page."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not loaded"}), 503
+    if not _dimos_bridge.connected:
+        return jsonify({"error": "DimOS not connected — click CONNECT first"}), 400
+    d = request.json or {}
+    asset_id = d.get("asset_id", "").strip()
+    command_type = d.get("command", "HOLD").upper()
+    if not asset_id:
+        return jsonify({"error": "asset_id required"}), 400
+    result = _dimos_bridge.send_command(asset_id, command_type,
+                                        d.get("params", {}))
+    return jsonify(result)
 
 
 # ═══════════════════════════════════════════════════════════

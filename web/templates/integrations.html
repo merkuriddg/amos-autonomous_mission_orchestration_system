@@ -50,6 +50,29 @@
   </div>
 </div>
 
+  <!-- DimOS -->
+  <div class="bridge-card" id="dimos-card">
+    <div class="bridge-hdr">
+      <div><span class="bridge-dot off" id="dimos-dot"></span><span class="bridge-name">DimOS</span></div>
+      <span class="badge badge-green">Bipedal</span>
+    </div>
+    <div id="dimos-info" style="font-size:.8em;color:#888">Loading...</div>
+    <div style="margin-top:8px">
+      <input type="text" id="dimos-host" placeholder="Host" value="localhost" style="width:100px">
+      <input type="number" id="dimos-port" placeholder="Port" value="9090" style="width:70px">
+      <button class="btn" onclick="dimosConnect()" style="margin-left:4px">CONNECT</button>
+      <button class="btn btn-red" onclick="dimosDisconnect()">DISCONNECT</button>
+    </div>
+    <div style="margin-top:6px">
+      <input type="text" id="dimos-test-asset" placeholder="Asset ID" value="CLAW1" style="width:80px">
+      <select id="dimos-test-cmd" style="background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px">
+        <option>NAVIGATE</option><option>BREACH</option><option>SCAN</option>
+        <option>HOLD</option><option>POSTURE</option><option>MANIPULATE</option>
+      </select>
+      <button class="btn" onclick="dimosSendTest()" style="margin-left:4px">SEND</button>
+    </div>
+    <div id="dimos-cmd-result" style="font-size:.7em;color:#888;margin-top:4px"></div>
+  </div>
 </div>
 
 <!-- Sensor Bridges -->
@@ -332,6 +355,15 @@ async function refreshBridges(){
     _info('sigdig-info',sd.connected
         ?_stat('Detections',sd.detections||0)+_stat('Recv',sd.received||0)+_stat('Errors',sd.errors||0)
         :(sd.available?'<div style="color:#888">Ready — click LISTEN to start</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    // DimOS
+    const dm=d.dimos||{};
+    _dot('dimos-dot',dm.connected);
+    var dmMode=dm.standalone?'STANDALONE':'LIVE';
+    _info('dimos-info',dm.connected
+        ?_stat('Mode',dmMode)+_stat('Host',(dm.host||'?')+':'+(dm.port||'?'))+_stat('Cmds',dm.commands_sent||0)+_stat('Telem',((dm.telemetry_assets||[]).length)+' assets')
+        :(dm.available?'<div style="color:#888">Ready — configure endpoint below</div>':'<div style="color:#ff4444">Bridge not loaded</div>'));
+    if(dm.host)document.getElementById('dimos-host').value=dm.host;
+    if(dm.port)document.getElementById('dimos-port').value=dm.port;
 }
 
 async function refreshL16(){
@@ -445,6 +477,34 @@ async function sigdigConnect(){
     }); refreshBridges();
 }
 async function sigdigDisconnect(){await apiPost('/api/v1/bridge/sigdigger/disconnect',{});refreshBridges();}
+
+// DimOS
+async function dimosConnect(){
+    var r=await apiPost('/api/v1/bridge/dimos/connect',{
+        host:document.getElementById('dimos-host').value,
+        port:parseInt(document.getElementById('dimos-port').value)
+    });
+    document.getElementById('dimos-cmd-result').innerHTML=r.connected
+        ?'<span style="color:#00ff41">Connected'+(r.standalone?' (standalone)':'')+'</span>'
+        :'<span style="color:#ff4444">Connection failed</span>';
+    refreshBridges();
+}
+async function dimosDisconnect(){
+    await apiPost('/api/v1/bridge/dimos/disconnect',{});
+    document.getElementById('dimos-cmd-result').innerHTML='<span style="color:#888">Disconnected</span>';
+    refreshBridges();
+}
+async function dimosSendTest(){
+    var aid=document.getElementById('dimos-test-asset').value;
+    var cmd=document.getElementById('dimos-test-cmd').value;
+    if(!aid){alert('Enter asset ID');return;}
+    var r=await apiPost('/api/v1/bridge/dimos/command',{asset_id:aid,command:cmd,params:{}});
+    if(r.error){
+        document.getElementById('dimos-cmd-result').innerHTML='<span style="color:#ff4444">'+r.error+'</span>';
+    }else{
+        document.getElementById('dimos-cmd-result').innerHTML='<span style="color:#00ff41">Sent '+cmd+' → '+aid+'</span>';
+    }
+}
 
 refreshBridges(); refreshL16();
 setInterval(refreshBridges,5000);
