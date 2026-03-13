@@ -7,7 +7,8 @@ from web.state import (sim_assets, sim_threats, base_pos, waypoint_nav, geofence
                        db_execute, to_json, asset_states, environment_type,
                        AssetState, building_mgr, indoor_positioning,
                        cqb_planner, cqb_executor, roe_engine,
-                       _dimos_bridge, adapter_mgr)
+                       _dimos_bridge, adapter_mgr,
+                       perception_fusion, squad_supervisor)
 
 bp = Blueprint("assets", __name__)
 
@@ -684,6 +685,227 @@ def api_dimos_command_log():
         return jsonify({"error": "DimOS bridge not available"}), 503
     limit = request.args.get("limit", 50, type=int)
     return jsonify({"commands": _dimos_bridge.get_command_log(limit)})
+
+
+# ═══════════════════════════════════════════════════════════
+#  PERCEPTION FUSION API (B4.2)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/perception/stats")
+@login_required
+def api_perception_stats():
+    """Get perception fusion statistics."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    return jsonify(perception_fusion.get_stats())
+
+
+@bp.route("/perception/detect", methods=["POST"])
+@login_required
+def api_perception_detect():
+    """Ingest a new CQB detection."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    d = request.json or {}
+    track = perception_fusion.ingest_detection(
+        building_id=d.get("building_id", ""),
+        floor=int(d.get("floor", 0)),
+        room_id=d.get("room_id", ""),
+        x_m=float(d.get("x_m", 0)),
+        y_m=float(d.get("y_m", 0)),
+        classification=d.get("classification", "unknown"),
+        confidence=float(d.get("confidence", 0.5)),
+        source_asset=d.get("source_asset", ""),
+    )
+    return jsonify({"status": "ok", "track": track.to_dict()})
+
+
+@bp.route("/perception/tracks")
+@login_required
+def api_perception_tracks():
+    """Get all threat tracks, optionally filtered by building/floor/room."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    bid = request.args.get("building_id")
+    floor = request.args.get("floor", type=int)
+    room = request.args.get("room_id")
+    if bid and room:
+        return jsonify({"tracks": perception_fusion.get_tracks_in_room(bid, room)})
+    if bid and floor is not None:
+        return jsonify({"tracks": perception_fusion.get_tracks_on_floor(bid, floor)})
+    return jsonify({"tracks": [t.to_dict() for t in perception_fusion.tracks.values()]})
+
+
+@bp.route("/perception/tracks/<track_id>/neutralize", methods=["POST"])
+@login_required
+def api_perception_neutralize(track_id):
+    """Mark a threat track as neutralized."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    ok = perception_fusion.mark_neutralized(track_id)
+    return jsonify({"status": "ok" if ok else "error", "neutralized": ok})
+
+
+@bp.route("/perception/slam", methods=["POST"])
+@login_required
+def api_perception_slam():
+    """Ingest a SLAM occupancy scan."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    d = request.json or {}
+    perception_fusion.ingest_slam_scan(
+        building_id=d.get("building_id", ""),
+        floor=int(d.get("floor", 0)),
+        asset_id=d.get("asset_id", ""),
+        cells=d.get("cells", []),
+    )
+    return jsonify({"status": "ok"})
+
+
+@bp.route("/perception/grid")
+@login_required
+def api_perception_grid():
+    """Get occupancy grid for a building floor."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    bid = request.args.get("building_id", "")
+    floor = request.args.get("floor", 0, type=int)
+    grid = perception_fusion.get_grid(bid, floor)
+    if not grid:
+        return jsonify({"error": "Grid not found"}), 404
+    return jsonify(grid)
+
+
+@bp.route("/perception/grids")
+@login_required
+def api_perception_grids():
+    """Get all occupancy grids."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    return jsonify({"grids": perception_fusion.get_all_grids()})
+
+
+@bp.route("/perception/intel", methods=["POST"])
+@login_required
+def api_perception_intel():
+    """Forward threat intel to robots."""
+    if not perception_fusion:
+        return jsonify({"error": "Perception fusion not available"}), 503
+    d = request.json or {}
+    intel = perception_fusion.forward_intel(
+        building_id=d.get("building_id", ""),
+        room_id=d.get("room_id", ""),
+        intel_type=d.get("intel_type", "threat"),
+        details=d.get("details", ""),
+    )
+    return jsonify({"status": "ok", "intel": intel})
+
+
+# ═══════════════════════════════════════════════════════════
+#  SQUAD SUPERVISOR API (B5)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/squad/stats")
+@login_required
+def api_squad_stats():
+    """Get squad supervisor statistics."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    return jsonify(squad_supervisor.get_stats())
+
+
+@bp.route("/squad/missions")
+@login_required
+def api_squad_missions():
+    """List all missions."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    return jsonify({"missions": squad_supervisor.list_missions()})
+
+
+@bp.route("/squad/missions/create", methods=["POST"])
+@login_required
+def api_squad_mission_create():
+    """Create a new supervised mission."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    d = request.json or {}
+    if not d.get("objective") or not d.get("building_id"):
+        return jsonify({"error": "objective and building_id required"}), 400
+    mission = squad_supervisor.create_mission(
+        objective=d["objective"],
+        building_id=d["building_id"],
+        objective_type=d.get("objective_type", "clear_building"),
+        target_room=d.get("target_room", ""),
+        asset_ids=d.get("asset_ids", []),
+        reserve_ids=d.get("reserve_ids", []),
+    )
+    return jsonify({"status": "ok", "mission": mission.to_dict()})
+
+
+@bp.route("/squad/missions/<mission_id>")
+@login_required
+def api_squad_mission_detail(mission_id):
+    """Get mission detail."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    m = squad_supervisor.get_mission(mission_id)
+    if not m:
+        return jsonify({"error": "Mission not found"}), 404
+    return jsonify(m.to_dict())
+
+
+@bp.route("/squad/missions/<mission_id>/plan", methods=["POST"])
+@login_required
+def api_squad_mission_plan(mission_id):
+    """Generate CQB plan for a mission."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    result = squad_supervisor.plan_mission(mission_id)
+    return jsonify(result)
+
+
+@bp.route("/squad/missions/<mission_id>/execute", methods=["POST"])
+@login_required
+def api_squad_mission_execute(mission_id):
+    """Start executing a planned mission."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    result = squad_supervisor.execute_mission(mission_id)
+    return jsonify(result)
+
+
+@bp.route("/squad/missions/<mission_id>/tick", methods=["POST"])
+@login_required
+def api_squad_mission_tick(mission_id):
+    """Advance mission by one tick."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    result = squad_supervisor.tick_mission(mission_id)
+    return jsonify(result)
+
+
+@bp.route("/squad/missions/<mission_id>/reserves", methods=["POST"])
+@login_required
+def api_squad_mission_reserves(mission_id):
+    """Commit reserve assets to a mission."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    d = request.json or {}
+    result = squad_supervisor.commit_reserves(mission_id,
+                                              count=int(d.get("count", 1)))
+    return jsonify(result)
+
+
+@bp.route("/squad/missions/<mission_id>/abort", methods=["POST"])
+@login_required
+def api_squad_mission_abort(mission_id):
+    """Abort a mission."""
+    if not squad_supervisor:
+        return jsonify({"error": "Squad supervisor not available"}), 503
+    d = request.json or {}
+    result = squad_supervisor.abort_mission(mission_id, d.get("reason", ""))
+    return jsonify(result)
 
 
 # ═══════════════════════════════════════════════════════════

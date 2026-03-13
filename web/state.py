@@ -586,7 +586,7 @@ try:
 except Exception as e:
     print(f"[AMOS] CQB Executor: Not available ({e})")
 
-# Drone Reference Database (always loaded — no feature gate)
+# Drone Reference Database
 drone_ref_db = None
 try:
     from services.drone_reference import DroneReferenceDB
@@ -797,6 +797,35 @@ if feature_enabled("ogc"):
         print("[AMOS] OGC WMS/WFS: Ready")
     except Exception as e:
         print(f"[AMOS] OGC Client: Not available ({e})")
+
+# ═══════════════════════════════════════════════════════════
+#  PERCEPTION FUSION + SQUAD SUPERVISOR (after integrations)
+# ═══════════════════════════════════════════════════════════
+perception_fusion = None
+try:
+    from services.perception_fusion import PerceptionFusion
+    perception_fusion = PerceptionFusion(
+        event_bus=event_bus,
+        dimos_bridge=_dimos_bridge,
+    )
+    print("[AMOS] Perception Fusion: Ready")
+except Exception as e:
+    print(f"[AMOS] Perception Fusion: Not available ({e})")
+
+squad_supervisor = None
+try:
+    from services.squad_supervisor import SquadSupervisor
+    squad_supervisor = SquadSupervisor(
+        building_mgr=building_mgr,
+        cqb_planner=cqb_planner,
+        cqb_executor=cqb_executor,
+        perception_fusion=perception_fusion,
+        dimos_bridge=_dimos_bridge,
+        event_bus=event_bus,
+    )
+    print("[AMOS] Squad Supervisor: Ready")
+except Exception as e:
+    print(f"[AMOS] Squad Supervisor: Not available ({e})")
 
 # ═══════════════════════════════════════════════════════════
 #  HELPER
