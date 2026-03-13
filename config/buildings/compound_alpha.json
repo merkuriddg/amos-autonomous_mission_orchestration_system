@@ -1,0 +1,182 @@
+{
+  "id": "BLD-ALPHA",
+  "name": "Compound Alpha",
+  "description": "3-story urban compound — CQB training structure near FOB Tehran",
+  "location": {
+    "lat": 35.686,
+    "lng": 51.318,
+    "alt_m": 1200
+  },
+  "dimensions": {
+    "width_m": 20,
+    "depth_m": 15,
+    "height_m": 10
+  },
+  "floors": [
+    {
+      "floor": 0,
+      "name": "Ground Floor",
+      "height_m": 3.5,
+      "rooms": [
+        {
+          "id": "R-001",
+          "name": "Main Entry Hall",
+          "type": "hallway",
+          "bounds": {"x_min": 0, "y_min": 0, "x_max": 6, "y_max": 15},
+          "cleared": false
+        },
+        {
+          "id": "R-002",
+          "name": "Storage Room A",
+          "type": "storage",
+          "bounds": {"x_min": 6, "y_min": 0, "x_max": 12, "y_max": 7},
+          "cleared": false
+        },
+        {
+          "id": "R-003",
+          "name": "Guard Room",
+          "type": "security",
+          "bounds": {"x_min": 6, "y_min": 7, "x_max": 12, "y_max": 15},
+          "cleared": false
+        },
+        {
+          "id": "R-004",
+          "name": "Garage Bay",
+          "type": "vehicle",
+          "bounds": {"x_min": 12, "y_min": 0, "x_max": 20, "y_max": 10},
+          "cleared": false
+        },
+        {
+          "id": "R-005",
+          "name": "Utility Room",
+          "type": "utility",
+          "bounds": {"x_min": 12, "y_min": 10, "x_max": 20, "y_max": 15},
+          "cleared": false
+        }
+      ],
+      "doors": [
+        {"id": "D-001", "from_room": "EXTERIOR", "to_room": "R-001", "type": "entry", "position": {"x": 3, "y": 0}, "width_m": 1.2, "breachable": true},
+        {"id": "D-002", "from_room": "R-001", "to_room": "R-002", "type": "interior", "position": {"x": 6, "y": 3}, "width_m": 0.9, "breachable": true},
+        {"id": "D-003", "from_room": "R-001", "to_room": "R-003", "type": "interior", "position": {"x": 6, "y": 10}, "width_m": 0.9, "breachable": true},
+        {"id": "D-004", "from_room": "R-002", "to_room": "R-004", "type": "interior", "position": {"x": 12, "y": 3}, "width_m": 0.9, "breachable": true},
+        {"id": "D-005", "from_room": "R-003", "to_room": "R-005", "type": "interior", "position": {"x": 12, "y": 12}, "width_m": 0.9, "breachable": true},
+        {"id": "D-006", "from_room": "EXTERIOR", "to_room": "R-004", "type": "entry", "position": {"x": 16, "y": 0}, "width_m": 3.0, "breachable": true},
+        {"id": "D-007", "from_room": "R-004", "to_room": "R-005", "type": "interior", "position": {"x": 16, "y": 10}, "width_m": 0.9, "breachable": true}
+      ],
+      "windows": [
+        {"id": "W-001", "room": "R-002", "wall": "south", "position": {"x": 9, "y": 0}, "width_m": 1.0},
+        {"id": "W-002", "room": "R-003", "wall": "east", "position": {"x": 12, "y": 9}, "width_m": 1.0},
+        {"id": "W-003", "room": "R-005", "wall": "north", "position": {"x": 16, "y": 15}, "width_m": 1.0}
+      ],
+      "stairs": [
+        {"id": "S-001", "room": "R-001", "position": {"x": 1, "y": 12}, "connects_to_floor": 1, "type": "stairwell"}
+      ]
+    },
+    {
+      "floor": 1,
+      "name": "First Floor",
+      "height_m": 3.0,
+      "rooms": [
+        {
+          "id": "R-101",
+          "name": "Upper Hallway",
+          "type": "hallway",
+          "bounds": {"x_min": 0, "y_min": 0, "x_max": 6, "y_max": 15},
+          "cleared": false
+        },
+        {
+          "id": "R-102",
+          "name": "Office A",
+          "type": "office",
+          "bounds": {"x_min": 6, "y_min": 0, "x_max": 13, "y_max": 7},
+          "cleared": false
+        },
+        {
+          "id": "R-103",
+          "name": "Office B",
+          "type": "office",
+          "bounds": {"x_min": 6, "y_min": 7, "x_max": 13, "y_max": 15},
+          "cleared": false
+        },
+        {
+          "id": "R-104",
+          "name": "Comms Room",
+          "type": "comms",
+          "bounds": {"x_min": 13, "y_min": 0, "x_max": 20, "y_max": 8},
+          "cleared": false
+        },
+        {
+          "id": "R-105",
+          "name": "Meeting Room",
+          "type": "meeting",
+          "bounds": {"x_min": 13, "y_min": 8, "x_max": 20, "y_max": 15},
+          "cleared": false
+        }
+      ],
+      "doors": [
+        {"id": "D-101", "from_room": "R-101", "to_room": "R-102", "type": "interior", "position": {"x": 6, "y": 3}, "width_m": 0.9, "breachable": true},
+        {"id": "D-102", "from_room": "R-101", "to_room": "R-103", "type": "interior", "position": {"x": 6, "y": 10}, "width_m": 0.9, "breachable": true},
+        {"id": "D-103", "from_room": "R-102", "to_room": "R-104", "type": "interior", "position": {"x": 13, "y": 3}, "width_m": 0.9, "breachable": true},
+        {"id": "D-104", "from_room": "R-103", "to_room": "R-105", "type": "reinforced", "position": {"x": 13, "y": 12}, "width_m": 0.9, "breachable": false},
+        {"id": "D-105", "from_room": "R-104", "to_room": "R-105", "type": "interior", "position": {"x": 16, "y": 8}, "width_m": 0.9, "breachable": true}
+      ],
+      "windows": [
+        {"id": "W-101", "room": "R-102", "wall": "south", "position": {"x": 9, "y": 0}, "width_m": 1.2},
+        {"id": "W-102", "room": "R-104", "wall": "east", "position": {"x": 20, "y": 4}, "width_m": 1.0},
+        {"id": "W-103", "room": "R-105", "wall": "north", "position": {"x": 16, "y": 15}, "width_m": 1.2}
+      ],
+      "stairs": [
+        {"id": "S-101", "room": "R-101", "position": {"x": 1, "y": 12}, "connects_to_floor": 0, "type": "stairwell"},
+        {"id": "S-102", "room": "R-101", "position": {"x": 1, "y": 14}, "connects_to_floor": 2, "type": "stairwell"}
+      ]
+    },
+    {
+      "floor": 2,
+      "name": "Roof / Overwatch",
+      "height_m": 3.0,
+      "rooms": [
+        {
+          "id": "R-201",
+          "name": "Roof Access",
+          "type": "stairwell",
+          "bounds": {"x_min": 0, "y_min": 10, "x_max": 6, "y_max": 15},
+          "cleared": false
+        },
+        {
+          "id": "R-202",
+          "name": "Roof Deck",
+          "type": "open_roof",
+          "bounds": {"x_min": 0, "y_min": 0, "x_max": 20, "y_max": 10},
+          "cleared": false
+        }
+      ],
+      "doors": [
+        {"id": "D-201", "from_room": "R-201", "to_room": "R-202", "type": "reinforced", "position": {"x": 3, "y": 10}, "width_m": 0.9, "breachable": false}
+      ],
+      "windows": [],
+      "stairs": [
+        {"id": "S-201", "room": "R-201", "position": {"x": 1, "y": 14}, "connects_to_floor": 1, "type": "stairwell"}
+      ]
+    }
+  ],
+  "walls": {
+    "exterior_material": "reinforced_concrete",
+    "exterior_thickness_cm": 30,
+    "interior_material": "cinderblock",
+    "interior_thickness_cm": 15,
+    "breachable_types": ["cinderblock", "drywall", "wood"],
+    "bulletproof_types": ["reinforced_concrete", "steel"]
+  },
+  "entry_points": [
+    {"id": "EP-001", "door_id": "D-001", "type": "primary", "description": "Main front door"},
+    {"id": "EP-002", "door_id": "D-006", "type": "vehicle", "description": "Garage bay door"},
+    {"id": "EP-003", "window_id": "W-001", "type": "window", "description": "Ground floor south window"},
+    {"id": "EP-004", "window_id": "W-002", "type": "window", "description": "Ground floor east window"}
+  ],
+  "threats_intel": {
+    "known_hostiles": 0,
+    "suspected_ieds": [],
+    "last_recon": null,
+    "notes": "Training structure — no live threats"
+  }
+}

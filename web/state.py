@@ -549,6 +549,19 @@ if feature_enabled("hmt"):
     except ImportError:
         pass
 
+# Building Model + Indoor Positioning (always loaded — no feature gate)
+building_mgr = None
+indoor_positioning = None
+try:
+    from services.building_model import BuildingManager
+    from services.indoor_positioning import IndoorPositioningService
+    building_mgr = BuildingManager()
+    indoor_positioning = IndoorPositioningService()
+    print(f"[AMOS] Building Model: {len(building_mgr.buildings)} buildings loaded")
+    print(f"[AMOS] Indoor Positioning: Ready")
+except Exception as e:
+    print(f"[AMOS] Building/Indoor Positioning: Not available ({e})")
+
 # Drone Reference Database (always loaded — no feature gate)
 drone_ref_db = None
 try:

@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from web.extensions import login_required, ctx
 from web.state import (sim_assets, sim_threats, base_pos, waypoint_nav, geofence_mgr,
                        db_execute, to_json, asset_states, environment_type,
-                       AssetState)
+                       AssetState, building_mgr, indoor_positioning)
 
 bp = Blueprint("assets", __name__)
 
@@ -242,6 +242,153 @@ def api_cqb_compute():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"formation": formation, "count": count, "positions": positions})
+
+
+# ═══════════════════════════════════════════════════════════
+#  BUILDING & INDOOR POSITIONING API (B2)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/buildings")
+@login_required
+def api_buildings():
+    """List all loaded buildings."""
+    if not building_mgr:
+        return jsonify({"error": "Building model not available"}), 503
+    return jsonify({"buildings": building_mgr.list_buildings()})
+
+
+@bp.route("/buildings/<building_id>")
+@login_required
+def api_building_detail(building_id):
+    """Full building data with rooms, doors, adjacency."""
+    if not building_mgr:
+        return jsonify({"error": "Building model not available"}), 503
+    b = building_mgr.get(building_id)
+    if not b:
+        return jsonify({"error": "Building not found"}), 404
+    return jsonify(b.to_dict())
+
+
+@bp.route("/buildings/<building_id>/floorplan/<int:floor>")
+@login_required
+def api_building_floorplan(building_id, floor):
+    """Floor-level detail: rooms, doors, windows, stairs."""
+    if not building_mgr:
+        return jsonify({"error": "Building model not available"}), 503
+    b = building_mgr.get(building_id)
+    if not b:
+        return jsonify({"error": "Building not found"}), 404
+    f = b.get_floor(floor)
+    if not f:
+        return jsonify({"error": f"Floor {floor} not found"}), 404
+    return jsonify({
+        "building_id": building_id,
+        "floor": floor,
+        "rooms": f.get("rooms", []),
+        "doors": f.get("doors", []),
+        "windows": f.get("windows", []),
+        "stairs": f.get("stairs", []),
+        "clearing_progress": round(
+            sum(1 for r in f.get("rooms", []) if r.get("cleared")) /
+            max(len(f.get("rooms", [])), 1), 2),
+    })
+
+
+@bp.route("/buildings/<building_id>/path", methods=["POST"])
+@login_required
+def api_building_path(building_id):
+    """Find shortest path between two rooms."""
+    if not building_mgr:
+        return jsonify({"error": "Building model not available"}), 503
+    b = building_mgr.get(building_id)
+    if not b:
+        return jsonify({"error": "Building not found"}), 404
+    d = request.json or {}
+    fr = d.get("from_room", "")
+    to = d.get("to_room", "")
+    if not fr or not to:
+        return jsonify({"error": "from_room and to_room required"}), 400
+    path = b.find_path(fr, to)
+    if path is None:
+        return jsonify({"error": "No path found", "from_room": fr, "to_room": to}), 404
+    return jsonify({"path": path, "hops": len(path) - 1})
+
+
+@bp.route("/buildings/<building_id>/clear", methods=["POST"])
+@login_required
+def api_building_clear(building_id):
+    """Mark a room as cleared or uncleared."""
+    if not building_mgr:
+        return jsonify({"error": "Building model not available"}), 503
+    b = building_mgr.get(building_id)
+    if not b:
+        return jsonify({"error": "Building not found"}), 404
+    d = request.json or {}
+    room_id = d.get("room_id", "")
+    cleared = d.get("cleared", True)
+    if not room_id:
+        return jsonify({"error": "room_id required"}), 400
+    ok = b.mark_cleared(room_id) if cleared else b.mark_uncleared(room_id)
+    if not ok:
+        return jsonify({"error": "Room not found"}), 404
+    return jsonify({"status": "ok", "room_id": room_id, "cleared": cleared,
+                    "clearing_progress": round(b.clearing_progress, 2)})
+
+
+@bp.route("/indoor/position", methods=["POST"])
+@login_required
+def api_indoor_position_update():
+    """Ingest an indoor position update for an asset."""
+    if not indoor_positioning:
+        return jsonify({"error": "Indoor positioning not available"}), 503
+    d = request.json or {}
+    asset_id = d.get("asset_id", "")
+    building_id = d.get("building_id", "")
+    if not asset_id or not building_id:
+        return jsonify({"error": "asset_id and building_id required"}), 400
+    pos = indoor_positioning.update_position(
+        asset_id=asset_id,
+        building_id=building_id,
+        floor=int(d.get("floor", 0)),
+        room=d.get("room", ""),
+        x_m=float(d.get("x_m", 0)),
+        y_m=float(d.get("y_m", 0)),
+        z_m=float(d.get("z_m", 0)),
+        confidence=float(d.get("confidence", 0.5)),
+        source=d.get("source", "slam"),
+    )
+    # Also update the AssetState if it exists
+    st = asset_states.get(asset_id)
+    if st:
+        st.indoor_position = pos
+    return jsonify({"status": "ok", "position": pos.to_dict()})
+
+
+@bp.route("/indoor/positions")
+@login_required
+def api_indoor_positions():
+    """All current indoor positions."""
+    if not indoor_positioning:
+        return jsonify({"error": "Indoor positioning not available"}), 503
+    return jsonify({
+        "positions": indoor_positioning.get_all_positions(),
+        "stats": indoor_positioning.get_stats(),
+    })
+
+
+@bp.route("/indoor/positions/<asset_id>")
+@login_required
+def api_indoor_position_detail(asset_id):
+    """Indoor position + history for a specific asset."""
+    if not indoor_positioning:
+        return jsonify({"error": "Indoor positioning not available"}), 503
+    pos = indoor_positioning.get_position(asset_id)
+    if not pos:
+        return jsonify({"error": "No indoor position for asset"}), 404
+    return jsonify({
+        "position": pos.to_dict(),
+        "history": indoor_positioning.get_history(asset_id),
+    })
 
 
 # ═══════════════════════════════════════════════════════════
