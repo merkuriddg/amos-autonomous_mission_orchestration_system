@@ -199,3 +199,7 @@ def cqb_page(): return render_template("cqb.html", **ctx())
 @bp.route("/tactical3d")
 @login_required
 def tactical3d_page(): return render_template("tactical3d.html", **ctx())
+
+@bp.route("/systemmap")
+@login_required
+def systemmap_page(): return render_template("systemmap.html", **ctx())

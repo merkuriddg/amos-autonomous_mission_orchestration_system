@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}System Map{% endblock %}
+{% block head %}
+<style>
+.sys-wrap{max-width:1440px;margin:0 auto}
+.sys-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.sys-sub{color:#888;font-size:.82em;line-height:1.5}
+.sys-controls{display:flex;gap:6px;flex-wrap:wrap}
+.sys-btn{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:6px 10px;cursor:pointer;font-size:.78em;border-radius:3px}
+.sys-btn:hover{background:#00ff4115;border-color:#00ff41}
+.sys-btn.active{background:#ff444422;border-color:#ff4444;color:#ff4444}
+.sys-grid{display:grid;grid-template-columns:1fr 330px;gap:8px}
+.sys-canvas{background:#090909;border:1px solid #222;border-radius:4px;min-height:760px;position:relative;overflow:hidden}
+.sys-panel{background:#0d0d0d;border:1px solid #222;border-radius:4px;padding:10px}
+.sys-panel h3{margin:0 0 8px;color:#ffaa00;font-size:.85em}
+.sys-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.73em}
+.sys-leg-item{display:flex;align-items:center;gap:6px;color:#bbb}
+.sys-dot{width:10px;height:10px;border-radius:50%}
+.sys-card{border:1px solid #1d1d1d;border-radius:4px;padding:8px;margin-bottom:8px;background:#080808}
+.sys-card .ttl{color:#00ff41;font-size:.8em;margin-bottom:4px}
+.sys-card .txt{color:#aaa;font-size:.75em;line-height:1.45}
+.sys-list{max-height:180px;overflow-y:auto;font-size:.74em}
+.sys-list .item{padding:3px 0;border-bottom:1px solid #141414;color:#bbb}
+.sys-badge{display:inline-block;padding:1px 6px;border:1px solid #444;border-radius:3px;font-size:.68em;margin-right:4px}
+.sys-badge.left{color:#4488ff;border-color:#4488ff}
+.sys-badge.bang{color:#ff4444;border-color:#ff4444}
+.sys-badge.right{color:#00ff41;border-color:#00ff41}
+.sys-badge.cross{color:#ffaa00;border-color:#ffaa00}
+.sys-meta{font-size:.7em;color:#666;margin-top:4px}
+.sys-tip{position:absolute;pointer-events:none;background:#111;border:1px solid #00ff41;padding:6px 8px;font-size:.72em;z-index:20;display:none;max-width:260px}
+.sys-tip .name{color:#00ff41;font-weight:bold}
+.sys-tip .phase{color:#888}
+.sys-empty{color:#666;font-size:.74em}
+.phase-band{position:absolute;top:0;bottom:0;pointer-events:none;opacity:.18}
+.phase-band.left{left:0;width:26%;background:linear-gradient(90deg,#22446655,#22446600)}
+.phase-band.bang{left:38%;width:12%;background:linear-gradient(90deg,#66222255,#66222200)}
+.phase-band.right{right:0;width:28%;background:linear-gradient(90deg,#22664400,#22664455)}
+.phase-label{position:absolute;top:8px;font-size:.68em;letter-spacing:1px;color:#666}
+.phase-label.left{left:10px}
+.phase-label.bang{left:41%}
+.phase-label.right{right:10px}
+.trail-chip{display:inline-block;padding:2px 6px;border:1px solid #333;border-radius:3px;color:#888;font-size:.68em;margin:2px;cursor:pointer}
+.trail-chip:hover{border-color:#00ff41;color:#00ff41}
+</style>
+{% endblock %}
+{% block content %}
+<div class="sys-wrap">
+  <div class="sys-head">
+    <div>
+      <h2 style="font-size:1em;margin:0 0 4px;border-bottom:1px solid #222;padding-bottom:6px">SYSTEM-OF-SYSTEMS MAP — Left / Right of Bang</h2>
+      <div class="sys-sub">
+        Vannevar Bush-style associative trails across AMOS resources. Red-team mode lets you remove nodes and observe cascade effects through the dependency graph.
+      </div>
+    </div>
+    <div class="sys-controls">
+      <button class="sys-btn" id="btn-reset" onclick="resetSystemMap()">RESET</button>
+      <button class="sys-btn" id="btn-redteam" onclick="toggleRedTeam()">RED TEAM MODE</button>
+      <button class="sys-btn" onclick="simulateCritical()">SIMULATE CRITICAL NODE FAILURE</button>
+      <button class="sys-btn" onclick="clearTrail()">CLEAR TRAIL</button>
+    </div>
+  </div>
+
+  <div class="sys-grid">
+    <div class="sys-canvas" id="sys-canvas">
+      <div class="phase-band left"></div>
+      <div class="phase-band bang"></div>
+      <div class="phase-band right"></div>
+      <div class="phase-label left">LEFT OF BANG</div>
+      <div class="phase-label bang">THE BANG</div>
+      <div class="phase-label right">RIGHT OF BANG</div>
+      <svg id="sys-svg" width="100%" height="760"></svg>
+      <div id="sys-tip" class="sys-tip"></div>
+    </div>
+
+    <div class="sys-panel">
+      <h3>MAP LEGEND</h3>
+      <div class="sys-legend">
+        <div class="sys-leg-item"><span class="sys-dot" style="background:#4488ff"></span> Left of bang</div>
+        <div class="sys-leg-item"><span class="sys-dot" style="background:#ff4444"></span> The bang</div>
+        <div class="sys-leg-item"><span class="sys-dot" style="background:#00ff41"></span> Right of bang</div>
+        <div class="sys-leg-item"><span class="sys-dot" style="background:#ffaa00"></span> Cross-cutting</div>
+      </div>
+
+      <div class="sys-card">
+        <div class="ttl">SELECTED NODE</div>
+        <div class="txt" id="sel-node">Click a node to inspect dependencies and associative trails.</div>
+      </div>
+
+      <div class="sys-card">
+        <div class="ttl">CASCADE IMPACT</div>
+        <div class="txt" id="cascade-summary">No active failures.</div>
+        <div class="sys-meta" id="cascade-meta"></div>
+      </div>
+
+      <div class="sys-card">
+        <div class="ttl">BUSH TRAILS</div>
+        <div id="trail-chips"></div>
+      </div>
+
+      <div class="sys-card">
+        <div class="ttl">DOWNSTREAM AFFECTED</div>
+        <div class="sys-list" id="downstream-list"><div class="sys-empty">None</div></div>
+      </div>
+
+      <div class="sys-card">
+        <div class="ttl">UPSTREAM DEPENDENCIES</div>
+        <div class="sys-list" id="upstream-list"><div class="sys-empty">None</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const PHASE_COLORS={left:'#4488ff',bang:'#ff4444',right:'#00ff41',cross:'#ffaa00'};
+const NODES=[
+ {id:'sensors',name:'Sensors',phase:'left',critical:true,trails:['ISR','EW','SIGINT']},
+ {id:'building_model',name:'Building Model',phase:'left',critical:true,trails:['CQB','Indoor']},
+ {id:'indoor_positioning',name:'Indoor Positioning',phase:'left',critical:true,trails:['Indoor','Navigation']},
+ {id:'perception_fusion',name:'Perception Fusion',phase:'left',critical:true,trails:['ISR','CQB','Fusion']},
+ {id:'isr_atr',name:'ISR / ATR',phase:'left',critical:false,trails:['ISR','Prediction']},
+ {id:'threat_predictions',name:'Threat Predictions',phase:'left',critical:false,trails:['Prediction','HAL']},
+ {id:'hal',name:'HAL Autonomy',phase:'left',critical:true,trails:['Decision','ROE']},
+ {id:'roe',name:'ROE Engine',phase:'left',critical:true,trails:['Decision','Legal']},
+ {id:'killweb',name:'Kill Web',phase:'left',critical:false,trails:['F2T2EA']},
+ {id:'cqb_planner',name:'CQB Planner',phase:'left',critical:true,trails:['CQB','Planning']},
+
+ {id:'squad_supervisor',name:'Squad Supervisor',phase:'bang',critical:true,trails:['CQB','Execution']},
+ {id:'cqb_executor',name:'CQB Executor',phase:'bang',critical:true,trails:['CQB','Execution']},
+ {id:'dimos_bridge',name:'DimOS Bridge',phase:'bang',critical:true,trails:['Robotics','Integration']},
+ {id:'countermeasures',name:'Countermeasures',phase:'bang',critical:false,trails:['Kinetic','Effects']},
+ {id:'effects_chain',name:'Effects Chain',phase:'bang',critical:false,trails:['Cross-domain']},
+ {id:'swarm',name:'Swarm Orchestrator',phase:'bang',critical:false,trails:['Swarm','Execution']},
+
+ {id:'bda',name:'Battle Damage Assessment',phase:'right',critical:false,trails:['Assessment']},
+ {id:'aar',name:'After Action Review',phase:'right',critical:false,trails:['Assessment','Learning']},
+ {id:'docs',name:'Docs / Reports',phase:'right',critical:false,trails:['Reporting']},
+ {id:'retask',name:'Re-task Loop',phase:'right',critical:true,trails:['Adaptation','Feedback']},
+
+ {id:'event_bus',name:'Event Bus',phase:'cross',critical:true,trails:['Backbone']},
+ {id:'mesh_network',name:'Mesh Network',phase:'cross',critical:true,trails:['Comms']},
+ {id:'integrations',name:'Integration Layer',phase:'cross',critical:false,trails:['Bridge']},
+ {id:'manual_human',name:'Human-in-Loop',phase:'cross',critical:true,trails:['Command']},
+];
+
+const LINKS=[
+ ['sensors','perception_fusion'],['building_model','cqb_planner'],['indoor_positioning','cqb_executor'],
+ ['perception_fusion','isr_atr'],['perception_fusion','threat_predictions'],['isr_atr','threat_predictions'],
+ ['threat_predictions','hal'],['hal','roe'],['roe','killweb'],['roe','cqb_planner'],
+ ['cqb_planner','squad_supervisor'],['squad_supervisor','cqb_executor'],['cqb_executor','dimos_bridge'],
+ ['cqb_executor','countermeasures'],['countermeasures','bda'],['effects_chain','bda'],
+ ['dimos_bridge','bda'],['swarm','countermeasures'],['bda','aar'],['aar','docs'],['aar','retask'],['retask','cqb_planner'],
+ ['event_bus','perception_fusion'],['event_bus','squad_supervisor'],['event_bus','cqb_executor'],
+ ['mesh_network','dimos_bridge'],['integrations','dimos_bridge'],['manual_human','roe'],['manual_human','squad_supervisor'],
+ ['killweb','effects_chain'],['killweb','countermeasures']
+].map(([source,target])=>({source,target}));
+
+const TRAILS=[
+ {name:'CQB Assault Trail', nodes:['building_model','indoor_positioning','perception_fusion','cqb_planner','squad_supervisor','cqb_executor','dimos_bridge','bda','aar']},
+ {name:'Sensor-to-Shooter Trail', nodes:['sensors','perception_fusion','isr_atr','threat_predictions','hal','roe','killweb','countermeasures','bda']},
+ {name:'Resilience Backbone Trail', nodes:['mesh_network','event_bus','integrations','dimos_bridge','retask']},
+ {name:'Human Decision Trail', nodes:['manual_human','roe','squad_supervisor','cqb_executor','aar']},
+];
+
+let redTeamMode=false;
+let failedNodes=new Set();
+let selectedTrail=null;
+let selectedNode=null;
+
+const svg=d3.select('#sys-svg');
+const width=document.getElementById('sys-canvas').clientWidth;
+const height=760;
+svg.attr('viewBox',`0 0 ${width} ${height}`);
+
+const nodeById=new Map(NODES.map(n=>[n.id,n]));
+const linkData=LINKS.map(l=>({source:nodeById.get(l.source),target:nodeById.get(l.target)}));
+
+NODES.forEach(n=>{
+ if(n.phase==='left'){n.fx=width*0.18; n.fy=120+Math.random()*520;}
+ if(n.phase==='bang'){n.fx=width*0.44; n.fy=180+Math.random()*420;}
+ if(n.phase==='right'){n.fx=width*0.78; n.fy=120+Math.random()*520;}
+ if(n.phase==='cross'){n.fx=width*0.52; n.fy=80+Math.random()*620;}
+});
+
+const defs=svg.append('defs');
+defs.append('marker')
+  .attr('id','arrow').attr('viewBox','0 -5 10 10').attr('refX',18).attr('refY',0)
+  .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
+  .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','#555');
+
+const linkLayer=svg.append('g');
+const nodeLayer=svg.append('g');
+
+const links=linkLayer.selectAll('line').data(linkData).enter().append('line')
+  .attr('stroke','#444').attr('stroke-width',1.4).attr('marker-end','url(#arrow)').attr('opacity',0.8);
+
+const nodes=nodeLayer.selectAll('g').data(NODES).enter().append('g')
+  .attr('cursor','pointer')
+  .call(d3.drag()
+    .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y;})
+    .on('drag',(e,d)=>{d.fx=e.x; d.fy=e.y;})
+    .on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0); if(d.phase==='cross'){d.fx=null; d.fy=null;}})
+  );
+
+nodes.append('circle')
+  .attr('r',d=>d.critical?12:10)
+  .attr('fill',d=>PHASE_COLORS[d.phase])
+  .attr('stroke',d=>d.critical?'#fff':'#111')
+  .attr('stroke-width',d=>d.critical?1.5:1);
+
+nodes.append('text')
+  .attr('x',14).attr('y',4).attr('fill','#ccc').attr('font-size','10px')
+  .text(d=>d.name);
+
+const tip=document.getElementById('sys-tip');
+
+nodes.on('mouseenter',(e,d)=>{
+  tip.style.display='block';
+  tip.innerHTML=`<div class="name">${d.name}</div><div class="phase">${d.phase.toUpperCase()}${d.critical?' · CRITICAL':''}</div>`;
+}).on('mousemove',(e)=>{
+  tip.style.left=(e.offsetX+14)+'px'; tip.style.top=(e.offsetY+14)+'px';
+}).on('mouseleave',()=>{tip.style.display='none';})
+  .on('click',(e,d)=>{
+    if(redTeamMode){
+      if(failedNodes.has(d.id)) failedNodes.delete(d.id); else failedNodes.add(d.id);
+      applyFailureState();
+    }else{
+      selectNode(d.id);
+    }
+  });
+
+const sim=d3.forceSimulation(NODES)
+  .force('link',d3.forceLink(linkData).id(d=>d.id).distance(95).strength(.3))
+  .force('charge',d3.forceManyBody().strength(-220))
+  .force('collide',d3.forceCollide(26))
+  .force('y',d3.forceY(height/2).strength(.03))
+  .on('tick',()=>{
+    links.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    nodes.attr('transform',d=>`translate(${d.x},${d.y})`);
+  });
+
+function descendants(start){
+  const out=new Set(), q=[start];
+  while(q.length){
+    const cur=q.shift();
+    LINKS.forEach(l=>{
+      if(l.source===cur && !out.has(l.target)){out.add(l.target); q.push(l.target);}
+    });
+  }
+  return out;
+}
+function ancestors(start){
+  const out=new Set(), q=[start];
+  while(q.length){
+    const cur=q.shift();
+    LINKS.forEach(l=>{
+      if(l.target===cur && !out.has(l.source)){out.add(l.source); q.push(l.source);}
+    });
+  }
+  return out;
+}
+
+function getImpactedNodes(){
+  const impacted=new Set();
+  failedNodes.forEach(id=>{
+    descendants(id).forEach(x=>impacted.add(x));
+  });
+  return impacted;
+}
+
+function applyFailureState(){
+  const impacted=getImpactedNodes();
+  nodes.select('circle')
+    .attr('fill',d=>{
+      if(failedNodes.has(d.id)) return '#ff1111';
+      if(impacted.has(d.id)) return '#663333';
+      return PHASE_COLORS[d.phase];
+    })
+    .attr('stroke',d=>failedNodes.has(d.id)?'#fff':(d.critical?'#fff':'#111'))
+    .attr('stroke-width',d=>failedNodes.has(d.id)?2.2:(d.critical?1.5:1))
+    .attr('opacity',d=>impacted.has(d.id)&&!failedNodes.has(d.id)?0.9:1);
+
+  links
+    .attr('stroke',d=>{
+      const s=d.source.id,t=d.target.id;
+      if(failedNodes.has(s) || failedNodes.has(t)) return '#ff4444';
+      if(impacted.has(t)) return '#aa5555';
+      return '#444';
+    })
+    .attr('stroke-width',d=>(failedNodes.has(d.source.id)||failedNodes.has(d.target.id))?2.2:1.4)
+    .attr('opacity',d=>impacted.has(d.target.id)||failedNodes.has(d.source.id)?1:0.7);
+
+  const down=[...impacted].filter(x=>!failedNodes.has(x));
+  document.getElementById('cascade-summary').innerHTML=
+    failedNodes.size
+      ?`<span style="color:#ff4444">${failedNodes.size}</span> failed node(s), <span style="color:#ffaa00">${down.length}</span> downstream impacted.`
+      :'No active failures.';
+  document.getElementById('cascade-meta').textContent=
+    failedNodes.size?`Failed: ${[...failedNodes].map(id=>nodeById.get(id).name).join(', ')}`:'';
+  renderList('downstream-list',down.map(id=>nodeById.get(id)));
+}
+
+function renderList(elId,items){
+  const el=document.getElementById(elId);
+  if(!items||!items.length){el.innerHTML='<div class="sys-empty">None</div>'; return;}
+  el.innerHTML=items.map(n=>`<div class="item"><span class="sys-badge ${n.phase}">${n.phase}</span>${n.name}</div>`).join('');
+}
+
+function selectNode(nodeId){
+  selectedNode=nodeId;
+  const n=nodeById.get(nodeId);
+  const up=[...ancestors(nodeId)].map(id=>nodeById.get(id));
+  const down=[...descendants(nodeId)].map(id=>nodeById.get(id));
+  document.getElementById('sel-node').innerHTML=
+    `<b style="color:${PHASE_COLORS[n.phase]}">${n.name}</b><br>`+
+    `Phase: ${n.phase.toUpperCase()}${n.critical?' · CRITICAL':''}<br>`+
+    `Trails: ${(n.trails||[]).join(', ')}`;
+  renderList('upstream-list',up);
+  renderList('downstream-list',down);
+
+  links.attr('stroke',d=>(d.source.id===nodeId||d.target.id===nodeId)?'#00ff41':'#333')
+       .attr('stroke-width',d=>(d.source.id===nodeId||d.target.id===nodeId)?2.4:1.2)
+       .attr('opacity',d=>(d.source.id===nodeId||d.target.id===nodeId)?1:0.4);
+  nodes.select('circle').attr('opacity',d=>d.id===nodeId?1:0.65);
+}
+
+function buildTrailChips(){
+  const el=document.getElementById('trail-chips');
+  el.innerHTML=TRAILS.map((t,i)=>`<span class="trail-chip" onclick="showTrail(${i})">${t.name}</span>`).join('');
+}
+function showTrail(i){
+  selectedTrail=i;
+  const t=TRAILS[i];
+  const set=new Set(t.nodes);
+  links
+    .attr('stroke',d=>(set.has(d.source.id)&&set.has(d.target.id))?'#00ff41':'#333')
+    .attr('stroke-width',d=>(set.has(d.source.id)&&set.has(d.target.id))?2.3:1.2)
+    .attr('opacity',d=>(set.has(d.source.id)&&set.has(d.target.id))?1:0.35);
+  nodes.select('circle')
+    .attr('opacity',d=>set.has(d.id)?1:0.4)
+    .attr('stroke',d=>set.has(d.id)?'#fff':(d.critical?'#fff':'#111'))
+    .attr('stroke-width',d=>set.has(d.id)?2:1);
+  document.getElementById('sel-node').innerHTML=`<b style="color:#00ff41">${t.name}</b><br>Associative Bush trail with ${t.nodes.length} linked resources.`;
+  renderList('upstream-list',t.nodes.map(id=>nodeById.get(id)));
+  document.getElementById('downstream-list').innerHTML='<div class="sys-empty">Trail mode active</div>';
+}
+
+function clearTrail(){
+  selectedTrail=null;
+  selectedNode=null;
+  links.attr('stroke','#444').attr('stroke-width',1.4).attr('opacity',0.8);
+  nodes.select('circle').attr('opacity',1).attr('stroke',d=>d.critical?'#fff':'#111').attr('stroke-width',d=>d.critical?1.5:1);
+  document.getElementById('sel-node').textContent='Click a node to inspect dependencies and associative trails.';
+  renderList('upstream-list',[]);
+  applyFailureState();
+}
+
+function toggleRedTeam(){
+  redTeamMode=!redTeamMode;
+  const b=document.getElementById('btn-redteam');
+  if(redTeamMode){b.classList.add('active'); b.textContent='RED TEAM MODE: ON';}
+  else {b.classList.remove('active'); b.textContent='RED TEAM MODE';}
+}
+
+function simulateCritical(){
+  const critical=NODES.filter(n=>n.critical);
+  const pick=critical[Math.floor(Math.random()*critical.length)];
+  failedNodes.add(pick.id);
+  applyFailureState();
+  toggleRedTeam();
+  toggleRedTeam();
+}
+
+function resetSystemMap(){
+  failedNodes.clear();
+  selectedNode=null;
+  selectedTrail=null;
+  redTeamMode=false;
+  document.getElementById('btn-redteam').classList.remove('active');
+  document.getElementById('btn-redteam').textContent='RED TEAM MODE';
+  clearTrail();
+  applyFailureState();
+}
+
+buildTrailChips();
+applyFailureState();
+</script>
+{% endblock %}
