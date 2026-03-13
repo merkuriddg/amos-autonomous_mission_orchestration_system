@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-479_passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-537_passing-brightgreen.svg)](tests/)
 
 > *"The LORD roars from Zion … the shepherd watches, and what he sees he declares."*
 > — the Book of Amos
@@ -149,8 +149,11 @@ Assets & Sensors
 amos/
 ├── web/                     — Flask app, routes, templates, simulation engine
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
-├── services/                — 41 autonomous subsystems
-├── integrations/            — 22 protocol bridges (see below)
+├── services/                — 48 autonomous subsystems
+├── integrations/            — 23 protocol bridges (incl. DimOS bipedal robot bridge)
+├── config/
+│   ├── buildings/           — Building JSON floorplans (Alpha Compound, Embassy Bravo)
+│   └── ...                  — Platoon config, theater locations, drone reference DB
 ├── examples/                — Demo scenarios + quickstart code samples
 │   ├── border_intrusion/    — Border patrol demo
 │   ├── swarm_recon/         — Swarm reconnaissance demo
@@ -180,8 +183,7 @@ amos/
 ├── tools/                   — CLI tools (plugin scaffolding)
 ├── demo/                    — Legacy demo scenarios
 ├── db/                      — MariaDB schema + setup script (36 tables)
-├── config/                  — Platoon config, theater locations, drone reference DB
-├── tests/                   — 479 automated tests
+├── tests/                   — 537 automated tests
 └── docs/                    — Architecture, SDK, simulation, API docs
 ```
 
@@ -207,13 +209,23 @@ amos/
 
 **Drone Reference DB** — 105 drone entries (93 commercial via DroneCompare CC-BY-4.0, 7 military/tactical, 5 adversary), serial prefix lookup, RemoteID enrichment, counter-UAS context, searchable UI
 
+**CQB Operations Console** — Full indoor mission planning and execution UI. Select buildings, generate clearing plans, assign assets, execute missions with real-time room clearance tracking. Threat intel overlay shows hostiles, IEDs, hostages, and civilian contacts from building intelligence and live perception fusion
+
+**3D Tactical Viewer** — WebGL-rendered multi-story building viewer with floor isolation, color-coded room clearance status, asset position markers, threat icons, and SLAM occupancy grid overlay. Orbit/zoom/pan camera controls for full situational awareness
+
 **CQB Formations** — 6 meter-scale tactical formations (STACK, BUTTONHOOK, CRISSCROSS, BOUNDING_OVERWATCH, PERIMETER, CORRIDOR) for close-quarters battle, dual lat/lng + local meter-coordinate modes, integrated with swarm orchestrator
 
 **Bipedal Squad Seeds** — Environment type abstraction (outdoor_open, outdoor_urban, indoor_cqb), extended asset state model (posture, stance, manipulation, cover, fatigue, indoor position), indoor positioning data model for GPS-denied CQB ops
 
-**Building Data Model & Indoor Positioning** — Per-structure JSON floorplans with rooms, doors, windows, stairwells, wall materials. Adjacency graph, BFS pathfinding, LOS queries, room clearing status. Multi-source indoor positioning (SLAM/UWB/IMU fusion) with per-asset tracking and lat/lng bridge for GPS-denied operations
+**Building Data Model & Indoor Positioning** — Per-structure JSON floorplans with rooms, doors, windows, stairwells, wall materials. Adjacency graph, BFS pathfinding, LOS queries, room clearing status. Multi-source indoor positioning (SLAM/UWB/IMU fusion) with per-asset tracking and lat/lng bridge for GPS-denied operations. Ships with 2 demo buildings: Alpha Compound (3-story) and Embassy Bravo (2-story diplomatic compound with threat intel)
 
 **CQB Room Clearing Planner** — Autonomous mission planning for close-quarters battle: 6 CQB task types (BREACH, CLEAR, HOLD, SECURE, EXTRACT, STACK) with role assignment (point, number_2, cover, rear_security). Generates phased clearing plans from building models with dependency chains, reinforced door detection, and objective room targeting. CQB-specific ROE (hostage room restriction, fratricide prevention, CQB autonomy tier, range limits)
+
+**DimOS Bridge** — Command-and-control integration for bipedal humanoid robots via the DimOS autonomy framework. Maps CQB task plans to robot navigation, manipulation, and perception primitives. Supports real robot connection (WebSocket) and standalone simulation mode. Configurable via `DIMOS_ENDPOINT` in `.env`. Manage from the Integrations page or CQB Ops console
+
+**Perception Fusion** — Fuses detections from multiple indoor assets into a unified threat picture. Multi-sensor correlation (visual, thermal, LIDAR, acoustic), persistent track management, SLAM occupancy grid aggregation, and bidirectional intel forwarding to/from robots
+
+**Squad Supervisor** — Autonomous squad mission orchestrator. Creates, plans, and executes supervised CQB missions with asset assignment, reserve management, formation control (STACK, LINE, WEDGE, DIAMOND, ECHELON, BOUNDING_OVERWATCH), contact handling, automatic re-tasking, and after-action report generation
 
 **Mesh Networking** — MANET with 7 frequency bands, Dijkstra routing, frequency hopping, store-and-forward queuing
 
@@ -247,8 +259,8 @@ amos/
 - **Backend:** Python 3, Flask, Flask-SocketIO
 - **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB (optional — runs in-memory without it)
-- **Testing:** pytest (425 tests), GitHub Actions CI (Python 3.11 + 3.12)
-- **Integrations:** MAVLink, CoT XML (send + receive), TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR, SDR++, SigDigger, ZMeta ISR Metadata
+- **Testing:** pytest (537 tests), GitHub Actions CI (Python 3.11 + 3.12)
+- **Integrations:** MAVLink, CoT XML (send + receive), TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR, SDR++, SigDigger, ZMeta ISR Metadata, DimOS (bipedal robot bridge)
 - **Security:** AES-256-GCM encryption, HMAC, key lifecycle management
 
 ## Testing
@@ -257,7 +269,7 @@ amos/
 python3 -m pytest tests/ -v --tb=short
 ```
 
-425 tests across route, service, and contract layers. CI runs on every push via GitHub Actions.
+537 tests across route, service, and contract layers. CI runs on every push via GitHub Actions.
 
 ## Plugin Development
 
