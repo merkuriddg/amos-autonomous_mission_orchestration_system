@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+{% block title %}CQB Operations{% endblock %}
+{% block head %}
+<style>
+.cqb-room{border:2px solid #333;padding:6px 8px;margin:3px;display:inline-block;min-width:100px;text-align:center;cursor:pointer;border-radius:3px;font-size:.78em;position:relative;transition:all .15s}
+.cqb-room:hover{border-color:#00ff41;background:#001a00}
+.cqb-room.cleared{border-color:#00ff41;background:#001a00;color:#00ff41}
+.cqb-room.active{border-color:#ffaa00;background:#1a1100;color:#ffaa00;animation:pulse 1s infinite}
+.cqb-room.hostile{border-color:#ff4444;background:#1a0000;color:#ff4444}
+.cqb-room .room-name{font-weight:bold;font-size:.9em}
+.cqb-room .room-type{color:#666;font-size:.8em}
+.cqb-room .room-badge{position:absolute;top:-6px;right:-6px;background:#00ff41;color:#000;border-radius:50%;width:14px;height:14px;font-size:.6em;display:flex;align-items:center;justify-content:center}
+.cqb-room .room-badge.hostile{background:#ff4444}
+.cqb-door{display:inline-block;padding:2px 6px;font-size:.65em;color:#888;border:1px dashed #333;border-radius:2px;margin:1px}
+.cqb-door.reinforced{border-color:#ff4444;color:#ff4444}
+.floor-tab{padding:5px 14px;border:1px solid #333;background:#0a0a0a;color:#888;cursor:pointer;font-size:.78em;margin-right:2px}
+.floor-tab.active{color:#00ff41;border-color:#00ff41;background:#001a00}
+.exec-event{padding:3px 0;font-size:.72em;border-bottom:1px solid #111}
+.exec-event .evt-type{font-weight:bold;color:#4488ff;width:140px;display:inline-block}
+.progress-bar{height:16px;background:#111;border:1px solid #333;border-radius:2px;overflow:hidden;margin:4px 0}
+.progress-bar-fill{height:100%;background:#00ff41;transition:width .3s}
+.task-row{padding:4px 0;font-size:.72em;border-bottom:1px solid #111}
+.task-status{display:inline-block;padding:1px 5px;font-size:.85em;border-radius:2px}
+.task-PLANNED{color:#888;border:1px solid #444}.task-READY{color:#4488ff;border:1px solid #4488ff}
+.task-EXECUTING{color:#ffaa00;border:1px solid #ffaa00}.task-COMPLETE{color:#00ff41;border:1px solid #00ff41}
+.task-FAILED{color:#ff4444;border:1px solid #ff4444}.task-ABORTED{color:#666;border:1px solid #666}
+.dimos-cmd{padding:3px 0;font-size:.72em;border-bottom:1px solid #111}
+.asset-indoor{padding:4px 8px;margin:2px;display:inline-block;border:1px solid #333;font-size:.78em;border-radius:3px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1400px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">CQB OPERATIONS — Close Quarters Battle Console</h2>
+
+ <!-- STATS ROW -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="stat-buildings">0</div><div class="label">BUILDINGS</div></div>
+  <div class="card stat"><div class="value" id="stat-plans" style="color:#4488ff">0</div><div class="label">PLANS</div></div>
+  <div class="card stat"><div class="value" id="stat-executions" style="color:#ffaa00">0</div><div class="label">EXECUTIONS</div></div>
+  <div class="card stat"><div class="value" id="stat-dimos">--</div><div class="label">DimOS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- LEFT: BUILDING + FLOORPLAN -->
+  <div>
+   <div class="card">
+    <h3>BUILDING SELECTOR</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+     <select id="building-sel" onchange="selectBuilding(this.value)" style="flex:1"></select>
+     <button class="btn" onclick="refreshBuildings()">REFRESH</button>
+    </div>
+    <div id="building-info" style="font-size:.78em;color:#888"></div>
+   </div>
+
+   <div class="card">
+    <h3>FLOORPLAN — <span id="floor-label">Select Building</span></h3>
+    <div id="floor-tabs" style="margin-bottom:6px"></div>
+    <div id="floorplan" style="min-height:200px;padding:8px"></div>
+    <div id="floor-doors" style="margin-top:4px"></div>
+    <div style="margin-top:6px;font-size:.7em;color:#555">
+     <span style="color:#00ff41">■</span> Cleared
+     <span style="color:#ffaa00;margin-left:8px">■</span> Active
+     <span style="color:#ff4444;margin-left:8px">■</span> Hostile
+     <span style="color:#333;margin-left:8px">□</span> Uncleared
+    </div>
+   </div>
+
+   <!-- INDOOR POSITIONS -->
+   <div class="card">
+    <h3>INDOOR POSITIONS</h3>
+    <div id="indoor-positions" style="min-height:40px"></div>
+   </div>
+  </div>
+
+  <!-- RIGHT: PLANS + EXECUTION -->
+  <div>
+   <!-- PLAN GENERATION -->
+   <div class="card">
+    <h3>CQB PLAN GENERATOR</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+     <select id="plan-building" style="flex:1"></select>
+     <input type="number" id="plan-team" value="4" min="2" max="12" style="width:60px" title="Team size">
+     <input type="text" id="plan-objective" placeholder="Objective room (opt)" style="width:130px">
+     <button class="btn" onclick="generatePlan()">GENERATE PLAN</button>
+    </div>
+    <div id="plan-result" style="font-size:.78em;color:#888"></div>
+   </div>
+
+   <!-- EXECUTION CONTROLS -->
+   <div class="card">
+    <h3>EXECUTION ENGINE</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+     <select id="exec-plan" style="flex:1"><option value="">Select plan...</option></select>
+     <input type="text" id="exec-assets" placeholder="Asset IDs (comma-sep)" style="width:200px">
+     <button class="btn" onclick="startExecution()">EXECUTE</button>
+    </div>
+    <div id="exec-status" style="margin:6px 0"></div>
+    <div id="exec-progress"></div>
+    <div style="margin-top:6px;display:flex;gap:4px" id="exec-controls" style="display:none">
+     <button class="btn" onclick="tickExec()">▶ TICK</button>
+     <button class="btn" onclick="autoTick()">▶▶ AUTO</button>
+     <button class="btn btn-yellow" onclick="pauseExec()">⏸ PAUSE</button>
+     <button class="btn" onclick="resumeExec()">▶ RESUME</button>
+     <button class="btn btn-red" onclick="abortExec()">⏹ ABORT</button>
+    </div>
+   </div>
+
+   <!-- TASK LIST -->
+   <div class="card">
+    <h3>TASK PROGRESSION</h3>
+    <div class="scroll-box" style="max-height:200px" id="task-list"></div>
+   </div>
+
+   <!-- EXECUTION EVENTS -->
+   <div class="card">
+    <h3>EXECUTION EVENTS</h3>
+    <div class="scroll-box" style="max-height:200px" id="exec-events"></div>
+   </div>
+
+   <!-- DimOS BRIDGE -->
+   <div class="card">
+    <h3>DimOS BRIDGE</h3>
+    <div id="dimos-status" style="font-size:.78em;color:#888;margin-bottom:6px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+     <button class="btn" onclick="dimosConnect()">CONNECT</button>
+     <input type="text" id="dimos-asset" placeholder="Asset ID" style="width:80px">
+     <select id="dimos-cmd-type">
+      <option>NAVIGATE</option><option>BREACH</option><option>SCAN</option>
+      <option>HOLD</option><option>POSTURE</option>
+     </select>
+     <button class="btn" onclick="dimosSendCmd()">SEND</button>
+    </div>
+    <div class="scroll-box" style="max-height:140px" id="dimos-log"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var currentBuilding=null, currentFloor=0, currentExecId=null, autoTimer=null;
+
+// ── API HELPERS ──
+async function apiFetch(url){try{var r=await fetch(url);return await r.json();}catch(e){return {};}}
+async function apiPost(url,data){try{var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return await r.json();}catch(e){return {};}}
+
+// ── BUILDINGS ──
+async function refreshBuildings(){
+ var d=await apiFetch('/api/buildings');
+ var buildings=d.buildings||[];
+ document.getElementById('stat-buildings').textContent=buildings.length;
+ var sel=document.getElementById('building-sel');
+ var psel=document.getElementById('plan-building');
+ sel.innerHTML='<option value="">Select building...</option>';
+ psel.innerHTML='';
+ buildings.forEach(function(b){
+  sel.innerHTML+='<option value="'+b.id+'">'+b.name+' ('+b.id+')</option>';
+  psel.innerHTML+='<option value="'+b.id+'">'+b.id+'</option>';
+ });
+}
+
+async function selectBuilding(bid){
+ if(!bid){currentBuilding=null;return;}
+ var b=await apiFetch('/api/buildings/'+bid);
+ currentBuilding=b;
+ currentFloor=0;
+ renderBuildingInfo(b);
+ renderFloorTabs(b);
+ renderFloor(b,0);
+ refreshIndoorPositions();
+}
+
+function renderBuildingInfo(b){
+ var dim=b.dimensions||{};
+ var h='<b>'+b.name+'</b> — '+dim.length_m+'×'+dim.width_m+'m, '+(b.floors_data||[]).length+' floor(s)';
+ h+=' | Walls: '+(b.walls||{}).material+' '+(b.walls||{}).thickness_cm+'cm';
+ h+=' | Clearing: <span style="color:#00ff41">'+Math.round((b.clearing_progress||0)*100)+'%</span>';
+ document.getElementById('building-info').innerHTML=h;
+}
+
+function renderFloorTabs(b){
+ var floors=b.floors_data||[];
+ var h='';
+ floors.forEach(function(f,i){
+  h+='<button class="floor-tab'+(i===currentFloor?' active':'')+'" onclick="switchFloor('+i+')">'+f.name+' (F'+f.floor+')</button>';
+ });
+ document.getElementById('floor-tabs').innerHTML=h;
+}
+
+function switchFloor(idx){
+ currentFloor=idx;
+ if(currentBuilding)renderFloor(currentBuilding,idx);
+ renderFloorTabs(currentBuilding);
+}
+
+function renderFloor(b,floorIdx){
+ var floors=b.floors_data||[];
+ if(floorIdx>=floors.length){document.getElementById('floorplan').innerHTML='No floor data';return;}
+ var f=floors[floorIdx];
+ document.getElementById('floor-label').textContent=f.name+' (Floor '+f.floor+')';
+ var h='';
+ (f.rooms||[]).forEach(function(r){
+  var cls='cqb-room';
+  if(r.cleared)cls+=' cleared';
+  h+='<div class="'+cls+'" title="'+r.id+': '+r.type+'">';
+  h+='<div class="room-name">'+r.name+'</div>';
+  h+='<div class="room-type">'+r.id+' · '+r.type+'</div>';
+  if(r.cleared)h+='<div class="room-badge">✓</div>';
+  h+='</div>';
+ });
+ document.getElementById('floorplan').innerHTML=h||'<div style="color:#666">No rooms on this floor</div>';
+ // Doors
+ var dh='';
+ (f.doors||[]).forEach(function(d){
+  var cls='cqb-door';
+  if(d.type==='reinforced')cls+=' reinforced';
+  dh+='<span class="'+cls+'">'+d.id+': '+d.from_room+'→'+d.to_room+(d.type==='reinforced'?' 🔒':'')+'</span>';
+ });
+ document.getElementById('floor-doors').innerHTML=dh;
+}
+
+// ── INDOOR POSITIONS ──
+async function refreshIndoorPositions(){
+ var d=await apiFetch('/api/indoor/positions');
+ var positions=d.positions||{};
+ var h='';
+ for(var aid in positions){
+  var p=positions[aid];
+  h+='<span class="asset-indoor" title="'+aid+'"><b>'+aid+'</b> ';
+  h+='F'+p.floor+' '+p.room+' ('+Math.round(p.confidence*100)+'%)</span>';
+ }
+ document.getElementById('indoor-positions').innerHTML=h||'<span style="color:#666">No indoor positions tracked</span>';
+}
+
+// ── PLANS ──
+async function generatePlan(){
+ var bid=document.getElementById('plan-building').value;
+ var team=document.getElementById('plan-team').value;
+ var obj=document.getElementById('plan-objective').value;
+ if(!bid){alert('Select a building');return;}
+ var result=await apiPost('/api/cqb/plan',{building_id:bid,team_size:parseInt(team),objective_room:obj});
+ if(result.error){document.getElementById('plan-result').innerHTML='<span style="color:#ff4444">'+result.error+'</span>';return;}
+ document.getElementById('plan-result').innerHTML='<span style="color:#00ff41">Plan '+result.id+' generated — '+result.stats.total_tasks+' tasks, '+result.stats.phases+' phases</span>';
+ refreshPlans();
+}
+
+async function refreshPlans(){
+ var d=await apiFetch('/api/cqb/plans');
+ var plans=d.plans||[];
+ document.getElementById('stat-plans').textContent=plans.length;
+ var sel=document.getElementById('exec-plan');
+ sel.innerHTML='<option value="">Select plan...</option>';
+ plans.forEach(function(p){
+  sel.innerHTML+='<option value="'+p.id+'">'+p.id+' ('+p.building_id+', '+p.status+')</option>';
+ });
+}
+
+// ── EXECUTION ──
+async function startExecution(){
+ var planId=document.getElementById('exec-plan').value;
+ var assetsStr=document.getElementById('exec-assets').value;
+ if(!planId){alert('Select a plan');return;}
+ var assets=assetsStr.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ if(!assets.length){alert('Enter asset IDs');return;}
+ var r=await apiPost('/api/cqb/execute',{plan_id:planId,asset_ids:assets});
+ if(r.error){alert(r.error);return;}
+ currentExecId=r.execution.id;
+ refreshExecution();
+}
+
+async function tickExec(){
+ if(!currentExecId)return;
+ var r=await apiPost('/api/cqb/execution/'+currentExecId+'/tick',{});
+ refreshExecution();
+ renderEvents(r.events||[]);
+ // Also refresh building floorplan to show cleared rooms
+ if(currentBuilding)selectBuilding(currentBuilding.id);
+}
+
+function autoTick(){
+ if(autoTimer){clearInterval(autoTimer);autoTimer=null;return;}
+ autoTimer=setInterval(function(){
+  tickExec().then(function(){
+   // Stop if complete
+   var st=document.getElementById('exec-status').textContent;
+   if(st.indexOf('COMPLETE')>=0||st.indexOf('ABORTED')>=0||st.indexOf('FAILED')>=0){
+    clearInterval(autoTimer);autoTimer=null;
+   }
+  });
+ },500);
+}
+
+async function pauseExec(){
+ if(!currentExecId)return;
+ await apiPost('/api/cqb/execution/'+currentExecId+'/pause',{});
+ refreshExecution();
+}
+async function resumeExec(){
+ if(!currentExecId)return;
+ await apiPost('/api/cqb/execution/'+currentExecId+'/resume',{});
+ refreshExecution();
+}
+async function abortExec(){
+ if(!currentExecId)return;
+ if(!confirm('Abort execution?'))return;
+ await apiPost('/api/cqb/execution/'+currentExecId+'/abort',{reason:'Operator abort'});
+ if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+ refreshExecution();
+}
+
+async function refreshExecution(){
+ if(!currentExecId)return;
+ var ex=await apiFetch('/api/cqb/execution/'+currentExecId);
+ if(ex.error){document.getElementById('exec-status').innerHTML='<span style="color:#ff4444">'+ex.error+'</span>';return;}
+ // Status
+ var scol={'RUNNING':'#ffaa00','COMPLETE':'#00ff41','PAUSED':'#4488ff','ABORTED':'#ff4444','FAILED':'#ff4444'}[ex.status]||'#888';
+ document.getElementById('exec-status').innerHTML='<b style="color:'+scol+'">'+ex.status+'</b> | Tick: '+ex.tick_count+' | Phase: '+ex.current_phase+' | Assets: '+ex.asset_ids.join(', ');
+ // Progress
+ var pct=ex.progress.pct;
+ document.getElementById('exec-progress').innerHTML='<div class="progress-bar"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div><span style="font-size:.7em;color:#888">'+pct+'% ('+ex.progress.complete+'/'+ex.progress.total+' tasks)</span>';
+ // Events
+ var eh='';
+ (ex.events||[]).slice(-15).reverse().forEach(function(e){
+  eh+='<div class="exec-event"><span class="evt-type">'+e.type+'</span>';
+  if(e.task_type)eh+=' '+e.task_type;
+  if(e.target_id)eh+=' → '+e.target_id;
+  if(e.room_id)eh+=' '+e.room_id;
+  eh+='</div>';
+ });
+ document.getElementById('exec-events').innerHTML=eh||'<span style="color:#666">No events yet</span>';
+ // Task list from plan
+ refreshTaskList(ex.plan_id);
+ refreshExecStats();
+}
+
+function renderEvents(events){
+ // Append to event log
+ var el=document.getElementById('exec-events');
+ var h='';
+ events.forEach(function(e){
+  h+='<div class="exec-event"><span class="evt-type">'+e.type+'</span>';
+  if(e.task_type)h+=' '+e.task_type;
+  if(e.target_id)h+=' → '+e.target_id;
+  h+='</div>';
+ });
+ if(h)el.innerHTML=h+el.innerHTML;
+}
+
+async function refreshTaskList(planId){
+ if(!planId)return;
+ var plan=await apiFetch('/api/cqb/plans/'+planId);
+ if(plan.error)return;
+ var h='';
+ (plan.phases||[]).forEach(function(phase,pi){
+  phase.forEach(function(t){
+   h+='<div class="task-row">';
+   h+='<span class="task-status task-'+t.status+'">'+t.status+'</span> ';
+   h+='<b>'+t.task_type+'</b> → '+t.target_id;
+   if(t.assigned_assets&&t.assigned_assets.length)h+=' ['+t.assigned_assets.join(',')+']';
+   h+=' <span style="color:#555">P'+pi+'</span>';
+   h+='</div>';
+  });
+ });
+ document.getElementById('task-list').innerHTML=h||'<span style="color:#666">No tasks</span>';
+}
+
+async function refreshExecStats(){
+ var d=await apiFetch('/api/cqb/executions');
+ document.getElementById('stat-executions').textContent=(d.executions||[]).length;
+}
+
+// ── DimOS ──
+async function dimosConnect(){
+ var r=await apiPost('/api/dimos/connect',{});
+ refreshDimosStatus();
+}
+
+async function dimosSendCmd(){
+ var aid=document.getElementById('dimos-asset').value;
+ var cmd=document.getElementById('dimos-cmd-type').value;
+ if(!aid){alert('Enter asset ID');return;}
+ await apiPost('/api/dimos/command',{asset_id:aid,command:cmd,params:{}});
+ refreshDimosLog();
+}
+
+async function refreshDimosStatus(){
+ var d=await apiFetch('/api/dimos/status');
+ if(d.error){
+  document.getElementById('stat-dimos').innerHTML='<span style="color:#ff4444">OFF</span>';
+  document.getElementById('dimos-status').innerHTML='<span style="color:#ff4444">Not available</span>';
+  return;
+ }
+ var col=d.connected?'#00ff41':'#ff4444';
+ var mode=d.standalone?'STANDALONE':'LIVE';
+ document.getElementById('stat-dimos').innerHTML='<span style="color:'+col+'">'+(d.connected?'ON':'OFF')+'</span>';
+ document.getElementById('dimos-status').innerHTML='<span style="color:'+col+'">●</span> '+(d.connected?'Connected':'Disconnected')+' ('+mode+') | '+d.host+':'+d.port+' | Cmds: '+d.commands_sent+' | Telem: '+d.telemetry_assets.length+' assets';
+}
+
+async function refreshDimosLog(){
+ var d=await apiFetch('/api/dimos/commands?limit=20');
+ var cmds=d.commands||[];
+ var h='';
+ cmds.reverse().forEach(function(c){
+  var cmd=c.command||{};
+  h+='<div class="dimos-cmd">';
+  h+='<span style="color:#4488ff">'+cmd.command+'</span> → <b>'+cmd.asset_id+'</b>';
+  if(cmd.params)h+=' '+JSON.stringify(cmd.params);
+  h+='</div>';
+ });
+ document.getElementById('dimos-log').innerHTML=h||'<span style="color:#666">No commands sent</span>';
+}
+
+// ── INIT ──
+refreshBuildings();
+refreshPlans();
+refreshDimosStatus();
+refreshDimosLog();
+setInterval(function(){
+ refreshDimosStatus();
+ if(currentBuilding)refreshIndoorPositions();
+},5000);
+</script>
+{% endblock %}

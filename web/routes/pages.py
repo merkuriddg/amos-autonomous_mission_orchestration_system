@@ -191,3 +191,7 @@ def mobile_page(): return render_template("mobile.html", **ctx())
 @bp.route("/drone-reference")
 @login_required
 def drone_reference_page(): return render_template("drone_reference.html", **ctx())
+
+@bp.route("/cqb")
+@login_required
+def cqb_page(): return render_template("cqb.html", **ctx())

@@ -13,6 +13,7 @@ PAGES = [
     "/bda", "/eob", "/wargame", "/swarm", "/isr", "/effects",
     "/space", "/hmt", "/mesh", "/scripts", "/edition", "/manual",
     "/drone-reference",
+    "/cqb",
 ]
 
 
