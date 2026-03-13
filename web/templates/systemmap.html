@@ -217,7 +217,7 @@ function updateStats(){
 // ── Load graph from DB ──
 async function loadGraph(){
   try{
-    const r=await apiFetch('/systemmap/graph');
+    const r=await apiFetch('/api/v1/systemmap/graph');
     if(r.nodes&&r.nodes.length){
       NODES=r.nodes.map(n=>({
         id:n.node_key, name:n.name, phase:n.phase,
@@ -228,7 +228,7 @@ async function loadGraph(){
       EDGE_DB=r.edges;
     } else {
       // Empty DB — auto-seed
-      await apiPost('/systemmap/seed',{});
+      await apiPost('/api/v1/systemmap/seed',{});
       return loadGraph();
     }
   }catch(e){
@@ -265,7 +265,7 @@ function initGraph(){
       .on('end',(e,d)=>{
         if(!e.active&&sim)sim.alphaTarget(0);
         // Save position to DB
-        apiPost(`/systemmap/node/${d.id}/position`,{x:d.fx||d.x,y:d.fy||d.y});
+        apiPost(`/api/v1/systemmap/node/${d.id}/position`,{x:d.fx||d.x,y:d.fy||d.y});
       })
     );
 
@@ -493,7 +493,7 @@ async function addNode(){
   const trails=document.getElementById('en-trails').value;
   const critical=document.getElementById('en-critical').checked;
   if(!key||!name){toast('Key and name required'); return;}
-  const r=await apiPost('/systemmap/node',{key,name,phase,trails,critical});
+  const r=await apiPost('/api/v1/systemmap/node',{key,name,phase,trails,critical});
   if(r.error){toast('Error: '+r.error); return;}
   toast(`Node "${name}" added`);
   document.getElementById('en-key').value='';
@@ -507,7 +507,7 @@ async function addEdge(){
   const source=document.getElementById('ee-source').value;
   const target=document.getElementById('ee-target').value;
   if(!source||!target||source===target){toast('Select two different nodes'); return;}
-  const r=await apiPost('/systemmap/edge',{source,target});
+  const r=await apiPost('/api/v1/systemmap/edge',{source,target});
   if(r.error){toast('Error: '+r.error); return;}
   toast('Edge added');
   await loadGraph();
@@ -518,19 +518,19 @@ async function deleteNode(){
   if(!key) return;
   const n=nodeById.get(key);
   if(!confirm(`Delete node "${(n||{}).name||key}" and all its edges?`)) return;
-  await apiFetch(`/systemmap/node/${key}`,{method:'DELETE'});
+  await apiFetch(`/api/v1/systemmap/node/${key}`,{method:'DELETE'});
   toast(`Node "${(n||{}).name||key}" deleted`);
   await loadGraph();
 }
 
 async function deleteEdge(edgeId){
-  await apiFetch(`/systemmap/edge/${edgeId}`,{method:'DELETE'});
+  await apiFetch(`/api/v1/systemmap/edge/${edgeId}`,{method:'DELETE'});
   toast('Edge removed');
   await loadGraph();
 }
 
 async function seedDefaults(){
-  const r=await apiPost('/systemmap/seed',{});
+  const r=await apiPost('/api/v1/systemmap/seed',{});
   toast(`Seeded ${r.added_nodes} nodes, ${r.added_edges} edges`);
   await loadGraph();
 }
