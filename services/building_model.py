@@ -194,8 +194,11 @@ class BuildingModel:
         }
 
     def to_dict(self) -> dict:
-        """Full building data."""
-        return self._raw
+        """Full building data with computed fields for the UI."""
+        d = dict(self._raw)
+        d["floors_data"] = d.get("floors", [])
+        d["clearing_progress"] = self.clearing_progress
+        return d
 
 
 class BuildingManager:
