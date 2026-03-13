@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+{% block title %}3D Tactical Viewer{% endblock %}
+{% block head %}
+<style>
+#viewer-wrap{position:relative;width:100%;height:calc(100vh - 180px);min-height:400px;background:#050505;border:1px solid #222;border-radius:3px;overflow:hidden}
+#three-canvas{width:100%;height:100%;display:block}
+#viewer-hud{position:absolute;top:8px;left:8px;font-size:.72em;color:#00ff41;pointer-events:none;text-shadow:0 0 4px #000}
+#viewer-controls{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:4px;z-index:10}
+#viewer-controls button{background:#111;border:1px solid #333;color:#00ff41;padding:3px 8px;font-size:.72em;cursor:pointer;font-family:inherit;border-radius:2px}
+#viewer-controls button:hover{border-color:#00ff41;background:#001a00}
+#viewer-controls button.active{background:#00ff41;color:#000}
+#legend{position:absolute;bottom:8px;left:8px;font-size:.65em;color:#888;pointer-events:none}
+#legend span{margin-right:10px}
+.side-panel{width:280px;min-width:280px;overflow-y:auto;max-height:calc(100vh - 110px)}
+.side-panel .card{margin-bottom:6px;padding:8px}
+.side-panel h3{font-size:.78em;margin-bottom:4px}
+.mission-badge{display:inline-block;padding:1px 6px;font-size:.75em;border-radius:2px;font-weight:bold}
+.mission-PENDING{color:#888;border:1px solid #444}
+.mission-PLANNING{color:#4488ff;border:1px solid #4488ff}
+.mission-READY{color:#4488ff;border:1px solid #4488ff}
+.mission-EXECUTING{color:#ffaa00;border:1px solid #ffaa00}
+.mission-COMPLETE{color:#00ff41;border:1px solid #00ff41}
+.mission-ABORTED{color:#ff4444;border:1px solid #ff4444}
+.track-item{padding:3px 0;font-size:.72em;border-bottom:1px solid #111}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1600px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:8px;border-bottom:1px solid #222;padding-bottom:6px">3D TACTICAL VIEWER — Indoor CQB Visualization</h2>
+
+ <!-- STATS ROW -->
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="stat-buildings">0</div><div class="label">BUILDINGS</div></div>
+  <div class="card stat"><div class="value" id="stat-tracks" style="color:#ff4444">0</div><div class="label">THREAT TRACKS</div></div>
+  <div class="card stat"><div class="value" id="stat-missions" style="color:#ffaa00">0</div><div class="label">MISSIONS</div></div>
+  <div class="card stat"><div class="value" id="stat-coverage">0%</div><div class="label">SLAM COVERAGE</div></div>
+ </div>
+
+ <div style="display:flex;gap:8px">
+  <!-- LEFT PANEL -->
+  <div class="side-panel">
+   <div class="card">
+    <h3>BUILDING</h3>
+    <select id="building-sel" onchange="loadBuilding(this.value)" style="width:100%;margin-bottom:4px"></select>
+    <div id="building-info" style="font-size:.72em;color:#888"></div>
+   </div>
+   <div class="card">
+    <h3>FLOOR</h3>
+    <div id="floor-btns"></div>
+   </div>
+   <div class="card">
+    <h3>VIEW LAYERS</h3>
+    <label style="font-size:.72em;display:block;margin:2px 0"><input type="checkbox" id="chk-rooms" checked onchange="toggleLayer('rooms')"> Rooms</label>
+    <label style="font-size:.72em;display:block;margin:2px 0"><input type="checkbox" id="chk-doors" checked onchange="toggleLayer('doors')"> Doors</label>
+    <label style="font-size:.72em;display:block;margin:2px 0"><input type="checkbox" id="chk-assets" checked onchange="toggleLayer('assets')"> Assets</label>
+    <label style="font-size:.72em;display:block;margin:2px 0"><input type="checkbox" id="chk-tracks" checked onchange="toggleLayer('tracks')"> Threat Tracks</label>
+    <label style="font-size:.72em;display:block;margin:2px 0"><input type="checkbox" id="chk-grid" checked onchange="toggleLayer('grid')"> SLAM Grid</label>
+   </div>
+   <div class="card">
+    <h3>ACTIVE MISSIONS</h3>
+    <div id="mission-list" style="max-height:180px;overflow-y:auto"></div>
+   </div>
+   <div class="card">
+    <h3>THREAT TRACKS</h3>
+    <div id="track-list" class="scroll-box" style="max-height:160px"></div>
+   </div>
+   <div class="card">
+    <h3>INDOOR POSITIONS</h3>
+    <div id="indoor-list" class="scroll-box" style="max-height:140px;font-size:.72em"></div>
+   </div>
+  </div>
+
+  <!-- 3D VIEWER -->
+  <div style="flex:1">
+   <div id="viewer-wrap">
+    <canvas id="three-canvas"></canvas>
+    <div id="viewer-hud">
+     <div id="hud-building">No building loaded</div>
+     <div id="hud-floor">Floor: --</div>
+     <div id="hud-camera">Camera: Orbit</div>
+    </div>
+    <div id="viewer-controls">
+     <button onclick="resetCamera()">⟲ RESET</button>
+     <button onclick="viewTop()" title="Top-down view">⬆ TOP</button>
+     <button onclick="viewAngle()" title="45° angle">◢ ANGLE</button>
+     <button onclick="viewFPS()" title="First-person perspective">👁 FPS</button>
+    </div>
+    <div id="legend">
+     <span style="color:#00ff41">■</span> Cleared
+     <span style="color:#ffaa00">■</span> Active
+     <span style="color:#ff4444">■</span> Hostile
+     <span style="color:#333">■</span> Unknown
+     <span style="color:#4488ff">●</span> Friendly
+     <span style="color:#ff44ff">◆</span> Threat Track
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  THREE.JS SCENE SETUP
+// ═══════════════════════════════════════════════════════════
+var scene, camera, renderer, controls;
+var buildingGroup, roomGroup, doorGroup, assetGroup, trackGroup, gridGroup;
+var currentBldg=null, currentFloor=0, buildings=[];
+var layers={rooms:true,doors:true,assets:true,tracks:true,grid:true};
+var SCALE=1; // 1 unit = 1 meter
+
+function initScene(){
+ var canvas=document.getElementById('three-canvas');
+ var w=canvas.parentElement.clientWidth, h=canvas.parentElement.clientHeight;
+
+ scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x050505);
+ scene.fog=new THREE.Fog(0x050505,80,200);
+
+ camera=new THREE.PerspectiveCamera(55,w/h,0.1,500);
+ camera.position.set(15,20,15);
+ camera.lookAt(0,0,0);
+
+ renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
+ renderer.setSize(w,h);
+ renderer.setPixelRatio(window.devicePixelRatio);
+ renderer.shadowMap.enabled=true;
+
+ // Lights
+ var amb=new THREE.AmbientLight(0x222222,1.0);
+ scene.add(amb);
+ var dir=new THREE.DirectionalLight(0xffffff,0.6);
+ dir.position.set(20,30,20);
+ dir.castShadow=true;
+ scene.add(dir);
+ var pt=new THREE.PointLight(0x00ff41,0.3,50);
+ pt.position.set(0,15,0);
+ scene.add(pt);
+
+ // Grid floor
+ var gf=new THREE.GridHelper(60,60,0x111111,0x0a0a0a);
+ gf.position.y=-0.01;
+ scene.add(gf);
+
+ // Layer groups
+ buildingGroup=new THREE.Group(); scene.add(buildingGroup);
+ roomGroup=new THREE.Group(); buildingGroup.add(roomGroup);
+ doorGroup=new THREE.Group(); buildingGroup.add(doorGroup);
+ assetGroup=new THREE.Group(); buildingGroup.add(assetGroup);
+ trackGroup=new THREE.Group(); buildingGroup.add(trackGroup);
+ gridGroup=new THREE.Group(); buildingGroup.add(gridGroup);
+
+ // Simple orbit controls (manual)
+ var isDrag=false, prevX=0, prevY=0, theta=Math.PI/4, phi=Math.PI/4, radius=30;
+ function updateOrbit(){
+  camera.position.x=radius*Math.sin(phi)*Math.cos(theta);
+  camera.position.y=radius*Math.cos(phi);
+  camera.position.z=radius*Math.sin(phi)*Math.sin(theta);
+  camera.lookAt(0,0,0);
+ }
+ canvas.addEventListener('mousedown',function(e){isDrag=true;prevX=e.clientX;prevY=e.clientY;});
+ canvas.addEventListener('mousemove',function(e){
+  if(!isDrag)return;
+  var dx=e.clientX-prevX, dy=e.clientY-prevY;
+  theta+=dx*0.005; phi+=dy*0.005;
+  phi=Math.max(0.1,Math.min(Math.PI/2-0.01,phi));
+  prevX=e.clientX;prevY=e.clientY;
+  updateOrbit();
+ });
+ canvas.addEventListener('mouseup',function(){isDrag=false;});
+ canvas.addEventListener('wheel',function(e){
+  radius+=e.deltaY*0.05;
+  radius=Math.max(5,Math.min(100,radius));
+  updateOrbit();
+  e.preventDefault();
+ },{passive:false});
+
+ window._orbit={theta:theta,phi:phi,radius:radius,update:updateOrbit};
+ updateOrbit();
+
+ window.addEventListener('resize',function(){
+  var w=canvas.parentElement.clientWidth, h=canvas.parentElement.clientHeight;
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+ });
+
+ animate();
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ // Pulse threat tracks
+ if(trackGroup){
+  trackGroup.children.forEach(function(m,i){
+   m.material.opacity=0.5+0.3*Math.sin(Date.now()*0.003+i);
+  });
+ }
+ renderer.render(scene,camera);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VIEW CONTROLS
+// ═══════════════════════════════════════════════════════════
+function resetCamera(){
+ window._orbit.theta=Math.PI/4;window._orbit.phi=Math.PI/4;window._orbit.radius=30;
+ window._orbit.update();
+ document.getElementById('hud-camera').textContent='Camera: Orbit';
+}
+function viewTop(){
+ window._orbit.theta=0;window._orbit.phi=0.1;window._orbit.radius=30;
+ window._orbit.update();
+ document.getElementById('hud-camera').textContent='Camera: Top-Down';
+}
+function viewAngle(){
+ window._orbit.theta=Math.PI/6;window._orbit.phi=Math.PI/5;window._orbit.radius=35;
+ window._orbit.update();
+ document.getElementById('hud-camera').textContent='Camera: 45° Angle';
+}
+function viewFPS(){
+ camera.position.set(2,1.7,2);camera.lookAt(10,1.5,5);
+ document.getElementById('hud-camera').textContent='Camera: FPS';
+}
+
+function toggleLayer(name){
+ layers[name]=document.getElementById('chk-'+name).checked;
+ if(name==='rooms')roomGroup.visible=layers.rooms;
+ if(name==='doors')doorGroup.visible=layers.doors;
+ if(name==='assets')assetGroup.visible=layers.assets;
+ if(name==='tracks')trackGroup.visible=layers.tracks;
+ if(name==='grid')gridGroup.visible=layers.grid;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILDING RENDERING
+// ═══════════════════════════════════════════════════════════
+function clearScene(){
+ [roomGroup,doorGroup,assetGroup,trackGroup,gridGroup].forEach(function(g){
+  while(g.children.length>0)g.remove(g.children[0]);
+ });
+}
+
+function renderFloor(bldg,floorIdx){
+ clearScene();
+ var floors=bldg.floors_data||[];
+ if(floorIdx>=floors.length)return;
+ var f=floors[floorIdx];
+ currentFloor=floorIdx;
+
+ // Floor plane
+ var dim=bldg.dimensions||{};
+ var fw=dim.length_m||20, fh=dim.width_m||15;
+ var floorGeo=new THREE.PlaneGeometry(fw,fh);
+ var floorMat=new THREE.MeshPhongMaterial({color:0x0a0a0a,transparent:true,opacity:0.8});
+ var floorMesh=new THREE.Mesh(floorGeo,floorMat);
+ floorMesh.rotation.x=-Math.PI/2;
+ floorMesh.position.set(fw/2,0,fh/2);
+ floorMesh.receiveShadow=true;
+ roomGroup.add(floorMesh);
+
+ // Rooms
+ (f.rooms||[]).forEach(function(r){
+  var b=r.bounds||{};
+  var rx=(b.x_min||0), ry=(b.y_min||0);
+  var rw=(b.x_max||5)-(b.x_min||0), rd=(b.y_max||5)-(b.y_min||0);
+  var wallH=2.8;
+
+  // Room floor
+  var col=0x111111;
+  if(r.cleared)col=0x001a00;
+  var roomGeo=new THREE.PlaneGeometry(rw,rd);
+  var roomMat=new THREE.MeshPhongMaterial({color:col,transparent:true,opacity:0.6});
+  var roomMesh=new THREE.Mesh(roomGeo,roomMat);
+  roomMesh.rotation.x=-Math.PI/2;
+  roomMesh.position.set(rx+rw/2,0.01,ry+rd/2);
+  roomGroup.add(roomMesh);
+
+  // Room outline (wireframe)
+  var outline=0x333333;
+  if(r.cleared)outline=0x00ff41;
+  var edges=new THREE.EdgesGeometry(new THREE.BoxGeometry(rw,wallH,rd));
+  var line=new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:outline,transparent:true,opacity:0.6}));
+  line.position.set(rx+rw/2,wallH/2,ry+rd/2);
+  roomGroup.add(line);
+
+  // Room label (sprite)
+  var lbl=makeLabel(r.name||r.id,rx+rw/2,wallH+0.3,ry+rd/2,r.cleared?'#00ff41':'#888');
+  roomGroup.add(lbl);
+ });
+
+ // Doors
+ (f.doors||[]).forEach(function(d){
+  var rooms=f.rooms||[];
+  var toRoom=rooms.find(function(r){return r.id===d.to_room;});
+  if(!toRoom)return;
+  var b=toRoom.bounds||{};
+  var dx=(b.x_min||0), dz=(b.y_min||0);
+  var doorGeo=new THREE.BoxGeometry(0.3,2.0,1.0);
+  var doorCol=d.type==='reinforced'?0xff4444:0xffaa00;
+  var doorMat=new THREE.MeshPhongMaterial({color:doorCol,transparent:true,opacity:0.7});
+  var doorMesh=new THREE.Mesh(doorGeo,doorMat);
+  doorMesh.position.set(dx,1.0,dz+0.5);
+  doorGroup.add(doorMesh);
+ });
+
+ document.getElementById('hud-floor').textContent='Floor: '+(f.name||'F'+f.floor);
+ renderFloorBtns(bldg);
+}
+
+function makeLabel(text,x,y,z,color){
+ var canvas=document.createElement('canvas');
+ canvas.width=256;canvas.height=64;
+ var ctx=canvas.getContext('2d');
+ ctx.fillStyle=color||'#888';
+ ctx.font='bold 24px monospace';
+ ctx.textAlign='center';
+ ctx.fillText(text,128,40);
+ var tex=new THREE.CanvasTexture(canvas);
+ var mat=new THREE.SpriteMaterial({map:tex,transparent:true});
+ var sprite=new THREE.Sprite(mat);
+ sprite.position.set(x,y,z);
+ sprite.scale.set(4,1,1);
+ return sprite;
+}
+
+function renderFloorBtns(bldg){
+ var floors=bldg.floors_data||[];
+ var h='';
+ floors.forEach(function(f,i){
+  h+='<button class="floor-tab'+(i===currentFloor?' active':'')+'" onclick="switchFloor('+i+')">'+f.name+' (F'+f.floor+')</button>';
+ });
+ document.getElementById('floor-btns').innerHTML=h;
+}
+function switchFloor(idx){
+ if(currentBldg)renderFloor(currentBldg,idx);
+ refreshAssets();refreshTracks();refreshGrid();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ASSET RENDERING
+// ═══════════════════════════════════════════════════════════
+function renderAssets(positions){
+ while(assetGroup.children.length)assetGroup.remove(assetGroup.children[0]);
+ for(var aid in positions){
+  var p=positions[aid];
+  if(currentBldg && p.building_id!==currentBldg.id)continue;
+  if(p.floor!==currentFloor)continue;
+  // Asset marker — blue cone
+  var geo=new THREE.ConeGeometry(0.3,0.8,6);
+  var mat=new THREE.MeshPhongMaterial({color:0x4488ff,emissive:0x112244});
+  var mesh=new THREE.Mesh(geo,mat);
+  mesh.position.set(p.x_m||0,0.5,p.y_m||0);
+  assetGroup.add(mesh);
+  // Label
+  var lbl=makeLabel(aid,p.x_m||0,1.5,p.y_m||0,'#4488ff');
+  assetGroup.add(lbl);
+ }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  THREAT TRACK RENDERING
+// ═══════════════════════════════════════════════════════════
+function renderThreatTracks(tracks){
+ while(trackGroup.children.length)trackGroup.remove(trackGroup.children[0]);
+ (tracks||[]).forEach(function(t){
+  if(currentBldg && t.building_id!==currentBldg.id)return;
+  if(t.floor!==currentFloor)return;
+  var col=0xff44ff;
+  if(t.classification&&t.classification.indexOf('hostile')>=0)col=0xff4444;
+  if(t.classification==='civilian')col=0xffff00;
+  if(t.status==='neutralized')col=0x444444;
+  var geo=new THREE.OctahedronGeometry(0.4);
+  var mat=new THREE.MeshPhongMaterial({color:col,transparent:true,opacity:0.7,emissive:col,emissiveIntensity:0.3});
+  var mesh=new THREE.Mesh(geo,mat);
+  mesh.position.set(t.x_m||0,0.6,t.y_m||0);
+  trackGroup.add(mesh);
+  // Label
+  var lbl=makeLabel(t.classification||'?',t.x_m||0,1.5,t.y_m||0,'#ff4444');
+  trackGroup.add(lbl);
+ });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SLAM GRID RENDERING
+// ═══════════════════════════════════════════════════════════
+function renderSlamGrid(gridData){
+ while(gridGroup.children.length)gridGroup.remove(gridGroup.children[0]);
+ if(!gridData||!gridData.explored_pct)return;
+ // Coverage indicator plane
+ var dim=currentBldg?(currentBldg.dimensions||{}):{length_m:20,width_m:15};
+ var w=dim.length_m||20, h=dim.width_m||15;
+ var pct=gridData.explored_pct/100;
+ var geo=new THREE.PlaneGeometry(w*pct,h*pct);
+ var mat=new THREE.MeshPhongMaterial({color:0x00ff41,transparent:true,opacity:0.08});
+ var mesh=new THREE.Mesh(geo,mat);
+ mesh.rotation.x=-Math.PI/2;
+ mesh.position.set(w/2,0.02,h/2);
+ gridGroup.add(mesh);
+ // Edge glow
+ var edgeGeo=new THREE.EdgesGeometry(geo);
+ var edgeMat=new THREE.LineBasicMaterial({color:0x00ff41,transparent:true,opacity:0.3});
+ var edgeMesh=new THREE.LineSegments(edgeGeo,edgeMat);
+ edgeMesh.rotation.x=-Math.PI/2;
+ edgeMesh.position.set(w/2,0.02,h/2);
+ gridGroup.add(edgeMesh);
+
+ document.getElementById('stat-coverage').textContent=gridData.explored_pct+'%';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATA FETCHING
+// ═══════════════════════════════════════════════════════════
+async function apiFetch(url){try{var r=await fetch(url);return await r.json();}catch(e){return {};}}
+async function apiPost(url,d){try{var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});return await r.json();}catch(e){return {};}}
+
+async function refreshBuildings(){
+ var d=await apiFetch('/api/buildings');
+ buildings=d.buildings||[];
+ document.getElementById('stat-buildings').textContent=buildings.length;
+ var sel=document.getElementById('building-sel');
+ sel.innerHTML='<option value="">Select building...</option>';
+ buildings.forEach(function(b){
+  sel.innerHTML+='<option value="'+b.id+'">'+b.name+' ('+b.id+')</option>';
+ });
+}
+
+async function loadBuilding(bid){
+ if(!bid){currentBldg=null;clearScene();return;}
+ var b=await apiFetch('/api/buildings/'+bid);
+ currentBldg=b;currentFloor=0;
+ var dim=b.dimensions||{};
+ document.getElementById('building-info').innerHTML='<b>'+b.name+'</b><br>'+dim.length_m+'×'+dim.width_m+'m, '+(b.floors_data||[]).length+' floors<br>Walls: '+(b.walls||{}).material;
+ document.getElementById('hud-building').textContent=b.name+' ('+b.id+')';
+ renderFloor(b,0);
+ refreshAssets();refreshTracks();refreshGrid();
+}
+
+async function refreshAssets(){
+ var d=await apiFetch('/api/indoor/positions');
+ var positions=d.positions||{};
+ renderAssets(positions);
+ // Update indoor list
+ var h='';
+ for(var aid in positions){
+  var p=positions[aid];
+  h+='<div style="padding:2px 0;border-bottom:1px solid #111"><b style="color:#4488ff">'+aid+'</b> F'+p.floor+' '+p.room+' ('+Math.round(p.confidence*100)+'%)</div>';
+ }
+ document.getElementById('indoor-list').innerHTML=h||'<span style="color:#666">No indoor positions</span>';
+}
+
+async function refreshTracks(){
+ if(!currentBldg)return;
+ var d=await apiFetch('/api/perception/tracks?building_id='+currentBldg.id+'&floor='+currentFloor);
+ var tracks=d.tracks||[];
+ document.getElementById('stat-tracks').textContent=tracks.length;
+ renderThreatTracks(tracks);
+ // Track list
+ var h='';
+ tracks.forEach(function(t){
+  var col=t.status==='neutralized'?'#444':'#ff4444';
+  h+='<div class="track-item"><span style="color:'+col+'">◆</span> <b>'+t.id+'</b> '+(t.classification||'?')+' <span style="color:#555">'+t.room_id+' ('+t.source_count+' src)</span></div>';
+ });
+ document.getElementById('track-list').innerHTML=h||'<span style="color:#666">No tracks</span>';
+}
+
+async function refreshGrid(){
+ if(!currentBldg)return;
+ var d=await apiFetch('/api/perception/grid?building_id='+currentBldg.id+'&floor='+currentFloor);
+ if(!d.error)renderSlamGrid(d);
+}
+
+async function refreshMissions(){
+ var d=await apiFetch('/api/squad/missions');
+ var missions=d.missions||[];
+ document.getElementById('stat-missions').textContent=missions.length;
+ var h='';
+ missions.forEach(function(m){
+  h+='<div style="padding:4px 0;border-bottom:1px solid #111;font-size:.72em">';
+  h+='<span class="mission-badge mission-'+m.status+'">'+m.status+'</span> ';
+  h+='<b>'+m.id.substring(0,16)+'</b><br>';
+  h+='<span style="color:#888">'+m.objective.substring(0,40)+'</span>';
+  if(m.aar)h+='<br><span style="color:#00ff41">AAR: '+m.aar.completed_tasks+'/'+m.aar.total_tasks+' tasks</span>';
+  h+='</div>';
+ });
+ document.getElementById('mission-list').innerHTML=h||'<span style="color:#666;font-size:.72em">No missions</span>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+initScene();
+refreshBuildings();
+refreshMissions();
+setInterval(function(){
+ refreshAssets();refreshTracks();refreshGrid();refreshMissions();
+},4000);
+</script>
+{% endblock %}

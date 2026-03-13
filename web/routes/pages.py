@@ -195,3 +195,7 @@ def drone_reference_page(): return render_template("drone_reference.html", **ctx
 @bp.route("/cqb")
 @login_required
 def cqb_page(): return render_template("cqb.html", **ctx())
+
+@bp.route("/tactical3d")
+@login_required
+def tactical3d_page(): return render_template("tactical3d.html", **ctx())

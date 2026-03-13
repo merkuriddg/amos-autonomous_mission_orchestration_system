@@ -14,6 +14,7 @@ PAGES = [
     "/space", "/hmt", "/mesh", "/scripts", "/edition", "/manual",
     "/drone-reference",
     "/cqb",
+    "/tactical3d",
 ]
 
 
