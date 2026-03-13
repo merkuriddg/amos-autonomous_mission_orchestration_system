@@ -415,6 +415,7 @@ threats:
 platoon:
   name: MAVRIX-1 Robotic Platoon
   callsign: SHADOW FORGE
+  environment_type: outdoor_open   # outdoor_open | outdoor_urban | indoor_cqb
   base:
     lat: 35.689
     lng: 51.312

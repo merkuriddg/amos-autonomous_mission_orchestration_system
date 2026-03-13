@@ -21,7 +21,8 @@ from db.persistence import (flush_periodic as db_flush, persist_engagement, pers
 # ═══════════════════════════════════════════════════════════
 #  CORE DATA MODELS
 # ═══════════════════════════════════════════════════════════
-from core.data_model import Track, Detection, Command, SensorReading, VideoFrame, Message
+from core.data_model import (Track, Detection, Command, SensorReading, VideoFrame, Message,
+                             AssetState, IndoorPosition, ENVIRONMENT_TYPES)
 from core.schema_validator import SchemaValidator
 from core.adapter_base import AdapterManager, LegacyBridgeAdapter
 from core.event_bus import EventBus
@@ -147,14 +148,23 @@ swarms = {}
 sim_clock = {"start_time": time.time(), "elapsed_sec": 0, "speed": 1.0, "running": True}
 
 # ═══════════════════════════════════════════════════════════
+#  ENVIRONMENT TYPE (B1 bipedal seed)
+# ═══════════════════════════════════════════════════════════
+_env_type_raw = platoon.get("environment_type", "outdoor_open")
+environment_type = _env_type_raw if _env_type_raw in ENVIRONMENT_TYPES else "outdoor_open"
+print(f"[AMOS] Environment type: {environment_type}")
+
+# ═══════════════════════════════════════════════════════════
 #  LOAD ASSETS + THREATS FROM CONFIG
 # ═══════════════════════════════════════════════════════════
 sim_assets = {}
+asset_states = {}  # {asset_id: AssetState} — extended bipedal state (B1 seed)
 for a in config.get("assets", []):
     sp = a.get("spawn", {})
     is_air = a.get("domain") == "air"
-    sim_assets[a["id"]] = {
-        "id": a["id"], "type": a.get("type", ""), "domain": a.get("domain", ""),
+    aid = a["id"]
+    sim_assets[aid] = {
+        "id": aid, "type": a.get("type", ""), "domain": a.get("domain", ""),
         "role": a.get("role", ""), "autonomy_tier": a.get("autonomy_tier", 1),
         "sensors": a.get("sensors", []), "weapons": a.get("weapons", []),
         "endurance_hr": a.get("endurance_hr", 0),
@@ -171,6 +181,8 @@ for a in config.get("assets", []):
                      "ammo_rounds": random.randint(50, 200) if a.get("weapons") else 0,
                      "water_hr": random.randint(8, 48), "rations_hr": random.randint(12, 72)},
     }
+    # Create default AssetState (all fields at safe defaults)
+    asset_states[aid] = AssetState(asset_id=aid, environment_type=environment_type)
 print(f"[AMOS] Loaded {len(sim_assets)} assets (config)")
 
 sim_threats = {}
@@ -283,6 +295,8 @@ def _generate_theater_forces():
                                      "rations_hr": random.randint(12, 72)},
                         "theater": key,
                     }
+                    # Create default AssetState for theater asset
+                    asset_states[aid] = AssetState(asset_id=aid, environment_type=environment_type)
                     generated_assets += 1
 
         # Generate threats

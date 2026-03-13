@@ -44,6 +44,41 @@ AFFILIATIONS = ("FRIENDLY", "HOSTILE", "NEUTRAL", "UNKNOWN", "SUSPECT")
 # Domain codes
 DOMAINS = ("air", "ground", "maritime", "space", "cyber")
 
+# ── B1 Bipedal Seeds ───────────────────────────────────────
+# Environment types — gates formation options, engagement ranges, UI view
+ENVIRONMENT_TYPES = ("outdoor_open", "outdoor_urban", "indoor_cqb")
+
+# Bipedal body postures (distinct from ROE posture which is weapons posture)
+BIPED_POSTURES = (
+    "standing", "crouching", "prone", "climbing",
+    "breaching", "carrying", "seated", "unknown",
+)
+
+# Movement / tactical stances
+BIPED_STANCES = (
+    "ready", "moving", "covering", "engaging",
+    "disabled", "idle", "patrolling", "unknown",
+)
+
+# Manipulation states (what the biped's manipulators are doing)
+MANIPULATION_STATES = (
+    "idle", "gripping", "carrying_load", "operating_tool",
+    "weapon_ready", "weapon_stowed", "unknown",
+)
+
+# Cover status
+COVER_STATUSES = ("none", "partial", "full")
+
+# CQB formation types (meter-scale, complement existing km-scale formations)
+CQB_FORMATIONS = (
+    "STACK",              # single-file at doorway, 1m spacing
+    "BUTTONHOOK",         # pairs split left/right through doorway
+    "CRISSCROSS",         # alternating cross-entry for room clearing
+    "BOUNDING_OVERWATCH", # one team moves, one covers, alternate
+    "PERIMETER",          # surround structure at entry points
+    "CORRIDOR",           # staggered wall-hugging movement
+)
+
 
 # ═══════════════════════════════════════════════════════════
 #  TRACK
@@ -385,6 +420,106 @@ class DataProvenance:
 
 
 # ═══════════════════════════════════════════════════════════
+#  INDOOR POSITION (GPS-denied environments)
+# ═══════════════════════════════════════════════════════════
+
+@dataclass
+class IndoorPosition:
+    """Position within a building for GPS-denied CQB operations.
+
+    Uses local coordinate frame (meters) relative to building origin.
+    Populated by SLAM, UWB, IMU, or visual odometry sources.
+    """
+    building_id: str = ""
+    floor: int = 0
+    room: str = ""                # room identifier (e.g. "R-102")
+    x_m: float = 0.0             # local X (meters from building origin)
+    y_m: float = 0.0             # local Y
+    z_m: float = 0.0             # local Z (height within building)
+    confidence: float = 0.0      # 0-1, SLAM quality
+    source: str = ""             # slam, uwb, imu, visual_odom
+    last_update: str = field(default_factory=_now_iso)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "IndoorPosition":
+        if d is None:
+            return cls()
+        known = {f.name for f in cls.__dataclass_fields__.values()}
+        return cls(**{k: v for k, v in d.items() if k in known})
+
+
+# ═══════════════════════════════════════════════════════════
+#  ASSET STATE (extended state model for bipedal/ground assets)
+# ═══════════════════════════════════════════════════════════
+
+@dataclass
+class AssetState:
+    """Extended runtime state for an asset — especially bipedal platforms.
+
+    All fields are optional (default to None/unknown) so existing outdoor
+    wheeled/aerial assets are unaffected.  Bipedal platforms populate these
+    fields via their adapter (e.g. DimOS bridge, ROS2 telemetry).
+    """
+    asset_id: str = ""                              # links to sim_assets key
+    posture: str = "unknown"                        # standing, crouching, prone, …
+    stance: str = "unknown"                         # ready, moving, covering, …
+    manipulation_state: str = "unknown"              # idle, gripping, carrying_load, …
+    cover_status: str = "none"                       # none, partial, full
+    fatigue_pct: float = 100.0                       # 100 = fresh, 0 = depleted
+    indoor_position: Optional[IndoorPosition] = None # non-None only in indoor_cqb
+    environment_type: str = "outdoor_open"            # from platoon config
+    last_update: str = field(default_factory=_now_iso)
+    metadata: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        # indoor_position may be None — keep it clean
+        if self.indoor_position is None:
+            d["indoor_position"] = None
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AssetState":
+        known = {f.name for f in cls.__dataclass_fields__.values()}
+        filtered = {k: v for k, v in d.items() if k in known}
+        # Hydrate nested IndoorPosition if present
+        ip = filtered.get("indoor_position")
+        if ip and isinstance(ip, dict):
+            filtered["indoor_position"] = IndoorPosition.from_dict(ip)
+        return cls(**filtered)
+
+    def validate(self) -> list:
+        """Return list of validation errors (empty = valid)."""
+        errors = []
+        if self.posture not in BIPED_POSTURES:
+            errors.append(f"posture '{self.posture}' invalid")
+        if self.stance not in BIPED_STANCES:
+            errors.append(f"stance '{self.stance}' invalid")
+        if self.manipulation_state not in MANIPULATION_STATES:
+            errors.append(f"manipulation_state '{self.manipulation_state}' invalid")
+        if self.cover_status not in COVER_STATUSES:
+            errors.append(f"cover_status '{self.cover_status}' invalid")
+        if not (0 <= self.fatigue_pct <= 100):
+            errors.append(f"fatigue_pct {self.fatigue_pct} out of range 0-100")
+        if self.environment_type not in ENVIRONMENT_TYPES:
+            errors.append(f"environment_type '{self.environment_type}' invalid")
+        return errors
+
+    @property
+    def is_mobile(self) -> bool:
+        """Whether the asset can currently move."""
+        return self.stance not in ("disabled",) and self.fatigue_pct > 0
+
+    @property
+    def is_indoor(self) -> bool:
+        """Whether the asset is operating in GPS-denied indoor environment."""
+        return self.environment_type == "indoor_cqb" and self.indoor_position is not None
+
+
+# ═══════════════════════════════════════════════════════════
 #  FACTORY / CONVERSION HELPERS
 # ═══════════════════════════════════════════════════════════
 
@@ -396,6 +531,8 @@ _TYPE_MAP = {
     "VideoFrame": VideoFrame,
     "Message": Message,
     "DataProvenance": DataProvenance,
+    "AssetState": AssetState,
+    "IndoorPosition": IndoorPosition,
 }
 
 
