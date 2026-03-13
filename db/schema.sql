@@ -154,3 +154,28 @@ CREATE TABLE IF NOT EXISTS asset_locks (
     expires_at      TIMESTAMP    NULL,
     INDEX idx_locked_by (locked_by)
 ) ENGINE=InnoDB;
+
+-- ─── SYSTEM MAP NODES ────────────────────────────────
+CREATE TABLE IF NOT EXISTS system_map_nodes (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    node_key        VARCHAR(64)  NOT NULL UNIQUE,
+    name            VARCHAR(120) NOT NULL,
+    phase           VARCHAR(20)  NOT NULL DEFAULT 'left',
+    critical        TINYINT(1)   NOT NULL DEFAULT 0,
+    trails          JSON         NOT NULL,
+    pos_x           DOUBLE       DEFAULT NULL,
+    pos_y           DOUBLE       DEFAULT NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ─── SYSTEM MAP EDGES ────────────────────────────────
+CREATE TABLE IF NOT EXISTS system_map_edges (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    source_key      VARCHAR(64)  NOT NULL,
+    target_key      VARCHAR(64)  NOT NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_edge (source_key, target_key),
+    INDEX idx_source (source_key),
+    INDEX idx_target (target_key)
+) ENGINE=InnoDB;

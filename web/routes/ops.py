@@ -1748,3 +1748,194 @@ def api_drone_ref_detail(model_id):
     if entry:
         return jsonify(entry)
     return jsonify({"error": "Not found"}), 404
+
+
+# ═══════════════════════════════════════════════════════════
+#  SYSTEM MAP — Living Dependency Graph CRUD
+# ═══════════════════════════════════════════════════════════
+
+_SYSMAP_DEFAULT_NODES = [
+    {"key": "sensors", "name": "Sensors", "phase": "left", "critical": True, "trails": ["ISR", "EW", "SIGINT"]},
+    {"key": "building_model", "name": "Building Model", "phase": "left", "critical": True, "trails": ["CQB", "Indoor"]},
+    {"key": "indoor_positioning", "name": "Indoor Positioning", "phase": "left", "critical": True, "trails": ["Indoor", "Navigation"]},
+    {"key": "perception_fusion", "name": "Perception Fusion", "phase": "left", "critical": True, "trails": ["ISR", "CQB", "Fusion"]},
+    {"key": "isr_atr", "name": "ISR / ATR", "phase": "left", "critical": False, "trails": ["ISR", "Prediction"]},
+    {"key": "threat_predictions", "name": "Threat Predictions", "phase": "left", "critical": False, "trails": ["Prediction", "HAL"]},
+    {"key": "hal", "name": "HAL Autonomy", "phase": "left", "critical": True, "trails": ["Decision", "ROE"]},
+    {"key": "roe", "name": "ROE Engine", "phase": "left", "critical": True, "trails": ["Decision", "Legal"]},
+    {"key": "killweb", "name": "Kill Web", "phase": "left", "critical": False, "trails": ["F2T2EA"]},
+    {"key": "cqb_planner", "name": "CQB Planner", "phase": "left", "critical": True, "trails": ["CQB", "Planning"]},
+    {"key": "squad_supervisor", "name": "Squad Supervisor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"]},
+    {"key": "cqb_executor", "name": "CQB Executor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"]},
+    {"key": "dimos_bridge", "name": "DimOS Bridge", "phase": "bang", "critical": True, "trails": ["Robotics", "Integration"]},
+    {"key": "countermeasures", "name": "Countermeasures", "phase": "bang", "critical": False, "trails": ["Kinetic", "Effects"]},
+    {"key": "effects_chain", "name": "Effects Chain", "phase": "bang", "critical": False, "trails": ["Cross-domain"]},
+    {"key": "swarm", "name": "Swarm Orchestrator", "phase": "bang", "critical": False, "trails": ["Swarm", "Execution"]},
+    {"key": "bda", "name": "Battle Damage Assessment", "phase": "right", "critical": False, "trails": ["Assessment"]},
+    {"key": "aar", "name": "After Action Review", "phase": "right", "critical": False, "trails": ["Assessment", "Learning"]},
+    {"key": "docs", "name": "Docs / Reports", "phase": "right", "critical": False, "trails": ["Reporting"]},
+    {"key": "retask", "name": "Re-task Loop", "phase": "right", "critical": True, "trails": ["Adaptation", "Feedback"]},
+    {"key": "event_bus", "name": "Event Bus", "phase": "cross", "critical": True, "trails": ["Backbone"]},
+    {"key": "mesh_network", "name": "Mesh Network", "phase": "cross", "critical": True, "trails": ["Comms"]},
+    {"key": "integrations", "name": "Integration Layer", "phase": "cross", "critical": False, "trails": ["Bridge"]},
+    {"key": "manual_human", "name": "Human-in-Loop", "phase": "cross", "critical": True, "trails": ["Command"]},
+]
+
+_SYSMAP_DEFAULT_EDGES = [
+    ("sensors", "perception_fusion"), ("building_model", "cqb_planner"),
+    ("indoor_positioning", "cqb_executor"), ("perception_fusion", "isr_atr"),
+    ("perception_fusion", "threat_predictions"), ("isr_atr", "threat_predictions"),
+    ("threat_predictions", "hal"), ("hal", "roe"), ("roe", "killweb"),
+    ("roe", "cqb_planner"), ("cqb_planner", "squad_supervisor"),
+    ("squad_supervisor", "cqb_executor"), ("cqb_executor", "dimos_bridge"),
+    ("cqb_executor", "countermeasures"), ("countermeasures", "bda"),
+    ("effects_chain", "bda"), ("dimos_bridge", "bda"), ("swarm", "countermeasures"),
+    ("bda", "aar"), ("aar", "docs"), ("aar", "retask"), ("retask", "cqb_planner"),
+    ("event_bus", "perception_fusion"), ("event_bus", "squad_supervisor"),
+    ("event_bus", "cqb_executor"), ("mesh_network", "dimos_bridge"),
+    ("integrations", "dimos_bridge"), ("manual_human", "roe"),
+    ("manual_human", "squad_supervisor"), ("killweb", "effects_chain"),
+    ("killweb", "countermeasures"),
+]
+
+
+@bp.route("/systemmap/graph")
+@login_required
+def api_systemmap_graph():
+    """Return full graph (nodes + edges) from DB."""
+    nodes = fetchall("SELECT id, node_key, name, phase, critical, trails, pos_x, pos_y FROM system_map_nodes ORDER BY id")
+    edges = fetchall("SELECT id, source_key, target_key FROM system_map_edges ORDER BY id")
+    for n in nodes:
+        n["critical"] = bool(n["critical"])
+        n["trails"] = from_json(n["trails"]) if n["trails"] else []
+    return jsonify({"nodes": nodes, "edges": edges})
+
+
+@bp.route("/systemmap/node", methods=["POST"])
+@login_required
+def api_systemmap_add_node():
+    """Add a new node to the system map."""
+    d = request.get_json() or {}
+    key = (d.get("key") or "").strip().replace(" ", "_").lower()
+    name = (d.get("name") or "").strip()
+    if not key or not name:
+        return jsonify({"error": "key and name required"}), 400
+    phase = d.get("phase", "left")
+    if phase not in ("left", "bang", "right", "cross"):
+        return jsonify({"error": "phase must be left/bang/right/cross"}), 400
+    critical = bool(d.get("critical", False))
+    trails = d.get("trails", [])
+    if isinstance(trails, str):
+        trails = [t.strip() for t in trails.split(",") if t.strip()]
+    try:
+        rid = db_execute(
+            "INSERT INTO system_map_nodes (node_key, name, phase, critical, trails) VALUES (%s,%s,%s,%s,%s)",
+            (key, name, phase, int(critical), to_json(trails)))
+        return jsonify({"status": "ok", "id": rid, "node_key": key})
+    except Exception as e:
+        if "Duplicate" in str(e):
+            return jsonify({"error": f"Node key '{key}' already exists"}), 409
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/systemmap/node/<node_key>", methods=["PUT"])
+@login_required
+def api_systemmap_update_node(node_key):
+    """Update an existing node."""
+    d = request.get_json() or {}
+    sets, params = [], []
+    if "name" in d:
+        sets.append("name=%s"); params.append(d["name"])
+    if "phase" in d:
+        if d["phase"] not in ("left", "bang", "right", "cross"):
+            return jsonify({"error": "Invalid phase"}), 400
+        sets.append("phase=%s"); params.append(d["phase"])
+    if "critical" in d:
+        sets.append("critical=%s"); params.append(int(bool(d["critical"])))
+    if "trails" in d:
+        trails = d["trails"]
+        if isinstance(trails, str):
+            trails = [t.strip() for t in trails.split(",") if t.strip()]
+        sets.append("trails=%s"); params.append(to_json(trails))
+    if "pos_x" in d:
+        sets.append("pos_x=%s"); params.append(d["pos_x"])
+    if "pos_y" in d:
+        sets.append("pos_y=%s"); params.append(d["pos_y"])
+    if not sets:
+        return jsonify({"error": "Nothing to update"}), 400
+    params.append(node_key)
+    db_execute(f"UPDATE system_map_nodes SET {','.join(sets)} WHERE node_key=%s", tuple(params))
+    return jsonify({"status": "ok", "node_key": node_key})
+
+
+@bp.route("/systemmap/node/<node_key>", methods=["DELETE"])
+@login_required
+def api_systemmap_delete_node(node_key):
+    """Delete a node and all its edges."""
+    db_execute("DELETE FROM system_map_edges WHERE source_key=%s OR target_key=%s", (node_key, node_key))
+    db_execute("DELETE FROM system_map_nodes WHERE node_key=%s", (node_key,))
+    return jsonify({"status": "ok", "deleted": node_key})
+
+
+@bp.route("/systemmap/edge", methods=["POST"])
+@login_required
+def api_systemmap_add_edge():
+    """Add a directed edge between two nodes."""
+    d = request.get_json() or {}
+    src = (d.get("source") or "").strip()
+    tgt = (d.get("target") or "").strip()
+    if not src or not tgt:
+        return jsonify({"error": "source and target required"}), 400
+    if src == tgt:
+        return jsonify({"error": "Cannot link node to itself"}), 400
+    try:
+        rid = db_execute(
+            "INSERT INTO system_map_edges (source_key, target_key) VALUES (%s,%s)", (src, tgt))
+        return jsonify({"status": "ok", "id": rid})
+    except Exception as e:
+        if "Duplicate" in str(e):
+            return jsonify({"error": "Edge already exists"}), 409
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/systemmap/edge/<int:edge_id>", methods=["DELETE"])
+@login_required
+def api_systemmap_delete_edge(edge_id):
+    """Delete an edge by ID."""
+    db_execute("DELETE FROM system_map_edges WHERE id=%s", (edge_id,))
+    return jsonify({"status": "ok", "deleted": edge_id})
+
+
+@bp.route("/systemmap/seed", methods=["POST"])
+@login_required
+def api_systemmap_seed():
+    """Seed the system map with default AMOS nodes and edges. Skips duplicates."""
+    added_nodes, added_edges = 0, 0
+    for n in _SYSMAP_DEFAULT_NODES:
+        try:
+            db_execute(
+                "INSERT INTO system_map_nodes (node_key, name, phase, critical, trails) VALUES (%s,%s,%s,%s,%s)",
+                (n["key"], n["name"], n["phase"], int(n["critical"]), to_json(n["trails"])))
+            added_nodes += 1
+        except Exception:
+            pass  # duplicate
+    for src, tgt in _SYSMAP_DEFAULT_EDGES:
+        try:
+            db_execute(
+                "INSERT INTO system_map_edges (source_key, target_key) VALUES (%s,%s)", (src, tgt))
+            added_edges += 1
+        except Exception:
+            pass  # duplicate
+    return jsonify({"status": "ok", "added_nodes": added_nodes, "added_edges": added_edges})
+
+
+@bp.route("/systemmap/node/<node_key>/position", methods=["PUT"])
+@login_required
+def api_systemmap_save_position(node_key):
+    """Save node position after drag."""
+    d = request.get_json() or {}
+    x, y = d.get("x"), d.get("y")
+    if x is None or y is None:
+        return jsonify({"error": "x and y required"}), 400
+    db_execute("UPDATE system_map_nodes SET pos_x=%s, pos_y=%s WHERE node_key=%s", (x, y, node_key))
+    return jsonify({"status": "ok"})
