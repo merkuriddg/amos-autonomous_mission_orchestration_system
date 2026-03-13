@@ -573,6 +573,19 @@ try:
 except Exception as e:
     print(f"[AMOS] CQB Planner: Not available ({e})")
 
+# CQB Executor (always loaded — no feature gate)
+cqb_executor = None
+try:
+    from services.cqb_executor import CQBExecutor
+    cqb_executor = CQBExecutor(
+        building_mgr=building_mgr,
+        indoor_positioning=indoor_positioning,
+        event_bus=event_bus,
+    )
+    print("[AMOS] CQB Executor: Ready")
+except Exception as e:
+    print(f"[AMOS] CQB Executor: Not available ({e})")
+
 # Drone Reference Database (always loaded — no feature gate)
 drone_ref_db = None
 try:
@@ -641,6 +654,15 @@ try:
     print("[AMOS] DDS Adapter: Registered")
 except Exception as e:
     print(f"[AMOS] DDS Adapter: Not available ({e})")
+
+_dimos_bridge = None
+try:
+    from integrations.dimos_bridge import DimOSBridge
+    _dimos_bridge = DimOSBridge()
+    adapter_mgr.register(_dimos_bridge)
+    print("[AMOS] DimOS Bridge: Registered")
+except Exception as e:
+    print(f"[AMOS] DimOS Bridge: Not available ({e})")
 
 # Enterprise integrations
 if feature_enabled("tak"):

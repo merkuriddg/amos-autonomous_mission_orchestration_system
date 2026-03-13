@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-425_passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-479_passing-brightgreen.svg)](tests/)
 
 > *"The LORD roars from Zion … the shepherd watches, and what he sees he declares."*
 > — the Book of Amos
@@ -15,7 +15,7 @@ AMOS is a **multi-domain command-and-control platform** that enables small teams
 
 Instead of controlling individual robots, operators define **mission intent** and AMOS orchestrates assets, sensors, autonomy engines, and communications to execute those missions.
 
-**v0.5.5** — Open Core Release | [**merkuri.one/amos**](https://merkuri.one/amos/)
+**v0.5.6** — Open Core Release | [**merkuri.one/amos**](https://merkuri.one/amos/)
 
 ---
 
@@ -149,8 +149,8 @@ Assets & Sensors
 amos/
 ├── web/                     — Flask app, routes, templates, simulation engine
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
-├── services/                — 40 autonomous subsystems
-├── integrations/            — 21 protocol bridges (see below)
+├── services/                — 41 autonomous subsystems
+├── integrations/            — 22 protocol bridges (see below)
 ├── examples/                — Demo scenarios + quickstart code samples
 │   ├── border_intrusion/    — Border patrol demo
 │   ├── swarm_recon/         — Swarm reconnaissance demo
@@ -181,7 +181,7 @@ amos/
 ├── demo/                    — Legacy demo scenarios
 ├── db/                      — MariaDB schema + setup script (36 tables)
 ├── config/                  — Platoon config, theater locations, drone reference DB
-├── tests/                   — 425 automated tests
+├── tests/                   — 479 automated tests
 └── docs/                    — Architecture, SDK, simulation, API docs
 ```
 

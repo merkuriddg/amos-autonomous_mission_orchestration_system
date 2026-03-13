@@ -6,7 +6,8 @@ from web.extensions import login_required, ctx
 from web.state import (sim_assets, sim_threats, base_pos, waypoint_nav, geofence_mgr,
                        db_execute, to_json, asset_states, environment_type,
                        AssetState, building_mgr, indoor_positioning,
-                       cqb_planner, roe_engine)
+                       cqb_planner, cqb_executor, roe_engine,
+                       _dimos_bridge, adapter_mgr)
 
 bp = Blueprint("assets", __name__)
 
@@ -496,6 +497,193 @@ def api_cqb_roe_hostage():
     rooms = d.get("room_ids", [])
     ok = roe_engine.set_hostage_rooms(rooms)
     return jsonify({"status": "ok" if ok else "error", "hostage_rooms": rooms})
+
+
+# ═══════════════════════════════════════════════════════════
+#  CQB EXECUTION ENGINE API (B4)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/cqb/execute", methods=["POST"])
+@login_required
+def api_cqb_execute_start():
+    """Start executing a CQB plan."""
+    if not cqb_executor or not cqb_planner:
+        return jsonify({"error": "CQB executor not available"}), 503
+    d = request.json or {}
+    plan_id = d.get("plan_id", "")
+    asset_ids = d.get("asset_ids", [])
+    if not plan_id:
+        return jsonify({"error": "plan_id required"}), 400
+    plan = cqb_planner.get_plan(plan_id)
+    if not plan:
+        return jsonify({"error": "Plan not found"}), 404
+    if not asset_ids:
+        return jsonify({"error": "asset_ids required (list of asset IDs)"}), 400
+    execution = cqb_executor.start_execution(plan, asset_ids)
+    return jsonify({"status": "ok", "execution": execution.to_dict()})
+
+
+@bp.route("/cqb/executions")
+@login_required
+def api_cqb_executions_list():
+    """List all CQB executions."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    return jsonify({"executions": cqb_executor.list_executions(),
+                    "stats": cqb_executor.get_stats()})
+
+
+@bp.route("/cqb/execution/<execution_id>")
+@login_required
+def api_cqb_execution_detail(execution_id):
+    """Get status of a CQB execution."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    ex = cqb_executor.get_execution(execution_id)
+    if not ex:
+        return jsonify({"error": "Execution not found"}), 404
+    return jsonify(ex.to_dict())
+
+
+@bp.route("/cqb/execution/<execution_id>/tick", methods=["POST"])
+@login_required
+def api_cqb_execution_tick(execution_id):
+    """Advance execution by one tick."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    d = request.json or {}
+    dt = float(d.get("dt", 1.0))
+    events = cqb_executor.tick(execution_id, dt)
+    ex = cqb_executor.get_execution(execution_id)
+    return jsonify({
+        "status": "ok",
+        "events": events,
+        "execution": ex.to_dict() if ex else None,
+    })
+
+
+@bp.route("/cqb/execution/<execution_id>/pause", methods=["POST"])
+@login_required
+def api_cqb_execution_pause(execution_id):
+    """Pause a running execution."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    ok = cqb_executor.pause(execution_id)
+    return jsonify({"status": "ok" if ok else "error",
+                    "paused": ok})
+
+
+@bp.route("/cqb/execution/<execution_id>/resume", methods=["POST"])
+@login_required
+def api_cqb_execution_resume(execution_id):
+    """Resume a paused execution."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    ok = cqb_executor.resume(execution_id)
+    return jsonify({"status": "ok" if ok else "error",
+                    "resumed": ok})
+
+
+@bp.route("/cqb/execution/<execution_id>/abort", methods=["POST"])
+@login_required
+def api_cqb_execution_abort(execution_id):
+    """Abort execution."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    d = request.json or {}
+    ok = cqb_executor.abort(execution_id, d.get("reason", ""))
+    return jsonify({"status": "ok" if ok else "error",
+                    "aborted": ok})
+
+
+@bp.route("/cqb/execution/<execution_id>/contact", methods=["POST"])
+@login_required
+def api_cqb_report_contact(execution_id):
+    """Report enemy contact during execution."""
+    if not cqb_executor:
+        return jsonify({"error": "CQB executor not available"}), 503
+    d = request.json or {}
+    result = cqb_executor.report_contact(
+        execution_id,
+        room_id=d.get("room_id", ""),
+        threat_type=d.get("threat_type", "unknown"),
+        details=d.get("details", ""),
+    )
+    return jsonify(result)
+
+
+# ═══════════════════════════════════════════════════════════
+#  DIMOS BRIDGE API (B4.1)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/dimos/status")
+@login_required
+def api_dimos_status():
+    """Get DimOS bridge status."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    return jsonify(_dimos_bridge.get_status())
+
+
+@bp.route("/dimos/connect", methods=["POST"])
+@login_required
+def api_dimos_connect():
+    """Connect the DimOS bridge."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    d = request.json or {}
+    ok = _dimos_bridge.connect(
+        host=d.get("host", _dimos_bridge.host),
+        port=int(d.get("port", _dimos_bridge.port)),
+    )
+    return jsonify({"status": "ok" if ok else "error", "connected": ok})
+
+
+@bp.route("/dimos/command", methods=["POST"])
+@login_required
+def api_dimos_command():
+    """Send a command to a robot via DimOS."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    d = request.json or {}
+    asset_id = d.get("asset_id", "")
+    command_type = d.get("command", "").upper()
+    if not asset_id or not command_type:
+        return jsonify({"error": "asset_id and command required"}), 400
+    result = _dimos_bridge.send_command(asset_id, command_type,
+                                        d.get("params", {}))
+    return jsonify(result)
+
+
+@bp.route("/dimos/telemetry")
+@login_required
+def api_dimos_telemetry():
+    """Get all cached DimOS telemetry."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    return jsonify(_dimos_bridge.get_all_telemetry())
+
+
+@bp.route("/dimos/telemetry/<asset_id>")
+@login_required
+def api_dimos_telemetry_asset(asset_id):
+    """Get cached DimOS telemetry for a specific asset."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    telem = _dimos_bridge.get_telemetry(asset_id)
+    if not telem:
+        return jsonify({"error": "No telemetry for asset"}), 404
+    return jsonify(telem)
+
+
+@bp.route("/dimos/commands")
+@login_required
+def api_dimos_command_log():
+    """Get recent DimOS command log."""
+    if not _dimos_bridge:
+        return jsonify({"error": "DimOS bridge not available"}), 503
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify({"commands": _dimos_bridge.get_command_log(limit)})
 
 
 # ═══════════════════════════════════════════════════════════
