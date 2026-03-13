@@ -59,6 +59,15 @@
  <a href="#bda" data-s="bda">BDA</a>
  <a href="#effects" data-s="effects">Effects Chain</a>
  <a href="#wargame" data-s="wargame">Wargaming</a>
+ <div class="nav-hdr">CQB / Indoor</div>
+ <a href="#cqb-ops" data-s="cqb-ops">CQB Operations</a>
+ <a href="#tactical3d" data-s="tactical3d">3D Tactical Viewer</a>
+ <a href="#building-model" data-s="building-model">Building Model</a>
+ <a href="#indoor-pos" data-s="indoor-pos">Indoor Positioning</a>
+ <a href="#perc-fusion" data-s="perc-fusion">Perception Fusion</a>
+ <a href="#squad-super" data-s="squad-super">Squad Supervisor</a>
+ <a href="#dimos-bridge" data-s="dimos-bridge">DimOS Bridge</a>
+ <a href="#cqb-formations" data-s="cqb-formations">CQB Formations</a>
  <div class="nav-hdr">Autonomy</div>
  <a href="#swarm" data-s="swarm">Swarm Intelligence</a>
  <a href="#isr" data-s="isr">ISR / ATR</a>
@@ -228,6 +237,162 @@
 <div class="man-section" id="wargame">
 <h2>MONTE CARLO WARGAMING</h2>
 <p>Run 1000+ iteration simulations on current force posture. Compares 5 approach strategies × 3 tempos with Markov chain force attrition modeling. Results show win probability, expected casualties, and risk assessment.</p>
+</div>
+
+<!-- ── CQB / INDOOR ── -->
+<div class="cat-hdr">CQB / Indoor Operations</div>
+<div class="man-section" id="cqb-ops">
+<h2>CQB OPERATIONS CONSOLE</h2>
+<p>Close Quarter Battle planning and execution interface for indoor / urban operations. Access via <span class="key">☰ MENU → CQB Ops</span>.</p>
+<h3>Building Selector</h3>
+<p>Choose a building from loaded floor-plans (JSON configs in <code>config/buildings/</code>). The console shows all floors, rooms, doors, windows, and entry points.</p>
+<h3>Mission Planner</h3>
+<ul>
+ <li><span class="key">Mission Type</span> — BREACH_AND_CLEAR, HOSTAGE_RESCUE, ROOM_CLEAR, EXTRACT_HVT</li>
+ <li><span class="key">Priority Rooms</span> — Select rooms that must be cleared first</li>
+ <li><span class="key">Asset Assignment</span> — Assign bipedal assets to the mission from the roster</li>
+ <li><span class="key">Create Mission</span> — Generates the CQB task plan and pushes it to the executor</li>
+</ul>
+<h3>Live Status</h3>
+<p>Shows real-time room clearance progress, asset positions, threat detections, and mission phase (PLANNING → INFILTRATION → EXECUTION → CONSOLIDATION).</p>
+<h3>Threat Intel Overlay</h3>
+<p>Overlays hostile positions, IED locations, hostage positions, and civilian contacts from the building's threat-intel data and live perception fusion.</p>
+</div>
+
+<div class="man-section" id="tactical3d">
+<h2>3D TACTICAL VIEWER</h2>
+<p>WebGL-rendered 3D floor-plan viewer for multi-story buildings. Access via <span class="key">☰ MENU → 3D Tactical</span> or from the CQB console's <span class="key">3D VIEW</span> button.</p>
+<h3>Controls</h3>
+<ul>
+ <li><span class="key">Click + Drag</span> — Orbit the camera around the building</li>
+ <li><span class="key">Scroll</span> — Zoom in/out</li>
+ <li><span class="key">Right-Click + Drag</span> — Pan the view</li>
+ <li><span class="key">Floor slider</span> — Isolate individual floors or show all</li>
+</ul>
+<h3>Layers</h3>
+<ul>
+ <li><span class="key">Rooms</span> — Color-coded by clearance status (grey = unknown, green = cleared, red = hostile, blue = friendly occupied)</li>
+ <li><span class="key">Assets</span> — Bipedal unit positions rendered as markers with callsign labels</li>
+ <li><span class="key">Threats</span> — Detected hostiles, IEDs, and unknowns rendered with threat icons</li>
+ <li><span class="key">SLAM Grid</span> — Occupancy grid overlay showing explored vs. unexplored areas</li>
+</ul>
+<p class="note">Requires WebGL 2.0 — tested in Chrome, Edge, and Firefox.</p>
+</div>
+
+<div class="man-section" id="building-model">
+<h2>BUILDING MODEL</h2>
+<p>Manages structural data for indoor environments. Buildings are loaded from JSON files in <code>config/buildings/</code>.</p>
+<h3>Data Structure</h3>
+<ul>
+ <li><span class="key">Building</span> — ID, name, type, location (lat/lng), floor count, dimensions</li>
+ <li><span class="key">Floors</span> — Floor number, label, elevation, ceiling height</li>
+ <li><span class="key">Rooms</span> — ID, name, type (office, corridor, stairwell, etc.), polygon vertices, area</li>
+ <li><span class="key">Doors</span> — Connects two rooms or room-to-exterior, type (standard, reinforced, emergency), locked status</li>
+ <li><span class="key">Windows</span> — Room association, wall position, size, breakable flag</li>
+ <li><span class="key">Entry Points</span> — Named exterior access points with coordinates</li>
+ <li><span class="key">Threat Intel</span> — Pre-populated hostile positions, IED locations, hostage locations</li>
+</ul>
+<h3>Adding Buildings</h3>
+<p>Create a JSON file in <code>config/buildings/</code> following the schema of existing files (e.g. <code>alpha_compound.json</code>, <code>embassy_bravo.json</code>). Buildings are loaded on startup.</p>
+</div>
+
+<div class="man-section" id="indoor-pos">
+<h2>INDOOR POSITIONING</h2>
+<p>Tracks asset positions inside buildings with sub-room accuracy. Supports multiple position sources fused by confidence weighting.</p>
+<h3>Position Sources</h3>
+<ul>
+ <li><span class="key">UWB</span> — Ultra-wideband beacons (highest accuracy, ~10 cm)</li>
+ <li><span class="key">SLAM</span> — Simultaneous localization and mapping from onboard sensors</li>
+ <li><span class="key">IMU</span> — Inertial measurement unit dead reckoning (lowest accuracy, drift-prone)</li>
+ <li><span class="key">MANUAL</span> — Operator-reported positions</li>
+</ul>
+<h3>API</h3>
+<ul>
+ <li><code>GET /api/v1/indoor/positions</code> — All tracked indoor positions</li>
+ <li><code>GET /api/v1/indoor/positions/&lt;building_id&gt;</code> — Positions within a specific building</li>
+ <li><code>POST /api/v1/indoor/position</code> — Update an asset's indoor position</li>
+</ul>
+<p>Positions include building ID, floor, room, x/y/z coordinates (metres), source type, confidence (0–1), and timestamp.</p>
+</div>
+
+<div class="man-section" id="perc-fusion">
+<h2>PERCEPTION FUSION</h2>
+<p>Fuses detections from multiple assets into a unified indoor threat picture. Combines visual, thermal, LIDAR, and acoustic sensor data.</p>
+<h3>Detection Pipeline</h3>
+<ul>
+ <li><span class="key">Ingest</span> — Raw detections from individual assets (classification, confidence, position)</li>
+ <li><span class="key">Correlate</span> — Matches detections within a configurable radius to existing tracks</li>
+ <li><span class="key">Track</span> — Maintains persistent tracks with smoothed positions and aggregated confidence</li>
+ <li><span class="key">Classify</span> — Final classification: HOSTILE, CIVILIAN, UNKNOWN, IED, FURNITURE</li>
+</ul>
+<h3>SLAM Grid</h3>
+<p>Aggregates occupancy grid scans from assets performing SLAM. Each cell is classified as FREE, OCCUPIED, or UNKNOWN. Coverage percentage is tracked per floor.</p>
+<h3>API</h3>
+<ul>
+ <li><code>GET /api/v1/perception/tracks</code> — All fused tracks</li>
+ <li><code>GET /api/v1/perception/tracks/&lt;building_id&gt;</code> — Tracks in a building</li>
+ <li><code>GET /api/v1/perception/slam/&lt;building_id&gt;/&lt;floor&gt;</code> — SLAM grid for a floor</li>
+ <li><code>POST /api/v1/perception/detect</code> — Submit a raw detection</li>
+</ul>
+</div>
+
+<div class="man-section" id="squad-super">
+<h2>SQUAD SUPERVISOR</h2>
+<p>Manages bipedal squad composition, readiness, and formation assignments for CQB missions.</p>
+<h3>Squad Management</h3>
+<ul>
+ <li><span class="key">Create Squad</span> — Group bipedal assets into a named squad with a designated leader</li>
+ <li><span class="key">Readiness</span> — Tracks each member's status (READY, ENGAGED, DOWN, OFFLINE)</li>
+ <li><span class="key">Formation</span> — Assign tactical formations (STACK, LINE, WEDGE, DIAMOND, ECHELON, BOUNDING_OVERWATCH)</li>
+</ul>
+<h3>CQB Formations</h3>
+<p>Squad formations are optimized for indoor environments:</p>
+<ul>
+ <li><span class="key">STACK</span> — Single-file entry formation for doorway breaches</li>
+ <li><span class="key">LINE</span> — Abreast for corridor sweeps</li>
+ <li><span class="key">WEDGE</span> — Point-forward for open rooms</li>
+ <li><span class="key">DIAMOND</span> — 360° security for large spaces</li>
+ <li><span class="key">ECHELON</span> — Angled advance for hallway intersections</li>
+ <li><span class="key">BOUNDING_OVERWATCH</span> — Alternating movement with cover</li>
+</ul>
+<h3>API</h3>
+<ul>
+ <li><code>GET /api/v1/squad/list</code> — All squads with members and status</li>
+ <li><code>POST /api/v1/squad/create</code> — Create a new squad</li>
+ <li><code>POST /api/v1/squad/&lt;id&gt;/formation</code> — Set squad formation</li>
+</ul>
+</div>
+
+<div class="man-section" id="dimos-bridge">
+<h2>DimOS BRIDGE</h2>
+<p>Integration bridge to the DimOS (Dimensionality OS) robotic autonomy framework. Enables AMOS to command real or simulated bipedal robots.</p>
+<h3>Capabilities</h3>
+<ul>
+ <li><span class="key">Navigation</span> — Send waypoint goals to robot navigation stack</li>
+ <li><span class="key">Manipulation</span> — Door opening, object retrieval, breach actions</li>
+ <li><span class="key">Perception</span> — Receive sensor feeds (RGB, depth, LIDAR, thermal)</li>
+ <li><span class="key">Status</span> — Battery, joint states, locomotion mode, error codes</li>
+</ul>
+<h3>Connection</h3>
+<p>Configure the DimOS endpoint in <code>.env</code> via <code>DIMOS_ENDPOINT</code>. The bridge maintains a persistent WebSocket connection with automatic reconnect. Connection status is shown on the CQB console.</p>
+<p class="note">When no DimOS endpoint is configured, the bridge operates in simulation mode using AMOS's internal physics.</p>
+</div>
+
+<div class="man-section" id="cqb-formations">
+<h2>CQB TASK LANGUAGE</h2>
+<p>The CQB planner generates structured task plans using a domain-specific task language. Tasks are hierarchical and executable by the CQB executor.</p>
+<h3>Task Types</h3>
+<ul>
+ <li><code>MOVE_TO_ROOM</code> — Navigate an asset to a target room via shortest door path</li>
+ <li><code>BREACH_DOOR</code> — Breach a locked/reinforced door (explosive, mechanical, or manual)</li>
+ <li><code>CLEAR_ROOM</code> — Systematic room clearance with threat engagement ROE</li>
+ <li><code>HOLD_POSITION</code> — Maintain position and provide security overwatch</li>
+ <li><code>EXTRACT_PERSON</code> — Locate and extract a hostage or HVT from a room</li>
+ <li><code>STACK_FORMATION</code> — Form up in stack at a door before breach</li>
+ <li><code>SCAN_ROOM</code> — Perform a SLAM/perception scan without entry</li>
+</ul>
+<h3>Execution</h3>
+<p>Tasks are executed sequentially by the CQB Executor, which tracks state per task (PENDING → ACTIVE → COMPLETE / FAILED). Failed tasks trigger automatic re-planning if the mission allows it.</p>
 </div>
 
 <!-- ── AUTONOMY ── -->

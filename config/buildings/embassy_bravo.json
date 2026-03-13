@@ -1,0 +1,184 @@
+{
+  "id": "BLD-BRAVO",
+  "name": "Embassy Bravo",
+  "description": "2-story diplomatic compound — suspected hostile occupation, possible hostages",
+  "location": {
+    "lat": 35.689,
+    "lng": 51.322,
+    "alt_m": 1195
+  },
+  "dimensions": {
+    "width_m": 28,
+    "depth_m": 18,
+    "height_m": 7,
+    "length_m": 28
+  },
+  "floors": [
+    {
+      "floor": 0,
+      "name": "Ground Floor",
+      "height_m": 3.5,
+      "rooms": [
+        {
+          "id": "R-G01",
+          "name": "Main Lobby",
+          "type": "lobby",
+          "bounds": {"x_min": 0, "y_min": 0, "x_max": 8, "y_max": 18},
+          "cleared": false
+        },
+        {
+          "id": "R-G02",
+          "name": "Security Checkpoint",
+          "type": "security",
+          "bounds": {"x_min": 8, "y_min": 0, "x_max": 14, "y_max": 6},
+          "cleared": false
+        },
+        {
+          "id": "R-G03",
+          "name": "Visa Office",
+          "type": "office",
+          "bounds": {"x_min": 8, "y_min": 6, "x_max": 14, "y_max": 12},
+          "cleared": false
+        },
+        {
+          "id": "R-G04",
+          "name": "Waiting Area",
+          "type": "public",
+          "bounds": {"x_min": 8, "y_min": 12, "x_max": 14, "y_max": 18},
+          "cleared": false
+        },
+        {
+          "id": "R-G05",
+          "name": "Server Room",
+          "type": "comms",
+          "bounds": {"x_min": 14, "y_min": 0, "x_max": 20, "y_max": 6},
+          "cleared": false
+        },
+        {
+          "id": "R-G06",
+          "name": "Kitchen / Mess",
+          "type": "utility",
+          "bounds": {"x_min": 14, "y_min": 6, "x_max": 20, "y_max": 12},
+          "cleared": false
+        },
+        {
+          "id": "R-G07",
+          "name": "Storage / Arms Locker",
+          "type": "storage",
+          "bounds": {"x_min": 14, "y_min": 12, "x_max": 20, "y_max": 18},
+          "cleared": false
+        },
+        {
+          "id": "R-G08",
+          "name": "Motor Pool",
+          "type": "vehicle",
+          "bounds": {"x_min": 20, "y_min": 0, "x_max": 28, "y_max": 10},
+          "cleared": false
+        },
+        {
+          "id": "R-G09",
+          "name": "Guard Quarters",
+          "type": "barracks",
+          "bounds": {"x_min": 20, "y_min": 10, "x_max": 28, "y_max": 18},
+          "cleared": false
+        }
+      ],
+      "doors": [
+        {"id": "D-G01", "from_room": "EXTERIOR", "to_room": "R-G01", "type": "entry", "position": {"x": 4, "y": 0}, "width_m": 1.8, "breachable": true},
+        {"id": "D-G02", "from_room": "R-G01", "to_room": "R-G02", "type": "interior", "position": {"x": 8, "y": 3}, "width_m": 1.0, "breachable": true},
+        {"id": "D-G03", "from_room": "R-G01", "to_room": "R-G03", "type": "interior", "position": {"x": 8, "y": 9}, "width_m": 1.0, "breachable": true},
+        {"id": "D-G04", "from_room": "R-G01", "to_room": "R-G04", "type": "interior", "position": {"x": 8, "y": 15}, "width_m": 1.0, "breachable": true},
+        {"id": "D-G05", "from_room": "R-G02", "to_room": "R-G05", "type": "reinforced", "position": {"x": 14, "y": 3}, "width_m": 0.9, "breachable": false},
+        {"id": "D-G06", "from_room": "R-G03", "to_room": "R-G06", "type": "interior", "position": {"x": 14, "y": 9}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G07", "from_room": "R-G04", "to_room": "R-G07", "type": "interior", "position": {"x": 14, "y": 15}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G08", "from_room": "R-G05", "to_room": "R-G08", "type": "interior", "position": {"x": 20, "y": 3}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G09", "from_room": "R-G06", "to_room": "R-G08", "type": "interior", "position": {"x": 20, "y": 9}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G10", "from_room": "R-G07", "to_room": "R-G09", "type": "interior", "position": {"x": 20, "y": 15}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G11", "from_room": "R-G08", "to_room": "R-G09", "type": "interior", "position": {"x": 24, "y": 10}, "width_m": 0.9, "breachable": true},
+        {"id": "D-G12", "from_room": "EXTERIOR", "to_room": "R-G08", "type": "entry", "position": {"x": 24, "y": 0}, "width_m": 3.0, "breachable": true}
+      ],
+      "windows": [
+        {"id": "W-G01", "room": "R-G01", "wall": "south", "position": {"x": 2, "y": 0}, "width_m": 1.5},
+        {"id": "W-G02", "room": "R-G02", "wall": "south", "position": {"x": 11, "y": 0}, "width_m": 1.0},
+        {"id": "W-G03", "room": "R-G09", "wall": "north", "position": {"x": 24, "y": 18}, "width_m": 1.2},
+        {"id": "W-G04", "room": "R-G04", "wall": "north", "position": {"x": 11, "y": 18}, "width_m": 1.0}
+      ],
+      "stairs": [
+        {"id": "S-G01", "room": "R-G01", "position": {"x": 1, "y": 16}, "connects_to_floor": 1, "type": "stairwell"},
+        {"id": "S-G02", "room": "R-G09", "position": {"x": 27, "y": 16}, "connects_to_floor": 1, "type": "stairwell"}
+      ]
+    },
+    {
+      "floor": 1,
+      "name": "Upper Floor",
+      "height_m": 3.0,
+      "rooms": [
+        {
+          "id": "R-U01",
+          "name": "Upper Corridor",
+          "type": "corridor",
+          "bounds": {"x_min": 0, "y_min": 7, "x_max": 28, "y_max": 11},
+          "cleared": false
+        },
+        {
+          "id": "R-U02",
+          "name": "Ambassador's Office",
+          "type": "office",
+          "bounds": {"x_min": 0, "y_min": 0, "x_max": 10, "y_max": 7},
+          "cleared": false
+        },
+        {
+          "id": "R-U03",
+          "name": "Comms / SCIF",
+          "type": "scif",
+          "bounds": {"x_min": 10, "y_min": 0, "x_max": 18, "y_max": 7},
+          "cleared": false
+        },
+        {
+          "id": "R-U04",
+          "name": "Conference Room",
+          "type": "meeting",
+          "bounds": {"x_min": 18, "y_min": 0, "x_max": 28, "y_max": 7},
+          "cleared": false
+        }
+      ],
+      "doors": [
+        {"id": "D-U01", "from_room": "R-U01", "to_room": "R-U02", "type": "interior", "position": {"x": 5, "y": 7}, "width_m": 1.0, "breachable": true},
+        {"id": "D-U02", "from_room": "R-U01", "to_room": "R-U03", "type": "reinforced", "position": {"x": 14, "y": 7}, "width_m": 0.9, "breachable": false},
+        {"id": "D-U03", "from_room": "R-U01", "to_room": "R-U04", "type": "interior", "position": {"x": 23, "y": 7}, "width_m": 1.0, "breachable": true},
+        {"id": "D-U04", "from_room": "R-U02", "to_room": "R-U03", "type": "reinforced", "position": {"x": 10, "y": 3}, "width_m": 0.9, "breachable": false},
+        {"id": "D-U05", "from_room": "R-U03", "to_room": "R-U04", "type": "interior", "position": {"x": 18, "y": 3}, "width_m": 0.9, "breachable": true}
+      ],
+      "windows": [
+        {"id": "W-U01", "room": "R-U02", "wall": "south", "position": {"x": 5, "y": 0}, "width_m": 1.5},
+        {"id": "W-U02", "room": "R-U03", "wall": "south", "position": {"x": 14, "y": 0}, "width_m": 0.8},
+        {"id": "W-U03", "room": "R-U04", "wall": "east", "position": {"x": 28, "y": 3}, "width_m": 1.2}
+      ],
+      "stairs": [
+        {"id": "S-U01", "room": "R-U01", "position": {"x": 1, "y": 9}, "connects_to_floor": 0, "type": "stairwell"},
+        {"id": "S-U02", "room": "R-U01", "position": {"x": 27, "y": 9}, "connects_to_floor": 0, "type": "stairwell"}
+      ]
+    }
+  ],
+  "walls": {
+    "exterior_material": "reinforced_concrete",
+    "exterior_thickness_cm": 35,
+    "interior_material": "cinderblock",
+    "interior_thickness_cm": 15,
+    "breachable_types": ["cinderblock", "drywall", "wood"],
+    "bulletproof_types": ["reinforced_concrete", "steel"]
+  },
+  "entry_points": [
+    {"id": "EP-B01", "door_id": "D-G01", "type": "primary", "description": "Main lobby entrance — south face"},
+    {"id": "EP-B02", "door_id": "D-G12", "type": "vehicle", "description": "Motor pool bay door — south face"},
+    {"id": "EP-B03", "window_id": "W-G01", "type": "window", "description": "Lobby south window"},
+    {"id": "EP-B04", "window_id": "W-G04", "type": "window", "description": "Waiting area north window"}
+  ],
+  "threats_intel": {
+    "known_hostiles": 6,
+    "suspected_ieds": ["R-G07", "R-G05"],
+    "hostage_rooms": ["R-U03"],
+    "last_recon": "2026-03-12T18:00:00Z",
+    "notes": "6 hostiles confirmed. 2-3 hostages in SCIF (R-U03). IEDs suspected in storage and server room. Reinforced doors on SCIF and server room."
+  }
+}

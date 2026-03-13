@@ -828,6 +828,23 @@ except Exception as e:
     print(f"[AMOS] Squad Supervisor: Not available ({e})")
 
 # ═══════════════════════════════════════════════════════════
+#  CQB SIMULATION SEED
+# ═══════════════════════════════════════════════════════════
+try:
+    from services.cqb_sim_seed import seed_cqb_data
+    _seed_result = seed_cqb_data(
+        indoor_positioning=indoor_positioning,
+        perception_fusion=perception_fusion,
+        squad_supervisor=squad_supervisor,
+        building_mgr=building_mgr,
+    )
+    print(f"[AMOS] CQB Sim Seed: {_seed_result['indoor_positions']} positions, "
+          f"{_seed_result['detections']} detections, {_seed_result['slam_scans']} SLAM scans, "
+          f"{_seed_result['missions']} missions")
+except Exception as e:
+    print(f"[AMOS] CQB Sim Seed: Not available ({e})")
+
+# ═══════════════════════════════════════════════════════════
 #  HELPER
 # ═══════════════════════════════════════════════════════════
 def now_iso():
