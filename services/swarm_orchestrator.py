@@ -10,6 +10,7 @@ Manages multi-asset formations and coordinated behaviors:
 import math
 import threading
 from datetime import datetime, timezone
+from services.cqb_formations import CQBFormation
 
 
 class Formation:
@@ -108,6 +109,13 @@ class SwarmOrchestrator:
             positions = Formation.diamond(center_lat, center_lng, heading, spacing_m)
         elif formation == "orbit":
             positions = Formation.orbit(center_lat, center_lng, count, spacing_m)
+        elif formation.upper() in CQBFormation.FORMATIONS:
+            # CQB meter-scale formation (STACK, BUTTONHOOK, CORRIDOR, etc.)
+            positions = CQBFormation.compute(
+                formation.upper(), count,
+                heading_deg=heading, spacing_m=spacing_m,
+                ref_lat=center_lat, ref_lng=center_lng,
+            )
         else:
             return {"success": False, "error": f"Unknown formation: {formation}"}
 
