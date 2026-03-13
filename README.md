@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-298_passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-425_passing-brightgreen.svg)](tests/)
 
 > *"The LORD roars from Zion … the shepherd watches, and what he sees he declares."*
 > — the Book of Amos
@@ -15,7 +15,7 @@ AMOS is a **multi-domain command-and-control platform** that enables small teams
 
 Instead of controlling individual robots, operators define **mission intent** and AMOS orchestrates assets, sensors, autonomy engines, and communications to execute those missions.
 
-**v0.5.4** — Open Core Release | [**merkuri.one/amos**](https://merkuri.one/amos/)
+**v0.5.5** — Open Core Release | [**merkuri.one/amos**](https://merkuri.one/amos/)
 
 ---
 
@@ -149,7 +149,7 @@ Assets & Sensors
 amos/
 ├── web/                     — Flask app, routes, templates, simulation engine
 ├── core/                    — Data model, adapters, COMSEC, geo utilities
-├── services/                — 37 autonomous subsystems
+├── services/                — 40 autonomous subsystems
 ├── integrations/            — 21 protocol bridges (see below)
 ├── examples/                — Demo scenarios + quickstart code samples
 │   ├── border_intrusion/    — Border patrol demo
@@ -181,7 +181,7 @@ amos/
 ├── demo/                    — Legacy demo scenarios
 ├── db/                      — MariaDB schema + setup script (36 tables)
 ├── config/                  — Platoon config, theater locations, drone reference DB
-├── tests/                   — 298 automated tests
+├── tests/                   — 425 automated tests
 └── docs/                    — Architecture, SDK, simulation, API docs
 ```
 
@@ -210,6 +210,10 @@ amos/
 **CQB Formations** — 6 meter-scale tactical formations (STACK, BUTTONHOOK, CRISSCROSS, BOUNDING_OVERWATCH, PERIMETER, CORRIDOR) for close-quarters battle, dual lat/lng + local meter-coordinate modes, integrated with swarm orchestrator
 
 **Bipedal Squad Seeds** — Environment type abstraction (outdoor_open, outdoor_urban, indoor_cqb), extended asset state model (posture, stance, manipulation, cover, fatigue, indoor position), indoor positioning data model for GPS-denied CQB ops
+
+**Building Data Model & Indoor Positioning** — Per-structure JSON floorplans with rooms, doors, windows, stairwells, wall materials. Adjacency graph, BFS pathfinding, LOS queries, room clearing status. Multi-source indoor positioning (SLAM/UWB/IMU fusion) with per-asset tracking and lat/lng bridge for GPS-denied operations
+
+**CQB Room Clearing Planner** — Autonomous mission planning for close-quarters battle: 6 CQB task types (BREACH, CLEAR, HOLD, SECURE, EXTRACT, STACK) with role assignment (point, number_2, cover, rear_security). Generates phased clearing plans from building models with dependency chains, reinforced door detection, and objective room targeting. CQB-specific ROE (hostage room restriction, fratricide prevention, CQB autonomy tier, range limits)
 
 **Mesh Networking** — MANET with 7 frequency bands, Dijkstra routing, frequency hopping, store-and-forward queuing
 
@@ -243,7 +247,7 @@ amos/
 - **Backend:** Python 3, Flask, Flask-SocketIO
 - **Frontend:** Vanilla JS, Leaflet.js, CesiumJS, WebSocket
 - **Database:** MariaDB (optional — runs in-memory without it)
-- **Testing:** pytest (298 tests), GitHub Actions CI (Python 3.11 + 3.12)
+- **Testing:** pytest (425 tests), GitHub Actions CI (Python 3.11 + 3.12)
 - **Integrations:** MAVLink, CoT XML (send + receive), TADIL J, ROS 2, MQTT, DDS, Kafka, VMF, STANAG 4586, ADS-B, APRS, AIS, RemoteID, LoRa/Meshtastic, NMEA, DragonOS/WarDragon SDR, SDR++, SigDigger, ZMeta ISR Metadata
 - **Security:** AES-256-GCM encryption, HMAC, key lifecycle management
 
@@ -253,7 +257,7 @@ amos/
 python3 -m pytest tests/ -v --tb=short
 ```
 
-298 tests across route, service, and contract layers. CI runs on every push via GitHub Actions.
+425 tests across route, service, and contract layers. CI runs on every push via GitHub Actions.
 
 ## Plugin Development
 

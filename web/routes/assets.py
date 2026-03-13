@@ -5,7 +5,8 @@ from flask import Blueprint, request, jsonify
 from web.extensions import login_required, ctx
 from web.state import (sim_assets, sim_threats, base_pos, waypoint_nav, geofence_mgr,
                        db_execute, to_json, asset_states, environment_type,
-                       AssetState, building_mgr, indoor_positioning)
+                       AssetState, building_mgr, indoor_positioning,
+                       cqb_planner, roe_engine)
 
 bp = Blueprint("assets", __name__)
 
@@ -389,6 +390,112 @@ def api_indoor_position_detail(asset_id):
         "position": pos.to_dict(),
         "history": indoor_positioning.get_history(asset_id),
     })
+
+
+# ═══════════════════════════════════════════════════════════
+#  CQB PLANNER API (B3)
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/cqb/plan", methods=["POST"])
+@login_required
+def api_cqb_plan_generate():
+    """Generate a room-clearing plan for a building."""
+    if not cqb_planner or not building_mgr:
+        return jsonify({"error": "CQB planner not available"}), 503
+    d = request.json or {}
+    bid = d.get("building_id", "")
+    if not bid:
+        return jsonify({"error": "building_id required"}), 400
+    b = building_mgr.get(bid)
+    if not b:
+        return jsonify({"error": "Building not found"}), 404
+    plan = cqb_planner.generate_plan(
+        b,
+        floors=d.get("floors"),
+        objective_room=d.get("objective_room", ""),
+        team_size=int(d.get("team_size", 4)),
+        entry_door_id=d.get("entry_door_id", ""),
+    )
+    return jsonify(plan.to_dict())
+
+
+@bp.route("/cqb/plans")
+@login_required
+def api_cqb_plans_list():
+    """List all generated CQB plans."""
+    if not cqb_planner:
+        return jsonify({"error": "CQB planner not available"}), 503
+    return jsonify({"plans": cqb_planner.list_plans(), "stats": cqb_planner.get_stats()})
+
+
+@bp.route("/cqb/plans/<plan_id>")
+@login_required
+def api_cqb_plan_detail(plan_id):
+    """Get details of a specific CQB plan."""
+    if not cqb_planner:
+        return jsonify({"error": "CQB planner not available"}), 503
+    plan = cqb_planner.get_plan(plan_id)
+    if not plan:
+        return jsonify({"error": "Plan not found"}), 404
+    return jsonify(plan.to_dict())
+
+
+@bp.route("/cqb/task", methods=["POST"])
+@login_required
+def api_cqb_task_create():
+    """Create an individual CQB task."""
+    from services.cqb_task_language import CQBTask
+    d = request.json or {}
+    task_type = d.get("task_type", "")
+    building_id = d.get("building_id", "")
+    if not task_type or not building_id:
+        return jsonify({"error": "task_type and building_id required"}), 400
+    task = CQBTask(
+        task_type=task_type,
+        building_id=building_id,
+        target_id=d.get("target_id", ""),
+        floor=int(d.get("floor", 0)),
+        priority=int(d.get("priority", 5)),
+        params=d.get("params", {}),
+        assigned_assets=d.get("assigned_assets", []),
+        roe_override=d.get("roe_override"),
+    )
+    errors = task.validate()
+    if errors:
+        return jsonify({"error": "Validation failed", "details": errors}), 400
+    if d.get("assigned_assets"):
+        task.assign_roles(d["assigned_assets"])
+    return jsonify({"status": "ok", "task": task.to_dict()})
+
+
+@bp.route("/cqb/roe/check", methods=["POST"])
+@login_required
+def api_cqb_roe_check():
+    """Check CQB engagement ROE for a room."""
+    d = request.json or {}
+    room_id = d.get("room_id", "")
+    asset_id = d.get("asset_id", "")
+    if not room_id:
+        return jsonify({"error": "room_id required"}), 400
+    asset = sim_assets.get(asset_id, {})
+    result = roe_engine.check_cqb_engagement(
+        room_id=room_id,
+        asset=asset,
+        target_range_m=float(d.get("range_m", 10.0)),
+        friendly_separation_m=float(d.get("friendly_separation_m", 5.0)),
+        operator=d.get("operator", "SYSTEM"),
+    )
+    return jsonify(result)
+
+
+@bp.route("/cqb/roe/hostage", methods=["POST"])
+@login_required
+def api_cqb_roe_hostage():
+    """Set hostage-present rooms for CQB ROE."""
+    d = request.json or {}
+    rooms = d.get("room_ids", [])
+    ok = roe_engine.set_hostage_rooms(rooms)
+    return jsonify({"status": "ok" if ok else "error", "hostage_rooms": rooms})
 
 
 # ═══════════════════════════════════════════════════════════

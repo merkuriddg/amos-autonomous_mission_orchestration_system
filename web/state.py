@@ -562,6 +562,17 @@ try:
 except Exception as e:
     print(f"[AMOS] Building/Indoor Positioning: Not available ({e})")
 
+# CQB Planner (always loaded — no feature gate)
+cqb_planner = None
+try:
+    from services.cqb_planner import CQBPlanner
+    cqb_planner = CQBPlanner()
+    # Initialize CQB-specific ROE rules
+    n_cqb_rules = roe_engine.init_cqb_rules()
+    print(f"[AMOS] CQB Planner: Ready ({n_cqb_rules} CQB ROE rules)")
+except Exception as e:
+    print(f"[AMOS] CQB Planner: Not available ({e})")
+
 # Drone Reference Database (always loaded — no feature gate)
 drone_ref_db = None
 try:

@@ -183,3 +183,110 @@ class ROEEngine:
 
     def get_violations(self, limit=50):
         return self.violations[-limit:]
+
+    # ── B3.3 CQB Engagement Rules ────────────────────────
+
+    def init_cqb_rules(self):
+        """Add CQB-specific ROE rules for indoor/close-quarters operations."""
+        cqb_rules = [
+            {"name": "CQB Range Engagement",
+             "type": "cqb_range",
+             "params": {"max_range_m": 25, "min_range_m": 1},
+             "description": "CQB engagements must be within 1-25m range",
+             "severity": "WARNING"},
+            {"name": "Hostage Room Restriction",
+             "type": "cqb_hostage",
+             "params": {"restricted_rooms": []},
+             "description": "No autonomous engagement in rooms marked as hostage-present",
+             "severity": "BLOCK"},
+            {"name": "Fratricide Prevention Zone",
+             "type": "cqb_fratricide",
+             "params": {"min_friendly_separation_m": 2.0},
+             "description": "Block engagement if friendly assets within 2m of target",
+             "severity": "BLOCK"},
+            {"name": "CQB Autonomy Tier Override",
+             "type": "cqb_autonomy",
+             "params": {"min_tier_for_auto_engage": 4},
+             "description": "CQB autonomous engagement requires tier 4+ (speed-of-action)",
+             "severity": "BLOCK"},
+        ]
+        for d in cqb_rules:
+            rid = f"ROE-CQB-{uuid.uuid4().hex[:6]}"
+            self.rules[rid] = {
+                "id": rid, "name": d["name"], "type": d["type"],
+                "params": d["params"], "description": d["description"],
+                "severity": d["severity"], "enabled": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        return len(cqb_rules)
+
+    def set_hostage_rooms(self, room_ids):
+        """Mark rooms as hostage-present for CQB ROE."""
+        for rule in self.rules.values():
+            if rule["type"] == "cqb_hostage":
+                rule["params"]["restricted_rooms"] = list(room_ids)
+                return True
+        return False
+
+    def check_cqb_engagement(self, room_id, asset, target_range_m=10.0,
+                              friendly_separation_m=5.0, operator="SYSTEM"):
+        """CQB-specific engagement check.
+
+        Returns: {allowed: bool, violations: [...], warnings: [...]}
+        """
+        violations = []
+        warnings = []
+
+        for rid, rule in self.rules.items():
+            if not rule["enabled"]:
+                continue
+            result = None
+            rtype = rule["type"]
+            params = rule.get("params", {})
+
+            if rtype == "cqb_range":
+                max_r = params.get("max_range_m", 25)
+                min_r = params.get("min_range_m", 1)
+                if target_range_m > max_r or target_range_m < min_r:
+                    result = f"Engagement range {target_range_m}m outside CQB bounds ({min_r}-{max_r}m)"
+
+            elif rtype == "cqb_hostage":
+                restricted = params.get("restricted_rooms", [])
+                if room_id in restricted:
+                    result = f"Room {room_id} marked as hostage-present — autonomous engagement blocked"
+
+            elif rtype == "cqb_fratricide":
+                min_sep = params.get("min_friendly_separation_m", 2.0)
+                if friendly_separation_m < min_sep:
+                    result = f"Friendly asset within {friendly_separation_m}m (min {min_sep}m) — fratricide risk"
+
+            elif rtype == "cqb_autonomy":
+                min_tier = params.get("min_tier_for_auto_engage", 4)
+                asset_tier = asset.get("autonomy_tier", 2) if asset else 2
+                if asset_tier < min_tier:
+                    result = f"Asset tier {asset_tier} < required {min_tier} for CQB auto-engage"
+
+            elif rtype == "posture_check":
+                if self.posture == "WEAPONS_HOLD":
+                    result = "ROE posture is WEAPONS_HOLD — all engagements blocked"
+
+            if result:
+                entry = {"rule_id": rid, "rule_name": rule["name"],
+                         "detail": result, "severity": rule["severity"]}
+                if rule["severity"] == "BLOCK":
+                    violations.append(entry)
+                else:
+                    warnings.append(entry)
+
+        # Log violations
+        for v in violations + warnings:
+            self.violations.append({
+                "id": f"ROEV-CQB-{uuid.uuid4().hex[:6]}",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "rule_id": v["rule_id"], "rule_name": v["rule_name"],
+                "room_id": room_id, "operator": operator,
+                "detail": v["detail"], "severity": v["severity"],
+            })
+
+        return {"allowed": len(violations) == 0,
+                "violations": violations, "warnings": warnings}
