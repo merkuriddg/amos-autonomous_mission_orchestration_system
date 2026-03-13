@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from web.extensions import login_required
 from web.state import (sensor_fusion, video_pipeline, imagery_handler, schema_validator,
                        haversine, vincenty, bearing, latlng_to_utm, latlng_to_mgrs,
-                       mgrs_to_latlng, tracks_to_geojson)
+                       mgrs_to_latlng, tracks_to_geojson, drone_ref_db)
 
 bp = Blueprint("sensors", __name__)
 
@@ -14,7 +14,14 @@ bp = Blueprint("sensors", __name__)
 # ═══════════════════════════════════════════════════════════
 @bp.route("/fusion/tracks")
 @login_required
-def api_fusion_tracks(): return jsonify(sensor_fusion.get_tracks())
+def api_fusion_tracks():
+    tracks = sensor_fusion.get_tracks()
+    # Enrich drone-classified tracks with reference DB data
+    if drone_ref_db and drone_ref_db.loaded:
+        for tid, t in tracks.items():
+            if t.get("classification", "").lower() == "drone":
+                drone_ref_db.enrich_track(t)
+    return jsonify(tracks)
 
 @bp.route("/fusion/coverage")
 @login_required

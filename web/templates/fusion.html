@@ -26,7 +26,17 @@ async function refreshFusion(){
     if(!entries.length){tDiv.innerHTML='<div style="color:#666;padding:10px">No fused tracks</div>';return;}
     tDiv.innerHTML=entries.map(function(e){const t=e[1];
         const col=t.classification==='drone'?'#ff4444':t.classification==='vessel'?'#ffa500':'#00ccff';
-        return '<div style="border:1px solid '+col+';padding:6px;margin:3px 0"><strong style="color:'+col+'">'+t.id+'</strong> '+t.classification+' | conf: '+(t.confidence*100).toFixed(0)+'% | sources: '+t.source_count+' | KC: <span style="color:'+KC_COLORS[t.kill_chain.phase]+'">'+t.kill_chain.phase+'</span><br><small>'+t.lat.toFixed(4)+', '+t.lng.toFixed(4)+' | age: '+t.age_sec.toFixed(0)+'s</small></div>';
+        var refInfo='';
+        if(t.ref_matched){
+            refInfo='<div style="margin-top:3px;padding:3px 6px;background:#1a0000;border-left:2px solid '+col+';font-size:.75em">'+
+                '<span style="color:#ccc">'+t.ref_name+'</span> ('+t.ref_manufacturer+') — '+
+                '<span style="color:'+(t.ref_threat_classification==='hostile'?'#ff4444':t.ref_threat_classification==='friendly'?'#00ff41':'#4488ff')+'">'+
+                (t.ref_threat_classification||'unknown').toUpperCase()+'</span>';
+            if(t.ref_max_speed_kts) refInfo+=' | '+t.ref_max_speed_kts+' kts';
+            if(t.ref_sensors&&t.ref_sensors.length) refInfo+=' | '+t.ref_sensors.join(',');
+            refInfo+='</div>';
+        }
+        return '<div style="border:1px solid '+col+';padding:6px;margin:3px 0"><strong style="color:'+col+'">'+t.id+'</strong> '+t.classification+' | conf: '+(t.confidence*100).toFixed(0)+'% | sources: '+t.source_count+' | KC: <span style="color:'+KC_COLORS[t.kill_chain.phase]+'">'+t.kill_chain.phase+'</span><br><small>'+t.lat.toFixed(4)+', '+t.lng.toFixed(4)+' | age: '+t.age_sec.toFixed(0)+'s</small>'+refInfo+'</div>';
     }).join('');
 
     const kc=await apiFetch('/api/v1/fusion/killchain');
