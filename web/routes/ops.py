@@ -29,6 +29,9 @@ from web.state import (
     sensor_fusion,
     task_allocator,
     demo_runner,
+    mesh_resilience,
+    mesh_network,
+    sim_assets as _sim_assets,
 )
 
 bp = Blueprint("ops", __name__)
@@ -2534,3 +2537,101 @@ def api_demo_timeline():
     """Get the narrated event timeline for the investor sidebar."""
     limit = request.args.get("limit", 100, type=int)
     return jsonify(demo_runner.get_timeline(limit=limit))
+
+
+# ═══════════════════════════════════════════════════════════
+#  MESH RESILIENCE — Disconnected Ops, Relay Assignment, Sync
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/mesh/resilience/status")
+@login_required
+def api_mesh_resilience_status():
+    """Full mesh resilience status — disconnected assets, relays, sync queue."""
+    return jsonify(mesh_resilience.get_status())
+
+
+@bp.route("/mesh/resilience/tick", methods=["POST"])
+@login_required
+def api_mesh_resilience_tick():
+    """Run one mesh resilience cycle."""
+    d = request.get_json() or {}
+    dt = d.get("dt", 1.0)
+    result = mesh_resilience.tick(sim_assets, sim_threats, dt=dt)
+    return jsonify(result)
+
+
+@bp.route("/mesh/resilience/simulate-disconnect", methods=["POST"])
+@login_required
+def api_mesh_simulate_disconnect():
+    """Manually disconnect an asset for testing/demo."""
+    d = request.get_json() or {}
+    asset_id = (d.get("asset_id") or "").strip()
+    reason = d.get("reason", "manual_test")
+    if not asset_id:
+        return jsonify({"error": "asset_id required"}), 400
+    result = mesh_resilience.simulate_disconnect(asset_id, sim_assets, reason=reason)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/mesh/resilience/reconnect", methods=["POST"])
+@login_required
+def api_mesh_simulate_reconnect():
+    """Manually reconnect a disconnected asset."""
+    d = request.get_json() or {}
+    asset_id = (d.get("asset_id") or "").strip()
+    if not asset_id:
+        return jsonify({"error": "asset_id required"}), 400
+    result = mesh_resilience.simulate_reconnect(asset_id, sim_assets)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/mesh/resilience/disconnected")
+@login_required
+def api_mesh_disconnected_assets():
+    """List all currently disconnected assets."""
+    return jsonify(mesh_resilience.disconnected_ops.list_disconnected())
+
+
+@bp.route("/mesh/resilience/relays")
+@login_required
+def api_mesh_active_relays():
+    """List active auto-assigned relay nodes."""
+    return jsonify(mesh_resilience.relay_assigner.list_active())
+
+
+@bp.route("/mesh/resilience/relays/<relay_id>", methods=["DELETE"])
+@login_required
+def api_mesh_release_relay(relay_id):
+    """Release an active relay assignment."""
+    result = mesh_resilience.relay_assigner.release_relay(relay_id)
+    if "error" in result:
+        return jsonify(result), 404
+    return jsonify(result)
+
+
+@bp.route("/mesh/resilience/sync-queue")
+@login_required
+def api_mesh_sync_queue():
+    """Get the reconnection sync queue."""
+    asset_id = request.args.get("asset_id")
+    return jsonify(mesh_resilience.sync.get_queue(asset_id))
+
+
+@bp.route("/mesh/resilience/sync-queue", methods=["POST"])
+@login_required
+def api_mesh_queue_command():
+    """Queue a command for a disconnected asset."""
+    d = request.get_json() or {}
+    asset_id = (d.get("asset_id") or "").strip()
+    cmd_type = (d.get("type") or "").strip().upper()
+    payload = d.get("payload", {})
+    if not asset_id or not cmd_type:
+        return jsonify({"error": "asset_id and type required"}), 400
+    result = mesh_resilience.sync.queue_command(asset_id, cmd_type, payload)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
