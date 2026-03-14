@@ -366,6 +366,7 @@ from services.sensor_fusion_engine import SensorFusionEngine
 from services.mission_pipeline import MissionPipeline
 from services.swarm_behaviors import SwarmBehaviorManager
 from services.closed_loop import ClosedLoopOrchestrator
+from services.demo_engine import DemoRunner
 from services.mesh_network import MeshNetwork
 from services.video_pipeline import VideoPipeline
 from services.klv_parser import KLVParser
@@ -386,6 +387,11 @@ closed_loop = ClosedLoopOrchestrator(
     task_allocator=task_allocator,
     swarm_behavior_mgr=swarm_behavior_mgr,
     swarm_intel=None,  # connected when swarm feature enabled
+)
+demo_runner = DemoRunner(
+    closed_loop=closed_loop,
+    swarm_behavior_mgr=swarm_behavior_mgr,
+    task_allocator=task_allocator,
 )
 mesh_network = MeshNetwork()
 video_pipeline = VideoPipeline()

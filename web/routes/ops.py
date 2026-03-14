@@ -28,6 +28,7 @@ from web.state import (
     closed_loop,
     sensor_fusion,
     task_allocator,
+    demo_runner,
 )
 
 bp = Blueprint("ops", __name__)
@@ -2469,3 +2470,67 @@ def api_loop_status():
 def api_cop():
     """Common Operating Picture — unified snapshot of all operational layers."""
     return jsonify(closed_loop.cop(sim_assets, sim_threats))
+
+
+# ═══════════════════════════════════════════════════════════
+#  INVESTOR DEMO ENGINE
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/demo/scenarios")
+@login_required
+def api_demo_scenarios():
+    """List available demo scenarios."""
+    from services.demo_engine import DemoRunner
+    return jsonify(DemoRunner.list_scenarios())
+
+
+@bp.route("/demo/start", methods=["POST"])
+@login_required
+def api_demo_start():
+    """Start a demo scenario."""
+    d = request.get_json() or {}
+    scenario_id = (d.get("scenario") or d.get("id") or "").strip().upper()
+    speed = d.get("speed", 1.0)
+    if not scenario_id:
+        from services.demo_engine import DemoRunner
+        return jsonify({"error": "scenario required",
+                        "available": [s["id"] for s in DemoRunner.list_scenarios()]}), 400
+    result = demo_runner.start(scenario_id, speed=speed)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/demo/tick", methods=["POST"])
+@login_required
+def api_demo_tick():
+    """Advance the demo by one tick."""
+    d = request.get_json() or {}
+    dt = d.get("dt", 1.0)
+    result = demo_runner.tick(dt=dt)
+    return jsonify(result)
+
+
+@bp.route("/demo/status")
+@login_required
+def api_demo_status():
+    """Get current demo status."""
+    return jsonify(demo_runner.get_status())
+
+
+@bp.route("/demo/stop", methods=["POST"])
+@login_required
+def api_demo_stop():
+    """Stop the running demo."""
+    result = demo_runner.stop()
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/demo/timeline")
+@login_required
+def api_demo_timeline():
+    """Get the narrated event timeline for the investor sidebar."""
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(demo_runner.get_timeline(limit=limit))
