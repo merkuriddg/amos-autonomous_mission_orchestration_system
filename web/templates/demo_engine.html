@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Demo Engine{% endblock %}
+{% block head %}
+<style>
+.scenario-card{padding:10px;border:1px solid #333;margin:4px 0;cursor:pointer;background:#0d0d0d;transition:border-color .2s}
+.scenario-card:hover,.scenario-card.selected{border-color:#00ff41}
+.scenario-card .sc-name{color:#ffaa00;font-weight:bold;font-size:.9em}
+.scenario-card .sc-desc{color:#888;font-size:.75em;margin-top:2px}
+.tl-event{padding:5px 8px;border-left:3px solid #333;margin:3px 0;font-size:.76em}
+.tl-event.PHASE{border-color:#4488ff}.tl-event.ACTION{border-color:#00ff41}.tl-event.ALERT{border-color:#ff4444}.tl-event.NARRATION{border-color:#ffaa00}
+.demo-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">DEMO ENGINE — Investor Scenarios</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="dm-status" style="color:#888">IDLE</div><div class="label">STATUS</div></div>
+  <div class="card stat"><div class="value" id="dm-scenario" style="color:#ffaa00">—</div><div class="label">SCENARIO</div></div>
+  <div class="card stat"><div class="value" id="dm-step" style="color:#4488ff">0</div><div class="label">STEP</div></div>
+  <div class="card stat"><div class="value" id="dm-elapsed" style="color:#00ff41">0s</div><div class="label">ELAPSED</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- LEFT: Scenarios + Controls -->
+  <div>
+   <div class="card">
+    <h3>SCENARIOS</h3>
+    <div class="scroll-box" id="dm-scenarios" style="max-height:250px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>CONTROLS</h3>
+    <div class="demo-controls">
+     <label style="font-size:.78em;color:#888">Speed:</label>
+     <select id="dm-speed" style="width:70px">
+      <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option>
+     </select>
+     <button class="btn" id="btn-dm-start" onclick="demoStart()">▶ START</button>
+     <button class="btn" onclick="demoTick()">⏭ TICK</button>
+     <button class="btn btn-red" onclick="demoStop()">⏹ STOP</button>
+    </div>
+   </div>
+  </div>
+  <!-- RIGHT: Timeline -->
+  <div class="card">
+   <h3>NARRATED TIMELINE</h3>
+   <div class="scroll-box" id="dm-timeline" style="max-height:500px"></div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var _selectedScenario=null;
+
+async function refreshDemo(){
+ // Scenarios
+ var scenarios=await apiFetch('/api/v1/demo/scenarios');
+ var sEl=document.getElementById('dm-scenarios');
+ var items=Array.isArray(scenarios)?scenarios:Object.values(scenarios||{});
+ if(!items.length){sEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No scenarios available</div>';
+ }else{
+  sEl.innerHTML=items.map(function(s){
+   var id=s.id||s.name||'?';
+   var sel=_selectedScenario===id?' selected':'';
+   return '<div class="scenario-card'+sel+'" onclick="selectScenario(\''+id+'\')"><div class="sc-name">'+id+'</div><div class="sc-desc">'+(s.description||s.name||'')+'</div><div style="font-size:.68em;color:#555;margin-top:2px">Steps: '+(s.steps||s.phases||'?')+' | Duration: '+(s.duration||'?')+'</div></div>';
+  }).join('');
+ }
+ // Status
+ var status=await apiFetch('/api/v1/demo/status');
+ if(status){
+  var running=status.running||status.active||false;
+  document.getElementById('dm-status').textContent=running?'RUNNING':'IDLE';
+  document.getElementById('dm-status').style.color=running?'#00ff41':'#888';
+  document.getElementById('dm-scenario').textContent=status.scenario||'—';
+  document.getElementById('dm-step').textContent=(status.current_step||status.step||0)+'/'+(status.total_steps||'?');
+  document.getElementById('dm-elapsed').textContent=(status.elapsed_sec||0).toFixed(0)+'s';
+ }
+ // Timeline
+ var tl=await apiFetch('/api/v1/demo/timeline');
+ var tlEl=document.getElementById('dm-timeline');
+ var events=Array.isArray(tl)?tl:tl&&tl.events?tl.events:[];
+ if(!events.length){tlEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No events — start a scenario</div>';
+ }else{
+  tlEl.innerHTML=events.slice(-50).reverse().map(function(e){
+   var cls=e.type||e.event_type||'NARRATION';
+   return '<div class="tl-event '+cls+'"><span style="color:#ffaa00;font-weight:bold">'+(e.label||e.type||'')+'</span> '+(e.message||e.text||e.description||'')+'<div style="color:#555;font-size:.9em">T+'+(e.time||e.elapsed||'?')+'s</div></div>';
+  }).join('');
+ }
+}
+
+function selectScenario(id){
+ _selectedScenario=id;
+ document.querySelectorAll('.scenario-card').forEach(function(el){el.classList.remove('selected');});
+ event.currentTarget.classList.add('selected');
+}
+
+async function demoStart(){
+ if(!_selectedScenario){alert('Select a scenario first');return;}
+ var speed=parseFloat(document.getElementById('dm-speed').value)||1;
+ await apiPost('/api/v1/demo/start',{scenario:_selectedScenario,speed:speed});
+ refreshDemo();
+}
+async function demoTick(){
+ await apiPost('/api/v1/demo/tick',{dt:1.0});
+ refreshDemo();
+}
+async function demoStop(){
+ await apiPost('/api/v1/demo/stop',{});
+ refreshDemo();
+}
+
+refreshDemo();setInterval(refreshDemo,3000);
+</script>
+{% endblock %}

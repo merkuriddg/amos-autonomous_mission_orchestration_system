@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Mesh Resilience{% endblock %}
+{% block head %}
+<style>
+.disc-asset{padding:6px 8px;border-left:3px solid #ff4444;margin:3px 0;font-size:.78em;background:#0d0d0d}
+.relay-card{padding:6px 8px;border-left:3px solid #4488ff;margin:3px 0;font-size:.78em;background:#0d0d0d}
+.sync-item{padding:4px 6px;border-bottom:1px solid #111;font-size:.76em}
+.mr-gauge{display:inline-block;width:80px;height:8px;background:#222;border-radius:4px;vertical-align:middle;margin:0 4px}
+.mr-gauge-fill{height:100%;border-radius:4px}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">MESH RESILIENCE — Disconnected Ops, Relay Assignment, Sync</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="mr-disconnected" style="color:#ff4444">0</div><div class="label">DISCONNECTED</div></div>
+  <div class="card stat"><div class="value" id="mr-relays" style="color:#4488ff">0</div><div class="label">ACTIVE RELAYS</div></div>
+  <div class="card stat"><div class="value" id="mr-queued" style="color:#ffaa00">0</div><div class="label">SYNC QUEUED</div></div>
+  <div class="card stat"><div class="value" id="mr-ticks" style="color:#00ff41">0</div><div class="label">CYCLES</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div>
+   <!-- Disconnected Assets -->
+   <div class="card">
+    <h3>DISCONNECTED ASSETS <button class="btn" onclick="mrTick()" style="float:right;padding:2px 8px;font-size:.7em">▶ TICK</button></h3>
+    <div class="scroll-box" id="mr-disc-list" style="max-height:200px"></div>
+   </div>
+   <!-- Simulate -->
+   <div class="card" style="margin-top:8px">
+    <h3>SIMULATE</h3>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+     <input id="mr-asset-id" placeholder="Asset ID" style="flex:1">
+     <button class="btn btn-red" onclick="simDisconnect()">DISCONNECT</button>
+     <button class="btn" onclick="simReconnect()">RECONNECT</button>
+    </div>
+    <div style="display:flex;gap:4px">
+     <input id="mr-reason" placeholder="Reason (opt)" style="flex:1" value="manual_test">
+    </div>
+   </div>
+   <!-- Relay Assignments -->
+   <div class="card" style="margin-top:8px">
+    <h3>RELAY ASSIGNMENTS</h3>
+    <div class="scroll-box" id="mr-relay-list" style="max-height:200px"></div>
+   </div>
+  </div>
+  <div>
+   <!-- Sync Queue -->
+   <div class="card">
+    <h3>RECONNECTION SYNC QUEUE</h3>
+    <div class="scroll-box" id="mr-sync-list" style="max-height:250px"></div>
+   </div>
+   <!-- Queue Command -->
+   <div class="card" style="margin-top:8px">
+    <h3>QUEUE COMMAND</h3>
+    <div style="display:flex;flex-direction:column;gap:4px">
+     <div style="display:flex;gap:4px">
+      <input id="mr-q-asset" placeholder="Asset ID" style="flex:1">
+      <select id="mr-q-type" style="width:120px">
+       <option>WAYPOINT</option><option>RTL</option><option>HOLD</option><option>PATROL</option><option>RECON</option>
+      </select>
+     </div>
+     <input id="mr-q-payload" placeholder='Payload JSON (opt): {"lat":27.85}' style="width:100%">
+     <button class="btn" onclick="queueCmd()" style="width:100%">QUEUE FOR SYNC</button>
+    </div>
+   </div>
+   <!-- Full Status -->
+   <div class="card" style="margin-top:8px">
+    <h3>RESILIENCE STATUS</h3>
+    <div id="mr-status-detail" style="font-size:.78em;color:#888"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshMR(){
+ var status=await apiFetch('/api/v1/mesh/resilience/status');
+ if(status){
+  document.getElementById('mr-disconnected').textContent=status.disconnected_count||0;
+  document.getElementById('mr-relays').textContent=status.active_relays||0;
+  document.getElementById('mr-queued').textContent=status.sync_queue_size||status.queued_commands||0;
+  document.getElementById('mr-ticks').textContent=status.ticks||0;
+  var det='';
+  if(status.last_tick)det+='<div>Last tick: <b>'+status.last_tick+'</b></div>';
+  det+='<div>Reconnections: <b>'+(status.reconnections||0)+'</b></div>';
+  det+='<div>Commands synced: <b>'+(status.commands_synced||0)+'</b></div>';
+  det+='<div>Relay assignments: <b>'+(status.total_relay_assignments||0)+'</b></div>';
+  document.getElementById('mr-status-detail').innerHTML=det;
+ }
+ // Disconnected
+ var disc=await apiFetch('/api/v1/mesh/resilience/disconnected');
+ var dEl=document.getElementById('mr-disc-list');
+ var dItems=Array.isArray(disc)?disc:Object.values(disc||{});
+ if(!dItems.length){dEl.innerHTML='<div style="color:#00ff41;padding:8px;font-size:.8em">All assets connected</div>';
+ }else{
+  dEl.innerHTML=dItems.map(function(d){
+   var h='<div class="disc-asset">';
+   h+='<span style="color:#ff4444;font-weight:bold">'+(d.asset_id||d.id||'?')+'</span>';
+   h+=' <span style="color:#888">'+( d.reason||'unknown')+'</span>';
+   h+=' | Since: '+(d.since||d.disconnected_at||'?');
+   if(d.last_intent)h+=' | Intent: <span style="color:#ffaa00">'+(typeof d.last_intent==='object'?d.last_intent.type||JSON.stringify(d.last_intent):d.last_intent)+'</span>';
+   h+='</div>';
+   return h;
+  }).join('');
+ }
+ // Relays
+ var relays=await apiFetch('/api/v1/mesh/resilience/relays');
+ var rEl=document.getElementById('mr-relay-list');
+ var rItems=Array.isArray(relays)?relays:Object.values(relays||{});
+ if(!rItems.length){rEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No active relay assignments</div>';
+ }else{
+  rEl.innerHTML=rItems.map(function(r){
+   var h='<div class="relay-card">';
+   h+='<span style="color:#4488ff;font-weight:bold">'+(r.relay_id||r.id||'?')+'</span>';
+   h+=' → <span style="color:#ff4444">'+(r.target||r.disconnected_asset||'?')+'</span>';
+   h+=' | Quality: '+(r.quality||r.signal||'?');
+   h+='<button class="btn btn-red" style="float:right;padding:1px 6px;font-size:.65em" onclick="releaseRelay(\''+(r.relay_id||r.id)+'\')">RELEASE</button>';
+   h+='</div>';
+   return h;
+  }).join('');
+ }
+ // Sync queue
+ var sync=await apiFetch('/api/v1/mesh/resilience/sync-queue');
+ var sEl=document.getElementById('mr-sync-list');
+ var sItems=Array.isArray(sync)?sync:Object.values(sync||{});
+ if(!sItems.length){sEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">Sync queue empty</div>';
+ }else{
+  sEl.innerHTML=sItems.map(function(s){
+   return '<div class="sync-item"><span style="color:#ffaa00">'+(s.type||s.command||'?')+'</span> → <span style="color:#4488ff">'+(s.asset_id||'?')+'</span> | '+(s.status||'queued')+' <span style="color:#555">'+(s.queued_at||'')+'</span></div>';
+  }).join('');
+ }
+}
+
+async function mrTick(){await apiPost('/api/v1/mesh/resilience/tick',{dt:1.0});refreshMR();}
+async function simDisconnect(){
+ var aid=document.getElementById('mr-asset-id').value.trim();
+ var reason=document.getElementById('mr-reason').value.trim();
+ if(!aid){alert('Enter asset ID');return;}
+ await apiPost('/api/v1/mesh/resilience/simulate-disconnect',{asset_id:aid,reason:reason||'manual_test'});
+ refreshMR();
+}
+async function simReconnect(){
+ var aid=document.getElementById('mr-asset-id').value.trim();
+ if(!aid){alert('Enter asset ID');return;}
+ await apiPost('/api/v1/mesh/resilience/reconnect',{asset_id:aid});
+ refreshMR();
+}
+async function releaseRelay(id){
+ await fetch('/api/v1/mesh/resilience/relays/'+id,{method:'DELETE'}).then(function(r){return r.json();});
+ refreshMR();
+}
+async function queueCmd(){
+ var aid=document.getElementById('mr-q-asset').value.trim();
+ var type=document.getElementById('mr-q-type').value;
+ var payload={};
+ try{payload=JSON.parse(document.getElementById('mr-q-payload').value||'{}');}catch(e){}
+ if(!aid){alert('Enter asset ID');return;}
+ await apiPost('/api/v1/mesh/resilience/sync-queue',{asset_id:aid,type:type,payload:payload});
+ refreshMR();
+}
+
+refreshMR();setInterval(refreshMR,5000);
+</script>
+{% endblock %}

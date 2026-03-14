@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}COP / Closed Loop{% endblock %}
+{% block head %}
+<style>
+.ooda-phase{display:inline-block;padding:4px 10px;border:1px solid #333;font-size:.78em;text-align:center;min-width:80px}
+.ooda-phase.active{border-color:#00ff41;color:#00ff41;background:#00ff4110}
+.cop-section{margin-bottom:6px}
+.cop-section h4{color:#888;font-size:.72em;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase}
+.cop-item{padding:4px 6px;border-bottom:1px solid #111;font-size:.76em}
+.decision-card{padding:6px 8px;border-left:3px solid #ffaa00;margin:3px 0;font-size:.78em;background:#0d0d0d}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">CLOSED-LOOP ORCHESTRATOR — Common Operating Picture</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="cl-cycles">0</div><div class="label">OODA CYCLES</div></div>
+  <div class="card stat"><div class="value" id="cl-decisions" style="color:#ffaa00">0</div><div class="label">DECISIONS</div></div>
+  <div class="card stat"><div class="value" id="cl-assets" style="color:#4488ff">0</div><div class="label">TRACKED ASSETS</div></div>
+  <div class="card stat"><div class="value" id="cl-threats" style="color:#ff4444">0</div><div class="label">ACTIVE THREATS</div></div>
+ </div>
+
+ <!-- OODA Bar -->
+ <div class="card" style="margin-bottom:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+   <div style="display:flex;gap:6px;align-items:center">
+    <span style="color:#888;font-size:.78em">OODA →</span>
+    <div class="ooda-phase" id="ooda-observe">OBSERVE</div>
+    <span style="color:#333">→</span>
+    <div class="ooda-phase" id="ooda-orient">ORIENT</div>
+    <span style="color:#333">→</span>
+    <div class="ooda-phase" id="ooda-decide">DECIDE</div>
+    <span style="color:#333">→</span>
+    <div class="ooda-phase" id="ooda-act">ACT</div>
+   </div>
+   <div style="display:flex;gap:4px">
+    <button class="btn" onclick="loopTick()">▶ TICK CYCLE</button>
+   </div>
+  </div>
+ </div>
+
+ <div class="grid-2">
+  <!-- LEFT: COP -->
+  <div class="card">
+   <h3>COMMON OPERATING PICTURE</h3>
+   <div class="cop-section">
+    <h4>Friendly Assets</h4>
+    <div class="scroll-box" id="cop-assets" style="max-height:200px"></div>
+   </div>
+   <div class="cop-section">
+    <h4>Threats</h4>
+    <div class="scroll-box" id="cop-threats" style="max-height:200px"></div>
+   </div>
+   <div class="cop-section">
+    <h4>Operational Summary</h4>
+    <div id="cop-summary" style="font-size:.78em;color:#888"></div>
+   </div>
+  </div>
+  <!-- RIGHT: Decisions + Loop Status -->
+  <div>
+   <div class="card">
+    <h3>AUTONOMOUS DECISIONS</h3>
+    <div class="scroll-box" id="cl-decision-list" style="max-height:250px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>LOOP STATUS</h3>
+    <div id="cl-status-detail" style="font-size:.78em;color:#888"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshCOP(){
+ // Loop status
+ var status=await apiFetch('/api/v1/loop/status');
+ if(status){
+  document.getElementById('cl-cycles').textContent=status.cycles||status.ticks||0;
+  document.getElementById('cl-decisions').textContent=status.decisions_made||status.total_decisions||0;
+  // OODA phase highlight
+  var phase=(status.current_phase||'').toLowerCase();
+  ['observe','orient','decide','act'].forEach(function(p){
+   var el=document.getElementById('ooda-'+p);
+   el.className='ooda-phase'+(phase===p?' active':'');
+  });
+  // Detail
+  var det='<div>Cycle time: <b>'+(status.avg_cycle_ms||0).toFixed(1)+'ms</b></div>';
+  det+='<div>Observations: <b>'+(status.observations||0)+'</b></div>';
+  det+='<div>Actions dispatched: <b>'+(status.actions_dispatched||0)+'</b></div>';
+  det+='<div>Last tick: <b>'+(status.last_tick||'—')+'</b></div>';
+  document.getElementById('cl-status-detail').innerHTML=det;
+ }
+ // COP
+ var cop=await apiFetch('/api/v1/cop');
+ if(cop){
+  document.getElementById('cl-assets').textContent=cop.asset_count||Object.keys(cop.assets||{}).length||0;
+  document.getElementById('cl-threats').textContent=cop.threat_count||Object.keys(cop.threats||{}).length||0;
+  // Assets
+  var assets=cop.assets||{};
+  var aKeys=Object.keys(assets);
+  var aEl=document.getElementById('cop-assets');
+  if(!aKeys.length){aEl.innerHTML='<div style="color:#666;padding:4px">No assets in COP</div>';
+  }else{
+   aEl.innerHTML=aKeys.slice(0,30).map(function(k){
+    var a=assets[k];
+    var hpct=Math.round((a.health||a.readiness||1)*100);
+    var hcol=hpct>70?'#00ff41':hpct>40?'#ffaa00':'#ff4444';
+    return '<div class="cop-item"><span style="color:#4488ff">'+(a.callsign||k)+'</span> '+(a.domain||'?')+' | <span style="color:'+hcol+'">'+hpct+'%</span> | '+(a.status||'active')+'</div>';
+   }).join('');
+  }
+  // Threats
+  var threats=cop.threats||{};
+  var tKeys=Object.keys(threats);
+  var tEl=document.getElementById('cop-threats');
+  if(!tKeys.length){tEl.innerHTML='<div style="color:#666;padding:4px">No active threats</div>';
+  }else{
+   tEl.innerHTML=tKeys.slice(0,20).map(function(k){
+    var t=threats[k];
+    var rcol=(t.risk||'')>'0.5'?'#ff4444':'#ffaa00';
+    return '<div class="cop-item"><span style="color:#ff4444">⚠ '+(t.type||k)+'</span> '+(t.classification||'?')+' | Risk: <span style="color:'+rcol+'">'+(t.risk||'?')+'</span></div>';
+   }).join('');
+  }
+  // Summary
+  var sum=cop.summary||cop.operational_summary||{};
+  var sEl=document.getElementById('cop-summary');
+  sEl.innerHTML='<div>Mission phase: <b>'+(sum.phase||cop.phase||'—')+'</b></div>'+
+   '<div>Readiness: <b>'+(sum.readiness||cop.readiness||'—')+'</b></div>'+
+   '<div>Comms status: <b>'+(sum.comms||cop.comms_health||'—')+'</b></div>';
+  // Decisions
+  var decs=cop.decisions||cop.recent_decisions||[];
+  var dEl=document.getElementById('cl-decision-list');
+  if(!decs.length){dEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No decisions yet — tick the loop</div>';
+  }else{
+   dEl.innerHTML=decs.slice(-20).reverse().map(function(d){
+    return '<div class="decision-card"><span style="color:#ffaa00;font-weight:bold">'+(d.type||d.action||'?')+'</span><div style="color:#888;margin-top:2px">'+(d.rationale||d.detail||d.description||'')+'</div><div style="color:#555;font-size:.9em">'+(d.timestamp||'')+'</div></div>';
+   }).join('');
+  }
+ }
+}
+
+async function loopTick(){
+ await apiPost('/api/v1/loop/tick',{blackboard:{},dt:1.0});
+ refreshCOP();
+}
+
+refreshCOP();setInterval(refreshCOP,4000);
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Swarm Behaviors{% endblock %}
+{% block head %}
+<style>
+.sb-card{padding:8px;border:1px solid #222;margin:4px 0;background:#0d0d0d}
+.sb-card .sb-type{color:#ff00ff;font-weight:bold;font-size:.85em}
+.sb-progress{height:6px;background:#222;border-radius:3px;margin-top:4px}
+.sb-progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.cat-chip{display:inline-block;padding:3px 8px;border:1px solid #333;margin:2px;font-size:.72em;cursor:pointer;border-radius:3px}
+.cat-chip:hover{border-color:#00ff41;color:#fff}
+.trig-row{padding:5px 8px;border-bottom:1px solid #1a1a1a;font-size:.78em;display:flex;justify-content:space-between;align-items:center}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">SWARM BEHAVIORS — Coordinated Multi-Asset Tactics</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="sb-active">0</div><div class="label">ACTIVE BEHAVIORS</div></div>
+  <div class="card stat"><div class="value" id="sb-catalog" style="color:#ff00ff">0</div><div class="label">BEHAVIOR TYPES</div></div>
+  <div class="card stat"><div class="value" id="sb-assets" style="color:#4488ff">0</div><div class="label">SWARMED ASSETS</div></div>
+  <div class="card stat"><div class="value" id="sb-events" style="color:#ffaa00">0</div><div class="label">TOTAL EVENTS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div>
+   <!-- Catalog -->
+   <div class="card">
+    <h3>BEHAVIOR CATALOG</h3>
+    <div id="sb-catalog-list"></div>
+   </div>
+   <!-- Assign -->
+   <div class="card" style="margin-top:8px">
+    <h3>ASSIGN BEHAVIOR</h3>
+    <div style="display:flex;flex-direction:column;gap:4px">
+     <div style="display:flex;gap:4px">
+      <select id="sb-type" style="flex:1"></select>
+      <input id="sb-swarm-id" placeholder="Swarm ID (opt)" style="width:120px">
+     </div>
+     <input id="sb-asset-ids" placeholder="Asset IDs (comma-separated)" style="width:100%">
+     <button class="btn" onclick="assignBehavior()" style="width:100%">ASSIGN BEHAVIOR</button>
+    </div>
+   </div>
+  </div>
+  <div>
+   <!-- Active -->
+   <div class="card">
+    <h3>ACTIVE BEHAVIORS <button class="btn" onclick="tickAll()" style="float:right;padding:2px 8px;font-size:.7em">▶ TICK ALL</button></h3>
+    <div class="scroll-box" id="sb-active-list" style="max-height:300px"></div>
+   </div>
+   <!-- Triggers -->
+   <div class="card" style="margin-top:8px">
+    <h3>AUTO-TRIGGERS</h3>
+    <div class="scroll-box" id="sb-triggers" style="max-height:200px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshSB(){
+ var status=await apiFetch('/api/v1/swarm/behaviors/status');
+ if(status){
+  document.getElementById('sb-active').textContent=status.active_count||status.active||0;
+  document.getElementById('sb-catalog').textContent=status.catalog_count||status.catalog_size||0;
+  document.getElementById('sb-assets').textContent=status.total_assets||0;
+  document.getElementById('sb-events').textContent=status.total_events||0;
+ }
+ // Catalog
+ var cat=await apiFetch('/api/v1/swarm/behaviors/catalog');
+ var catEl=document.getElementById('sb-catalog-list');
+ var sel=document.getElementById('sb-type');
+ var items=Array.isArray(cat)?cat:Object.values(cat||{});
+ if(!items.length){catEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No behaviors in catalog</div>';
+ }else{
+  catEl.innerHTML=items.map(function(c){
+   var t=c.type||c.id||c.name||'?';
+   return '<span class="cat-chip" onclick="document.getElementById(\'sb-type\').value=\''+t+'\'" title="'+(c.description||'')+'">'+t+'</span>';
+  }).join('');
+  sel.innerHTML=items.map(function(c){
+   var t=c.type||c.id||c.name||'?';
+   return '<option value="'+t+'">'+t+(c.description?' — '+c.description:'')+'</option>';
+  }).join('');
+ }
+ // Active
+ var active=await apiFetch('/api/v1/swarm/behaviors/active');
+ var aEl=document.getElementById('sb-active-list');
+ var aItems=Array.isArray(active)?active:Object.values(active||{});
+ if(!aItems.length){aEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No active behaviors — assign one from catalog</div>';
+ }else{
+  aEl.innerHTML=aItems.map(function(b){
+   var id=b.id||b.behavior_id||'?';
+   var prog=b.progress||{};
+   var pct=Math.round((prog.pct||prog.progress||0)*100);
+   var pcol=pct>70?'#00ff41':pct>30?'#ffaa00':'#4488ff';
+   var h='<div class="sb-card">';
+   h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+   h+='<span class="sb-type">'+(b.type||'?')+'</span>';
+   h+='<span class="badge badge-green">'+(b.status||'active')+'</span></div>';
+   h+='<div style="font-size:.72em;color:#888;margin-top:2px">ID: '+id+' | Assets: '+(b.asset_count||0)+' | Events: '+(b.event_count||0)+'</div>';
+   h+='<div class="sb-progress"><div class="sb-progress-fill" style="width:'+pct+'%;background:'+pcol+'"></div></div>';
+   h+='<div style="font-size:.68em;color:#555;margin-top:2px">'+pct+'% complete</div>';
+   h+='<div style="margin-top:4px;display:flex;gap:3px">';
+   h+='<button class="btn" style="padding:1px 6px;font-size:.65em" onclick="tickBehavior(\''+id+'\')">TICK</button>';
+   h+='<button class="btn btn-red" style="padding:1px 6px;font-size:.65em" onclick="cancelBehavior(\''+id+'\')">CANCEL</button>';
+   h+='</div></div>';
+   return h;
+  }).join('');
+ }
+ // Triggers
+ var trigs=await apiFetch('/api/v1/swarm/behaviors/triggers');
+ var tEl=document.getElementById('sb-triggers');
+ var tItems=Array.isArray(trigs)?trigs:Object.values(trigs||{});
+ if(!tItems.length){tEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No auto-triggers configured</div>';
+ }else{
+  tEl.innerHTML=tItems.map(function(t){
+   var col=t.enabled?'#00ff41':'#666';
+   return '<div class="trig-row"><div><strong style="color:'+col+'">'+(t.name||t.id)+'</strong><div style="color:#555;font-size:.9em">'+(t.condition||'?')+' → '+(t.behavior||'?')+'</div></div><button class="btn" style="padding:1px 6px;font-size:.65em" onclick="toggleTrigger(\''+t.id+'\')">'+( t.enabled?'OFF':'ON')+'</button></div>';
+  }).join('');
+ }
+}
+
+async function assignBehavior(){
+ var type=document.getElementById('sb-type').value;
+ var swarm_id=document.getElementById('sb-swarm-id').value.trim();
+ var aids=document.getElementById('sb-asset-ids').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+ if(!type||!aids.length){alert('Select behavior type and enter asset IDs');return;}
+ await apiPost('/api/v1/swarm/behavior',{behavior:type,swarm_id:swarm_id||undefined,asset_ids:aids,params:{}});
+ refreshSB();
+}
+async function tickBehavior(id){await apiPost('/api/v1/swarm/behavior/'+id+'/tick',{blackboard:{}});refreshSB();}
+async function cancelBehavior(id){await fetch('/api/v1/swarm/behavior/'+id,{method:'DELETE'}).then(function(r){return r.json();});refreshSB();}
+async function toggleTrigger(id){await apiPost('/api/v1/swarm/behaviors/triggers/'+id+'/toggle',{});refreshSB();}
+async function tickAll(){await apiPost('/api/v1/swarm/behaviors/tick',{blackboard:{},dt:1.0});refreshSB();}
+
+refreshSB();setInterval(refreshSB,5000);
+</script>
+{% endblock %}

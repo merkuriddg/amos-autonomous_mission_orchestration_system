@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Mission Pipeline{% endblock %}
+{% block head %}
+<style>
+.bt-node{padding:6px 8px;margin:2px 0;border-left:3px solid #333;font-size:.78em}
+.bt-node.SUCCESS{border-color:#00ff41}.bt-node.FAILURE{border-color:#ff4444}.bt-node.RUNNING{border-color:#ffaa00}.bt-node.IDLE{border-color:#666}
+.rule-row{padding:6px 8px;border-bottom:1px solid #1a1a1a;font-size:.78em;display:flex;justify-content:space-between;align-items:center}
+.task-row{padding:4px 0;border-bottom:1px solid #111;font-size:.72em}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">MISSION PIPELINE — Behavior Trees &amp; Trigger Rules</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="pl-trees">0</div><div class="label">ACTIVE TREES</div></div>
+  <div class="card stat"><div class="value" id="pl-rules" style="color:#ffaa00">0</div><div class="label">TRIGGER RULES</div></div>
+  <div class="card stat"><div class="value" id="pl-ticks" style="color:#4488ff">0</div><div class="label">PIPELINE TICKS</div></div>
+  <div class="card stat"><div class="value" id="pl-tasks" style="color:#00ff41">0</div><div class="label">SPAWNED TASKS</div></div>
+ </div>
+
+ <div class="grid-2">
+  <!-- LEFT: Trees -->
+  <div>
+   <div class="card">
+    <h3>CREATE BEHAVIOR TREE</h3>
+    <div style="display:flex;gap:4px;margin-bottom:6px">
+     <select id="bt-template" style="flex:1"></select>
+     <button class="btn" onclick="createBT()">+ CREATE</button>
+    </div>
+    <div id="bt-template-info" style="font-size:.72em;color:#666"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>ACTIVE BEHAVIOR TREES</h3>
+    <div class="scroll-box" id="bt-list" style="max-height:400px"></div>
+   </div>
+  </div>
+  <!-- RIGHT: Rules + Tasks -->
+  <div>
+   <div class="card">
+    <h3>TRIGGER RULES <button class="btn" onclick="pipelineTick()" style="float:right;padding:2px 8px;font-size:.7em">▶ TICK PIPELINE</button></h3>
+    <div class="scroll-box" id="rule-list" style="max-height:250px"></div>
+   </div>
+   <div class="card" style="margin-top:8px">
+    <h3>SPAWNED TASKS</h3>
+    <div class="scroll-box" id="task-list" style="max-height:250px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var _templates=[];
+
+async function refreshPipeline(){
+ var status=await apiFetch('/api/v1/pipeline/status');
+ if(status){
+  document.getElementById('pl-trees').textContent=status.active_trees||0;
+  document.getElementById('pl-rules').textContent=status.rules_count||status.rules||0;
+  document.getElementById('pl-ticks').textContent=status.ticks||0;
+  document.getElementById('pl-tasks').textContent=status.tasks_spawned||0;
+ }
+ // Templates
+ var tpls=await apiFetch('/api/v1/bt/templates');
+ if(tpls){
+  _templates=Array.isArray(tpls)?tpls:Object.values(tpls);
+  var sel=document.getElementById('bt-template');
+  sel.innerHTML=_templates.map(function(t){
+   var id=t.id||t.name||t;
+   return '<option value="'+id+'">'+id+'</option>';
+  }).join('');
+ }
+ // Active trees
+ var trees=await apiFetch('/api/v1/bt/trees');
+ var el=document.getElementById('bt-list');
+ var items=Array.isArray(trees)?trees:Object.values(trees||{});
+ if(!items.length){el.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No active trees — create one above</div>';
+ }else{
+  el.innerHTML=items.map(function(t){
+   var id=t.id||t.bt_id||'?';
+   var st=t.status||t.state||'IDLE';
+   var cls=st.toUpperCase();
+   var h='<div class="bt-node '+cls+'">';
+   h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+   h+='<span style="color:#4488ff;font-weight:bold">'+id+'</span>';
+   h+='<span class="badge badge-'+(cls==='SUCCESS'?'green':cls==='FAILURE'?'red':cls==='RUNNING'?'yellow':'blue')+'">'+st+'</span>';
+   h+='</div>';
+   h+='<div style="color:#888;margin-top:2px">Template: '+(t.template||'—')+' | Ticks: '+(t.tick_count||0)+'</div>';
+   h+='<div style="margin-top:4px;display:flex;gap:3px">';
+   h+='<button class="btn" style="padding:1px 6px;font-size:.65em" onclick="tickBT(\''+id+'\')">TICK</button>';
+   h+='<button class="btn btn-red" style="padding:1px 6px;font-size:.65em" onclick="deleteBT(\''+id+'\')">DELETE</button>';
+   h+='</div></div>';
+   return h;
+  }).join('');
+ }
+ // Rules
+ var rules=await apiFetch('/api/v1/pipeline/rules');
+ var rel=document.getElementById('rule-list');
+ var rItems=Array.isArray(rules)?rules:Object.values(rules||{});
+ if(!rItems.length){rel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No trigger rules</div>';
+ }else{
+  rel.innerHTML=rItems.map(function(r){
+   var col=r.enabled?'#00ff41':'#666';
+   var h='<div class="rule-row" style="border-left:3px solid '+col+'">';
+   h+='<div><strong style="color:'+col+'">'+r.name+'</strong>';
+   h+='<div style="color:#555;font-size:.9em">'+r.trigger+' → '+(r.action||r.spawns||'?')+' | Fired: '+(r.fired_count||0)+'</div></div>';
+   h+='<button class="btn" style="padding:1px 6px;font-size:.65em" onclick="toggleRule(\''+r.id+'\')">'+( r.enabled?'DISABLE':'ENABLE')+'</button>';
+   h+='</div>';
+   return h;
+  }).join('');
+ }
+ // Tasks
+ var tasks=await apiFetch('/api/v1/pipeline/tasks');
+ var tel=document.getElementById('task-list');
+ var tItems=Array.isArray(tasks)?tasks:Object.values(tasks||{});
+ if(!tItems.length){tel.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No spawned tasks yet — tick the pipeline</div>';
+ }else{
+  tel.innerHTML=tItems.slice(-30).reverse().map(function(t){
+   return '<div class="task-row"><span style="color:#ffaa00">'+(t.type||t.action||'?')+'</span> '+(t.detail||t.description||'')+' <span style="color:#555">'+(t.timestamp||'')+'</span></div>';
+  }).join('');
+ }
+}
+
+async function createBT(){
+ var tpl=document.getElementById('bt-template').value;
+ if(!tpl)return;
+ await apiPost('/api/v1/bt/tree',{template:tpl});
+ refreshPipeline();
+}
+async function tickBT(id){
+ await apiPost('/api/v1/bt/tree/'+id+'/tick',{blackboard:{}});
+ refreshPipeline();
+}
+async function deleteBT(id){
+ await fetch('/api/v1/bt/tree/'+id,{method:'DELETE'}).then(function(r){return r.json();});
+ refreshPipeline();
+}
+async function toggleRule(id){
+ await apiPost('/api/v1/pipeline/rules/'+id+'/toggle',{});
+ refreshPipeline();
+}
+async function pipelineTick(){
+ await apiPost('/api/v1/pipeline/tick',{tracks:[],blackboard:{}});
+ refreshPipeline();
+}
+
+refreshPipeline();setInterval(refreshPipeline,5000);
+</script>
+{% endblock %}

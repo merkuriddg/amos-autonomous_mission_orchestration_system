@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Interop{% endblock %}
+{% block head %}
+<style>
+.fw-card{display:inline-block;padding:6px 10px;border:1px solid #333;margin:3px;font-size:.78em;vertical-align:top;min-width:140px;background:#0d0d0d}
+.fw-card .fw-name{color:#00ff41;font-weight:bold}
+.binding-row{padding:5px 8px;border-bottom:1px solid #1a1a1a;font-size:.78em;display:flex;justify-content:space-between}
+.uas-card{padding:10px;border:1px solid #333;margin:4px 0;background:#0d0d0d}
+.uas-card .uas-name{color:#ffaa00;font-weight:bold;font-size:.9em}
+.uas-card .uas-mfr{color:#888;font-size:.75em}
+.uas-chip{display:inline-block;padding:1px 6px;border:1px solid #333;margin:1px;font-size:.68em;border-radius:3px}
+.health-bridge{padding:6px 8px;border-left:3px solid #333;margin:3px 0;font-size:.78em}
+.health-bridge.connected{border-color:#00ff41}.health-bridge.disconnected{border-color:#ff4444}
+</style>
+{% endblock %}
+{% block content %}
+<div style="max-width:1200px;margin:0 auto">
+ <h2 style="font-size:1em;margin-bottom:10px;border-bottom:1px solid #222;padding-bottom:6px">INTEROPERABILITY — Multi-Framework Abstraction &amp; Blue UAS</h2>
+
+ <div class="grid-4" style="margin-bottom:8px">
+  <div class="card stat"><div class="value" id="io-frameworks">0</div><div class="label">FRAMEWORKS</div></div>
+  <div class="card stat"><div class="value" id="io-bindings" style="color:#4488ff">0</div><div class="label">BINDINGS</div></div>
+  <div class="card stat"><div class="value" id="io-platforms" style="color:#ffaa00">0</div><div class="label">BLUE UAS</div></div>
+  <div class="card stat"><div class="value" id="io-health" style="color:#00ff41">—</div><div class="label">HEALTH %</div></div>
+ </div>
+
+ <div class="grid-2">
+  <div>
+   <!-- Frameworks -->
+   <div class="card">
+    <h3>AUTONOMY FRAMEWORKS</h3>
+    <div id="io-fw-list"></div>
+   </div>
+   <!-- Bind -->
+   <div class="card" style="margin-top:8px">
+    <h3>BIND ASSET</h3>
+    <div style="display:flex;gap:4px">
+     <input id="io-bind-asset" placeholder="Asset ID" style="flex:1">
+     <select id="io-bind-fw" style="width:140px"></select>
+     <button class="btn" onclick="bindAsset()">BIND</button>
+    </div>
+   </div>
+   <!-- Command Translator -->
+   <div class="card" style="margin-top:8px">
+    <h3>COMMAND TRANSLATOR</h3>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+     <input id="io-cmd-asset" placeholder="Asset ID" style="flex:1">
+     <select id="io-cmd-type" style="width:120px">
+      <option>WAYPOINT</option><option>RTL</option><option>HOLD</option><option>PATROL</option><option>RECON</option><option>LAND</option><option>TAKEOFF</option><option>BREACH</option>
+     </select>
+    </div>
+    <div style="display:flex;gap:4px">
+     <input id="io-cmd-params" placeholder='Params JSON: {"lat":27.85,"lng":-82.52}' style="flex:1">
+     <button class="btn" onclick="sendCmd()">TRANSLATE</button>
+    </div>
+    <div id="io-cmd-result" style="font-size:.75em;color:#888;margin-top:4px;white-space:pre-wrap"></div>
+   </div>
+   <!-- Bindings -->
+   <div class="card" style="margin-top:8px">
+    <h3>ACTIVE BINDINGS</h3>
+    <div class="scroll-box" id="io-binding-list" style="max-height:180px"></div>
+   </div>
+  </div>
+  <div>
+   <!-- Blue UAS -->
+   <div class="card">
+    <h3>BLUE UAS REGISTRY <span style="font-size:.7em;color:#888">(DoD Approved)</span></h3>
+    <div style="display:flex;gap:4px;margin-bottom:6px">
+     <input id="io-uas-search" placeholder="Search..." style="flex:1" oninput="searchUAS()">
+     <select id="io-uas-domain" style="width:90px" onchange="searchUAS()">
+      <option value="">All</option><option value="air">Air</option><option value="ground">Ground</option>
+     </select>
+    </div>
+    <div class="scroll-box" id="io-uas-list" style="max-height:300px"></div>
+   </div>
+   <!-- Health Dashboard -->
+   <div class="card" style="margin-top:8px">
+    <h3>INTEGRATION HEALTH</h3>
+    <div class="scroll-box" id="io-health-list" style="max-height:200px"></div>
+    <div id="io-health-alerts" style="margin-top:4px"></div>
+   </div>
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshInterop(){
+ // Status
+ var status=await apiFetch('/api/v1/interop/status');
+ if(status){
+  var aa=status.autonomy_abstraction||{};
+  var uas=status.blue_uas_registry||{};
+  var ih=status.integration_health||{};
+  document.getElementById('io-frameworks').textContent=aa.frameworks||0;
+  document.getElementById('io-bindings').textContent=aa.bindings||0;
+  document.getElementById('io-platforms').textContent=uas.total_platforms||0;
+  document.getElementById('io-health').textContent=(ih.health_pct!=null?ih.health_pct+'%':'—');
+  document.getElementById('io-health').style.color=(ih.health_pct||0)>70?'#00ff41':(ih.health_pct||0)>40?'#ffaa00':'#ff4444';
+ }
+ // Frameworks
+ var fws=await apiFetch('/api/v1/interop/frameworks');
+ var fwEl=document.getElementById('io-fw-list');
+ var sel=document.getElementById('io-bind-fw');
+ var items=Array.isArray(fws)?fws:Object.values(fws||{});
+ fwEl.innerHTML=items.map(function(f){
+  return '<div class="fw-card"><div class="fw-name">'+(f.id||f.name)+'</div><div style="color:#888;font-size:.9em">'+(f.protocol||'?')+'</div><div style="color:#555;font-size:.85em">Domains: '+(Array.isArray(f.domains)?f.domains.join(', '):'?')+'</div></div>';
+ }).join('')||'<div style="color:#666;padding:8px;font-size:.8em">No frameworks</div>';
+ sel.innerHTML=items.map(function(f){return '<option value="'+(f.id||f.name)+'">'+(f.id||f.name)+' ('+( f.protocol||'?')+')</option>';}).join('');
+
+ // Bindings
+ var bindings=await apiFetch('/api/v1/interop/bindings');
+ var bEl=document.getElementById('io-binding-list');
+ var bItems=Array.isArray(bindings)?bindings:Object.values(bindings||{});
+ if(!bItems.length){bEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No assets bound — use form above</div>';
+ }else{
+  bEl.innerHTML=bItems.map(function(b){
+   return '<div class="binding-row"><span style="color:#4488ff">'+(b.asset_id||b.asset||'?')+'</span><span style="color:#00ff41">'+(b.framework||'?')+' ('+( b.protocol||'?')+')</span></div>';
+  }).join('');
+ }
+
+ // Health
+ var health=await apiFetch('/api/v1/interop/health');
+ var hEl=document.getElementById('io-health-list');
+ var aEl=document.getElementById('io-health-alerts');
+ if(health){
+  var bridges=health.bridges||{};
+  var bKeys=Object.keys(bridges);
+  if(!bKeys.length){hEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No bridges registered</div>';
+  }else{
+   hEl.innerHTML=bKeys.map(function(k){
+    var b=bridges[k];
+    var cls=b.connected?'connected':'disconnected';
+    return '<div class="health-bridge '+cls+'"><span style="font-weight:bold">'+ k+'</span> <span style="color:#888">'+(b.protocol||'?')+'</span> | '+(b.connected?'<span style="color:#00ff41">CONNECTED</span>':'<span style="color:#ff4444">OFFLINE</span>')+'</div>';
+   }).join('');
+  }
+  var alerts=health.alerts||[];
+  if(alerts.length){
+   aEl.innerHTML=alerts.map(function(a){
+    var col=a.severity==='error'?'#ff4444':a.severity==='warning'?'#ffaa00':'#4488ff';
+    return '<div style="font-size:.72em;color:'+col+';padding:2px 0">⚠ '+a.message+'</div>';
+   }).join('');
+  }else{aEl.innerHTML='';}
+ }
+}
+
+async function refreshUAS(){
+ var q=document.getElementById('io-uas-search').value;
+ var domain=document.getElementById('io-uas-domain').value;
+ var url='/api/v1/interop/blue-uas?q='+encodeURIComponent(q||'');
+ if(domain)url+='&domain='+domain;
+ var platforms=await apiFetch(url);
+ var uEl=document.getElementById('io-uas-list');
+ var items=Array.isArray(platforms)?platforms:Object.values(platforms||{});
+ if(!items.length){uEl.innerHTML='<div style="color:#666;padding:8px;font-size:.8em">No platforms match</div>';
+ }else{
+  uEl.innerHTML=items.map(function(p){
+   var h='<div class="uas-card">';
+   h+='<div class="uas-name">'+(p.model||p.model_id||'?')+'</div>';
+   h+='<div class="uas-mfr">'+(p.manufacturer||'?')+' | '+(p.model_id||'?')+'</div>';
+   h+='<div style="margin-top:4px">';
+   h+='<span class="uas-chip" style="border-color:#4488ff">'+( Array.isArray(p.domains)?p.domains.join(', '):'?')+'</span>';
+   h+='<span class="uas-chip" style="border-color:#00ff41">'+(p.autonomy_framework||'?')+'</span>';
+   if(p.weapons&&p.weapons.length)h+='<span class="uas-chip" style="border-color:#ff4444">ARMED</span>';
+   h+='</div>';
+   h+='<div style="font-size:.7em;color:#555;margin-top:3px">Sensors: '+(Array.isArray(p.sensors)?p.sensors.join(', '):'?')+'</div>';
+   h+='</div>';
+   return h;
+  }).join('');
+ }
+}
+function searchUAS(){refreshUAS();}
+
+async function bindAsset(){
+ var aid=document.getElementById('io-bind-asset').value.trim();
+ var fw=document.getElementById('io-bind-fw').value;
+ if(!aid){alert('Enter asset ID');return;}
+ await apiPost('/api/v1/interop/bind',{asset_id:aid,framework:fw});
+ refreshInterop();
+}
+
+async function sendCmd(){
+ var aid=document.getElementById('io-cmd-asset').value.trim();
+ var cmd=document.getElementById('io-cmd-type').value;
+ var params={};
+ try{params=JSON.parse(document.getElementById('io-cmd-params').value||'{}');}catch(e){}
+ if(!aid){alert('Enter asset ID');return;}
+ var r=await apiPost('/api/v1/interop/command',{asset_id:aid,command:cmd,params:params});
+ document.getElementById('io-cmd-result').textContent=JSON.stringify(r,null,2);
+}
+
+refreshInterop();refreshUAS();
+setInterval(refreshInterop,5000);
+</script>
+{% endblock %}

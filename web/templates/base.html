@@ -148,6 +148,12 @@ select,input[type=number],input[type=text],input[type=password]{background:#0a0a
      </div>
      <div class="amos-menu-col">
       <div class="amos-menu-hdr">AUTONOMY</div>
+      <a href="/pipeline" class="amos-menu-item{% if request.path=='/pipeline' %} active{% endif %}">Mission Pipeline</a>
+      <a href="/swarm-behaviors" class="amos-menu-item{% if request.path=='/swarm-behaviors' %} active{% endif %}">Swarm Behaviors</a>
+      <a href="/cop" class="amos-menu-item{% if request.path=='/cop' %} active{% endif %}">COP / Loop</a>
+      <a href="/demo" class="amos-menu-item{% if request.path=='/demo' %} active{% endif %}">Demo Engine</a>
+      <a href="/mesh-resilience" class="amos-menu-item{% if request.path=='/mesh-resilience' %} active{% endif %}">Mesh Resilience</a>
+      <a href="/interop" class="amos-menu-item{% if request.path=='/interop' %} active{% endif %}">Interop</a>
       <a href="/swarm" class="amos-menu-item{% if request.path=='/swarm' %} active{% endif %}">Swarm Intel</a>
       <a href="/isr" class="amos-menu-item{% if request.path=='/isr' %} active{% endif %}">ISR/ATR</a>
       <a href="/hmt" class="amos-menu-item{% if request.path=='/hmt' %} active{% endif %}">HMT</a>

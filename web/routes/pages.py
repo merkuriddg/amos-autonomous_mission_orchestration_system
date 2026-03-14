@@ -203,3 +203,29 @@ def tactical3d_page(): return render_template("tactical3d.html", **ctx())
 @bp.route("/systemmap")
 @login_required
 def systemmap_page(): return render_template("systemmap.html", **ctx())
+
+
+# v0.6 Sprint pages
+@bp.route("/pipeline")
+@login_required
+def pipeline_page(): return render_template("pipeline.html", **ctx())
+
+@bp.route("/swarm-behaviors")
+@login_required
+def swarm_behaviors_page(): return render_template("swarm_behaviors.html", **ctx())
+
+@bp.route("/cop")
+@login_required
+def cop_page(): return render_template("cop.html", **ctx())
+
+@bp.route("/demo")
+@login_required
+def demo_page(): return render_template("demo_engine.html", **ctx())
+
+@bp.route("/mesh-resilience")
+@login_required
+def mesh_resilience_page(): return render_template("mesh_resilience.html", **ctx())
+
+@bp.route("/interop")
+@login_required
+def interop_page(): return render_template("interop.html", **ctx())
