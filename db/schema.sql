@@ -165,6 +165,10 @@ CREATE TABLE IF NOT EXISTS system_map_nodes (
     trails          JSON         NOT NULL,
     pos_x           DOUBLE       DEFAULT NULL,
     pos_y           DOUBLE       DEFAULT NULL,
+    w_risk          DOUBLE       NOT NULL DEFAULT 0.5,
+    w_reliability   DOUBLE       NOT NULL DEFAULT 0.8,
+    w_latency_sec   DOUBLE       NOT NULL DEFAULT 10.0,
+    w_cost          DOUBLE       NOT NULL DEFAULT 0.5,
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -174,8 +178,21 @@ CREATE TABLE IF NOT EXISTS system_map_edges (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     source_key      VARCHAR(64)  NOT NULL,
     target_key      VARCHAR(64)  NOT NULL,
+    confidence      DOUBLE       NOT NULL DEFAULT 0.8,
+    strength        VARCHAR(10)  NOT NULL DEFAULT 'hard',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_edge (source_key, target_key),
     INDEX idx_source (source_key),
     INDEX idx_target (target_key)
+) ENGINE=InnoDB;
+
+-- ─── SYSTEM MAP SCENARIOS ────────────────────────────
+CREATE TABLE IF NOT EXISTS system_map_scenarios (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(120) NOT NULL,
+    description     TEXT,
+    overrides       JSON         NOT NULL,
+    scores          JSON,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

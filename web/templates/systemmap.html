@@ -10,7 +10,8 @@
 .sys-btn:hover{background:#00ff4115;border-color:#00ff41}
 .sys-btn.active{background:#ff444422;border-color:#ff4444;color:#ff4444}
 .sys-btn.edit-active{background:#ffaa0022;border-color:#ffaa00;color:#ffaa00}
-.sys-grid{display:grid;grid-template-columns:1fr 330px;gap:8px}
+.sys-btn.scenario-active{background:#4488ff22;border-color:#4488ff;color:#4488ff}
+.sys-grid{display:grid;grid-template-columns:1fr 340px;gap:8px}
 .sys-canvas{background:#090909;border:1px solid #222;border-radius:4px;min-height:760px;position:relative;overflow:hidden}
 .sys-panel{background:#0d0d0d;border:1px solid #222;border-radius:4px;padding:10px;max-height:780px;overflow-y:auto}
 .sys-panel h3{margin:0 0 8px;color:#ffaa00;font-size:.85em}
@@ -23,73 +24,71 @@
 .sys-list{max-height:180px;overflow-y:auto;font-size:.74em}
 .sys-list .item{padding:3px 0;border-bottom:1px solid #141414;color:#bbb;display:flex;align-items:center;justify-content:space-between}
 .sys-badge{display:inline-block;padding:1px 6px;border:1px solid #444;border-radius:3px;font-size:.68em;margin-right:4px}
-.sys-badge.left{color:#4488ff;border-color:#4488ff}
-.sys-badge.bang{color:#ff4444;border-color:#ff4444}
-.sys-badge.right{color:#00ff41;border-color:#00ff41}
-.sys-badge.cross{color:#ffaa00;border-color:#ffaa00}
+.sys-badge.left{color:#4488ff;border-color:#4488ff}.sys-badge.bang{color:#ff4444;border-color:#ff4444}
+.sys-badge.right{color:#00ff41;border-color:#00ff41}.sys-badge.cross{color:#ffaa00;border-color:#ffaa00}
 .sys-meta{font-size:.7em;color:#666;margin-top:4px}
-.sys-tip{position:absolute;pointer-events:none;background:#111;border:1px solid #00ff41;padding:6px 8px;font-size:.72em;z-index:20;display:none;max-width:260px}
-.sys-tip .name{color:#00ff41;font-weight:bold}
-.sys-tip .phase{color:#888}
+.sys-tip{position:absolute;pointer-events:none;background:#111;border:1px solid #00ff41;padding:6px 8px;font-size:.72em;z-index:20;display:none;max-width:280px}
+.sys-tip .name{color:#00ff41;font-weight:bold}.sys-tip .phase{color:#888}
 .sys-empty{color:#666;font-size:.74em}
 .phase-band{position:absolute;top:0;bottom:0;pointer-events:none;opacity:.18}
 .phase-band.left{left:0;width:26%;background:linear-gradient(90deg,#22446655,#22446600)}
 .phase-band.bang{left:38%;width:12%;background:linear-gradient(90deg,#66222255,#66222200)}
 .phase-band.right{right:0;width:28%;background:linear-gradient(90deg,#22664400,#22664455)}
 .phase-label{position:absolute;top:8px;font-size:.68em;letter-spacing:1px;color:#666}
-.phase-label.left{left:10px}
-.phase-label.bang{left:41%}
-.phase-label.right{right:10px}
+.phase-label.left{left:10px}.phase-label.bang{left:41%}.phase-label.right{right:10px}
 .trail-chip{display:inline-block;padding:2px 6px;border:1px solid #333;border-radius:3px;color:#888;font-size:.68em;margin:2px;cursor:pointer}
 .trail-chip:hover{border-color:#00ff41;color:#00ff41}
-/* Edit panel */
-.edit-section{display:none}
-.edit-section.visible{display:block}
+.edit-section{display:none}.edit-section.visible{display:block}
 .ef{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
 .ef input,.ef select{background:#0a0a0a;color:#00ff41;border:1px solid #333;padding:4px 6px;font-size:.75em;font-family:inherit;border-radius:3px;flex:1;min-width:60px}
 .ef label{color:#888;font-size:.7em;display:block;margin-bottom:2px}
-.ef-row{margin-bottom:6px}
-.ef-row label{color:#888;font-size:.7em;display:block;margin-bottom:2px}
+.ef-row{margin-bottom:6px}.ef-row label{color:#888;font-size:.7em;display:block;margin-bottom:2px}
 .ef .cb{width:auto;flex:none;accent-color:#00ff41}
 .del-x{color:#ff4444;cursor:pointer;font-size:.8em;padding:0 4px;border:1px solid transparent;border-radius:3px}
 .del-x:hover{border-color:#ff4444;background:#ff444420}
 .sys-toast{position:fixed;bottom:20px;right:20px;background:#111;border:1px solid #00ff41;color:#00ff41;padding:8px 14px;font-size:.78em;border-radius:4px;z-index:999;animation:fadeInUp .3s}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .sys-count{color:#ffaa00;font-size:.7em;margin-left:6px}
+/* Weights & Scorecard */
+.wt-slider{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:.72em}
+.wt-slider label{color:#888;width:72px;text-align:right;flex-shrink:0}
+.wt-slider input[type=range]{flex:1;accent-color:#00ff41;height:4px}
+.wt-slider .wt-val{color:#00ff41;width:38px;text-align:right;font-family:monospace}
+.scorecard{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.72em}
+.sc-item{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:3px;padding:6px;text-align:center}
+.sc-item .sc-val{font-size:1.4em;font-weight:bold;font-family:monospace}
+.sc-item .sc-lbl{color:#666;font-size:.85em;margin-top:2px}
+.sc-item.good .sc-val{color:#00ff41}.sc-item.warn .sc-val{color:#ffaa00}.sc-item.bad .sc-val{color:#ff4444}
+.sc-full{grid-column:1/-1}
+.scenario-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0}
+.scenario-bar select{background:#0a0a0a;color:#4488ff;border:1px solid #333;padding:3px 6px;font-size:.74em;font-family:inherit;border-radius:3px;flex:1}
 </style>
 {% endblock %}
 {% block content %}
 <div class="sys-wrap">
   <div class="sys-head">
     <div>
-      <h2 style="font-size:1em;margin:0 0 4px;border-bottom:1px solid #222;padding-bottom:6px">SYSTEM-OF-SYSTEMS MAP — Left / Right of Bang <span class="sys-count" id="graph-stats"></span></h2>
-      <div class="sys-sub">
-        Vannevar Bush-style associative trails across AMOS resources. Red-team mode lets you remove nodes and observe cascade effects through the dependency graph.
-      </div>
+      <h2 style="font-size:1em;margin:0 0 4px;border-bottom:1px solid #222;padding-bottom:6px">SYSTEM-OF-SYSTEMS MAP <span class="sys-count" id="graph-stats"></span></h2>
+      <div class="sys-sub">Weighted dependency graph with scenario comparison. Adjust node weights, evaluate missions, compare tradeoffs.</div>
     </div>
     <div class="sys-controls">
       <button class="sys-btn" id="btn-reset" onclick="resetSystemMap()">RESET</button>
-      <button class="sys-btn" id="btn-redteam" onclick="toggleRedTeam()">RED TEAM MODE</button>
-      <button class="sys-btn" onclick="simulateCritical()">SIMULATE CRITICAL</button>
-      <button class="sys-btn" onclick="clearTrail()">CLEAR TRAIL</button>
-      <button class="sys-btn" id="btn-edit" onclick="toggleEditMode()">✎ EDIT GRAPH</button>
+      <button class="sys-btn" id="btn-redteam" onclick="toggleRedTeam()">RED TEAM</button>
+      <button class="sys-btn" onclick="simulateCritical()">KILL RANDOM</button>
+      <button class="sys-btn" onclick="clearTrail()">CLEAR</button>
+      <button class="sys-btn" id="btn-scenario" onclick="toggleScenarioMode()">⚖ SCENARIOS</button>
+      <button class="sys-btn" id="btn-edit" onclick="toggleEditMode()">✎ EDIT</button>
     </div>
   </div>
-
   <div class="sys-grid">
     <div class="sys-canvas" id="sys-canvas">
-      <div class="phase-band left"></div>
-      <div class="phase-band bang"></div>
-      <div class="phase-band right"></div>
-      <div class="phase-label left">LEFT OF BANG</div>
-      <div class="phase-label bang">THE BANG</div>
-      <div class="phase-label right">RIGHT OF BANG</div>
+      <div class="phase-band left"></div><div class="phase-band bang"></div><div class="phase-band right"></div>
+      <div class="phase-label left">LEFT OF BANG</div><div class="phase-label bang">THE BANG</div><div class="phase-label right">RIGHT OF BANG</div>
       <svg id="sys-svg" width="100%" height="760"></svg>
       <div id="sys-tip" class="sys-tip"></div>
     </div>
-
     <div class="sys-panel">
-      <h3>MAP LEGEND</h3>
+      <h3>LEGEND</h3>
       <div class="sys-legend">
         <div class="sys-leg-item"><span class="sys-dot" style="background:#4488ff"></span> Left of bang</div>
         <div class="sys-leg-item"><span class="sys-dot" style="background:#ff4444"></span> The bang</div>
@@ -97,75 +96,77 @@
         <div class="sys-leg-item"><span class="sys-dot" style="background:#ffaa00"></span> Cross-cutting</div>
       </div>
 
-      <div class="sys-card">
+      <!-- NODE DETAIL + WEIGHTS -->
+      <div class="sys-card" id="node-detail-card">
         <div class="ttl">SELECTED NODE</div>
-        <div class="txt" id="sel-node">Click a node to inspect dependencies and associative trails.</div>
+        <div class="txt" id="sel-node">Click a node to inspect weights and dependencies.</div>
+        <div id="weight-sliders" style="display:none;margin-top:6px">
+          <div class="wt-slider"><label>Risk</label><input type="range" min="0" max="100" id="ws-risk" oninput="onWeightSlide()"><span class="wt-val" id="wv-risk">50</span></div>
+          <div class="wt-slider"><label>Reliability</label><input type="range" min="0" max="100" id="ws-rel" oninput="onWeightSlide()"><span class="wt-val" id="wv-rel">80</span></div>
+          <div class="wt-slider"><label>Latency (s)</label><input type="range" min="0" max="300" id="ws-lat" oninput="onWeightSlide()"><span class="wt-val" id="wv-lat">10</span></div>
+          <div class="wt-slider"><label>Cost</label><input type="range" min="0" max="100" id="ws-cost" oninput="onWeightSlide()"><span class="wt-val" id="wv-cost">50</span></div>
+          <button class="sys-btn" onclick="saveWeights()" style="width:100%;margin-top:4px">SAVE WEIGHTS</button>
+        </div>
       </div>
 
+      <!-- MISSION SCORECARD -->
       <div class="sys-card">
-        <div class="ttl">CASCADE IMPACT</div>
-        <div class="txt" id="cascade-summary">No active failures.</div>
-        <div class="sys-meta" id="cascade-meta"></div>
+        <div class="ttl">MISSION SCORECARD</div>
+        <div class="scorecard" id="scorecard">
+          <div class="sc-item"><div class="sc-val" id="sc-success">—</div><div class="sc-lbl">Success %</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-risk">—</div><div class="sc-lbl">Max Risk %</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-latency">—</div><div class="sc-lbl">Crit Path (s)</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-cost">—</div><div class="sc-lbl">Total Cost</div></div>
+          <div class="sc-item sc-full"><div class="sc-val" id="sc-bottleneck" style="font-size:.85em">—</div><div class="sc-lbl">Bottleneck · Highest Risk</div></div>
+        </div>
+        <button class="sys-btn" onclick="evaluateScorecard()" style="width:100%;margin-top:6px">EVALUATE NOW</button>
       </div>
 
+      <!-- SCENARIO PANEL -->
+      <div class="edit-section" id="scenario-section">
+        <div class="sys-card" style="border-color:#4488ff">
+          <div class="ttl" style="color:#4488ff">⚖ SCENARIOS</div>
+          <div class="scenario-bar">
+            <select id="scenario-sel" onchange="loadScenario()"><option value="">— Baseline (no overrides) —</option></select>
+            <button class="sys-btn" onclick="deleteScenario()" style="flex:none;color:#ff4444;border-color:#ff4444;padding:3px 8px">✕</button>
+          </div>
+          <div class="ef-row"><label>Save current overrides as scenario</label>
+            <div class="ef"><input id="sc-name" placeholder="e.g. Robot Lead CQB"><button class="sys-btn" onclick="saveScenario()" style="flex:none">SAVE</button></div>
+          </div>
+          <div class="sys-meta" id="scenario-info">Adjust node weights, then save as a named scenario to compare alternatives.</div>
+          <div id="override-list" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <!-- TRAILS -->
       <div class="sys-card">
         <div class="ttl">BUSH TRAILS</div>
         <div id="trail-chips"></div>
       </div>
+      <div class="sys-card"><div class="ttl">DOWNSTREAM</div><div class="sys-list" id="downstream-list"><div class="sys-empty">None</div></div></div>
+      <div class="sys-card"><div class="ttl">UPSTREAM</div><div class="sys-list" id="upstream-list"><div class="sys-empty">None</div></div></div>
 
-      <div class="sys-card">
-        <div class="ttl">DOWNSTREAM AFFECTED</div>
-        <div class="sys-list" id="downstream-list"><div class="sys-empty">None</div></div>
-      </div>
-
-      <div class="sys-card">
-        <div class="ttl">UPSTREAM DEPENDENCIES</div>
-        <div class="sys-list" id="upstream-list"><div class="sys-empty">None</div></div>
-      </div>
-
-      <!-- ─── EDIT PANEL ─── -->
+      <!-- EDIT PANEL -->
       <div class="edit-section" id="edit-section">
         <div class="sys-card" style="border-color:#ffaa00">
           <div class="ttl" style="color:#ffaa00">➕ ADD NODE</div>
-          <div class="ef-row"><label>Key (unique ID)</label><div class="ef"><input id="en-key" placeholder="e.g. new_sensor"></div></div>
-          <div class="ef-row"><label>Display Name</label><div class="ef"><input id="en-name" placeholder="e.g. New Sensor"></div></div>
-          <div class="ef-row"><label>Phase</label><div class="ef">
-            <select id="en-phase"><option value="left">Left of Bang</option><option value="bang">The Bang</option><option value="right">Right of Bang</option><option value="cross">Cross-cutting</option></select>
-          </div></div>
-          <div class="ef-row"><label>Trails (comma-sep)</label><div class="ef"><input id="en-trails" placeholder="ISR, Fusion"></div></div>
-          <div class="ef-row"><div class="ef"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="en-critical" class="cb"> Critical node</label></div></div>
-          <button class="sys-btn" onclick="addNode()" style="width:100%;margin-top:4px">ADD NODE</button>
+          <div class="ef-row"><label>Key</label><div class="ef"><input id="en-key" placeholder="e.g. new_sensor"></div></div>
+          <div class="ef-row"><label>Name</label><div class="ef"><input id="en-name" placeholder="e.g. New Sensor"></div></div>
+          <div class="ef-row"><label>Phase</label><div class="ef"><select id="en-phase"><option value="left">Left</option><option value="bang">Bang</option><option value="right">Right</option><option value="cross">Cross</option></select></div></div>
+          <div class="ef-row"><label>Trails</label><div class="ef"><input id="en-trails" placeholder="ISR, Fusion"></div></div>
+          <div class="ef-row"><div class="ef"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="en-critical" class="cb"> Critical</label></div></div>
+          <button class="sys-btn" onclick="addNode()" style="width:100%">ADD NODE</button>
         </div>
-
         <div class="sys-card" style="border-color:#ffaa00">
           <div class="ttl" style="color:#ffaa00">🔗 ADD EDGE</div>
-          <div class="ef-row"><label>Source → Target</label>
-            <div class="ef">
-              <select id="ee-source"></select>
-              <span style="color:#888;padding-top:4px">→</span>
-              <select id="ee-target"></select>
-            </div>
-          </div>
-          <button class="sys-btn" onclick="addEdge()" style="width:100%;margin-top:4px">ADD EDGE</button>
+          <div class="ef"><select id="ee-source"></select><span style="color:#888;padding-top:4px">→</span><select id="ee-target"></select></div>
+          <button class="sys-btn" onclick="addEdge()" style="width:100%">ADD EDGE</button>
         </div>
-
         <div class="sys-card" style="border-color:#ffaa00">
           <div class="ttl" style="color:#ffaa00">🗑 REMOVE</div>
-          <div class="ef-row"><label>Delete Node</label>
-            <div class="ef">
-              <select id="ed-node"></select>
-              <button class="sys-btn" onclick="deleteNode()" style="flex:none;color:#ff4444;border-color:#ff4444">DELETE</button>
-            </div>
-          </div>
-          <div class="ef-row"><label>Edges (click ✕ to remove)</label>
-            <div class="sys-list" id="edge-list" style="max-height:140px"><div class="sys-empty">No edges</div></div>
-          </div>
+          <div class="ef"><select id="ed-node"></select><button class="sys-btn" onclick="deleteNode()" style="flex:none;color:#ff4444;border-color:#ff4444">DEL</button></div>
         </div>
-
-        <div class="sys-card" style="border-color:#333">
-          <button class="sys-btn" onclick="seedDefaults()" style="width:100%">SEED DEFAULT AMOS GRAPH</button>
-          <div class="sys-meta" style="margin-top:4px">Populates the 24 default nodes + 30 edges. Safe to run multiple times.</div>
-        </div>
+        <div class="sys-card" style="border-color:#333"><button class="sys-btn" onclick="seedDefaults()" style="width:100%">SEED DEFAULTS</button></div>
       </div>
     </div>
   </div>
@@ -174,368 +175,282 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script>
-const PHASE_COLORS={left:'#4488ff',bang:'#ff4444',right:'#00ff41',cross:'#ffaa00'};
-
+const P=d3, PC={left:'#4488ff',bang:'#ff4444',right:'#00ff41',cross:'#ffaa00'};
 const TRAILS=[
- {name:'CQB Assault Trail', nodes:['building_model','indoor_positioning','perception_fusion','cqb_planner','squad_supervisor','cqb_executor','dimos_bridge','bda','aar']},
- {name:'Sensor-to-Shooter Trail', nodes:['sensors','perception_fusion','isr_atr','threat_predictions','hal','roe','killweb','countermeasures','bda']},
- {name:'Resilience Backbone Trail', nodes:['mesh_network','event_bus','integrations','dimos_bridge','retask']},
- {name:'Human Decision Trail', nodes:['manual_human','roe','squad_supervisor','cqb_executor','aar']},
+ {name:'CQB Assault',nodes:['building_model','indoor_positioning','perception_fusion','cqb_planner','squad_supervisor','cqb_executor','dimos_bridge','bda','aar']},
+ {name:'Sensor-to-Shooter',nodes:['sensors','perception_fusion','isr_atr','threat_predictions','hal','roe','killweb','countermeasures','bda']},
+ {name:'Resilience Backbone',nodes:['mesh_network','event_bus','integrations','dimos_bridge','retask']},
+ {name:'Human Decision',nodes:['manual_human','roe','squad_supervisor','cqb_executor','aar']},
 ];
-
-let NODES=[], LINKS=[], EDGE_DB=[];
-let redTeamMode=false, editMode=false;
-let failedNodes=new Set();
-let selectedTrail=null, selectedNode=null;
-let sim, links, nodes, linkData;
-let nodeById=new Map();
-
-const svg=d3.select('#sys-svg');
-let width=document.getElementById('sys-canvas').clientWidth;
-const height=760;
-svg.attr('viewBox',`0 0 ${width} ${height}`);
-
+let NODES=[],LINKS=[],EDGE_DB=[];
+let redTeamMode=false,editMode=false,scenarioMode=false;
+let failedNodes=new Set(),scenarioOverrides={};
+let selectedTrail=null,selectedNode=null,currentScenarioId=null;
+let sim,links,nodes,linkData,nodeById=new Map();
+const svg=P.select('#sys-svg');
+let W=document.getElementById('sys-canvas').clientWidth,H=760;
+svg.attr('viewBox',`0 0 ${W} ${H}`);
 const defs=svg.append('defs');
-defs.append('marker')
-  .attr('id','arrow').attr('viewBox','0 -5 10 10').attr('refX',18).attr('refY',0)
+defs.append('marker').attr('id','arrow').attr('viewBox','0 -5 10 10').attr('refX',18).attr('refY',0)
   .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
   .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','#555');
-
-const linkLayer=svg.append('g');
-const nodeLayer=svg.append('g');
+const linkLayer=svg.append('g'),nodeLayer=svg.append('g');
 const tip=document.getElementById('sys-tip');
 
-function toast(msg){
-  const t=document.createElement('div'); t.className='sys-toast'; t.textContent=msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(),2500);
-}
+function toast(m){const t=document.createElement('div');t.className='sys-toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+function updateStats(){document.getElementById('graph-stats').textContent=`${NODES.length} nodes · ${LINKS.length} edges`;}
+function riskColor(r){if(r<0.3)return'#00ff41';if(r<0.6)return'#ffaa00';return'#ff4444';}
+function scClass(v,lo,hi){return v>=hi?'bad':v>=lo?'warn':'good';}
 
-function updateStats(){
-  document.getElementById('graph-stats').textContent=`${NODES.length} nodes · ${LINKS.length} edges`;
-}
-
-// ── Load graph from DB ──
+// ── Load ──
 async function loadGraph(){
   try{
     const r=await apiFetch('/api/v1/systemmap/graph');
     if(r.nodes&&r.nodes.length){
-      NODES=r.nodes.map(n=>({
-        id:n.node_key, name:n.name, phase:n.phase,
-        critical:n.critical, trails:n.trails||[],
-        dbId:n.id, fx:n.pos_x||null, fy:n.pos_y||null
-      }));
-      LINKS=r.edges.map(e=>({source:e.source_key, target:e.target_key}));
+      NODES=r.nodes.map(n=>({id:n.node_key,name:n.name,phase:n.phase,critical:!!n.critical,
+        trails:n.trails||[],dbId:n.id,fx:n.pos_x||null,fy:n.pos_y||null,
+        w_risk:n.w_risk,w_rel:n.w_reliability,w_lat:n.w_latency_sec,w_cost:n.w_cost}));
+      LINKS=r.edges.map(e=>({source:e.source_key,target:e.target_key}));
       EDGE_DB=r.edges;
-    } else {
-      // Empty DB — auto-seed
-      await apiPost('/api/v1/systemmap/seed',{});
-      return loadGraph();
-    }
-  }catch(e){
-    console.warn('DB load failed, using empty graph',e);
-  }
+    }else{await apiPost('/api/v1/systemmap/seed',{});return loadGraph();}
+  }catch(e){console.warn('load fail',e);}
   initGraph();
 }
 
 function initGraph(){
   nodeById=new Map(NODES.map(n=>[n.id,n]));
   linkData=LINKS.map(l=>({source:nodeById.get(l.source),target:nodeById.get(l.target)})).filter(l=>l.source&&l.target);
-
-  // Assign initial positions by phase for nodes without saved positions
-  NODES.forEach(n=>{
-    if(n.fx!==null&&n.fy!==null) return;
-    if(n.phase==='left'){n.x=width*0.18; n.y=120+Math.random()*520;}
-    else if(n.phase==='bang'){n.x=width*0.44; n.y=180+Math.random()*420;}
-    else if(n.phase==='right'){n.x=width*0.78; n.y=120+Math.random()*520;}
-    else{n.x=width*0.52; n.y=80+Math.random()*620;}
+  NODES.forEach(n=>{if(n.fx!==null&&n.fy!==null)return;
+    if(n.phase==='left'){n.x=W*0.18;n.y=120+Math.random()*520;}
+    else if(n.phase==='bang'){n.x=W*0.44;n.y=180+Math.random()*420;}
+    else if(n.phase==='right'){n.x=W*0.78;n.y=120+Math.random()*520;}
+    else{n.x=W*0.52;n.y=80+Math.random()*620;}
   });
-
-  // Clear old SVG elements
-  linkLayer.selectAll('*').remove();
-  nodeLayer.selectAll('*').remove();
+  linkLayer.selectAll('*').remove();nodeLayer.selectAll('*').remove();
 
   links=linkLayer.selectAll('line').data(linkData).enter().append('line')
-    .attr('stroke','#444').attr('stroke-width',1.4).attr('marker-end','url(#arrow)').attr('opacity',0.8);
+    .attr('stroke','#444').attr('stroke-width',d=>{const e=EDGE_DB.find(x=>x.source_key===d.source.id&&x.target_key===d.target.id);return e?(e.confidence*3):1.4;})
+    .attr('marker-end','url(#arrow)').attr('opacity',0.8);
 
-  nodes=nodeLayer.selectAll('g').data(NODES,d=>d.id).enter().append('g')
-    .attr('cursor','pointer')
-    .call(d3.drag()
-      .on('start',(e,d)=>{if(!e.active&&sim)sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y;})
-      .on('drag',(e,d)=>{d.fx=e.x; d.fy=e.y;})
-      .on('end',(e,d)=>{
-        if(!e.active&&sim)sim.alphaTarget(0);
-        // Save position to DB
-        apiPost(`/api/v1/systemmap/node/${d.id}/position`,{x:d.fx||d.x,y:d.fy||d.y});
-      })
-    );
+  nodes=nodeLayer.selectAll('g').data(NODES,d=>d.id).enter().append('g').attr('cursor','pointer')
+    .call(P.drag()
+      .on('start',(e,d)=>{if(!e.active&&sim)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y;})
+      .on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y;})
+      .on('end',(e,d)=>{if(!e.active&&sim)sim.alphaTarget(0);apiPost(`/api/v1/systemmap/node/${d.id}/position`,{x:d.fx||d.x,y:d.fy||d.y});}));
 
-  nodes.append('circle')
-    .attr('r',d=>d.critical?12:10)
-    .attr('fill',d=>PHASE_COLORS[d.phase]||'#888')
-    .attr('stroke',d=>d.critical?'#fff':'#111')
-    .attr('stroke-width',d=>d.critical?1.5:1);
+  nodes.append('circle').attr('r',d=>d.critical?12:10)
+    .attr('fill',d=>scenarioMode?riskColor(getEffective(d.id,'risk')):PC[d.phase]||'#888')
+    .attr('stroke',d=>d.critical?'#fff':'#111').attr('stroke-width',d=>d.critical?1.5:1);
+  nodes.append('text').attr('x',14).attr('y',4).attr('fill','#ccc').attr('font-size','10px').text(d=>d.name);
 
-  nodes.append('text')
-    .attr('x',14).attr('y',4).attr('fill','#ccc').attr('font-size','10px')
-    .text(d=>d.name);
-
-  nodes.on('mouseenter',(e,d)=>{
-    tip.style.display='block';
-    tip.innerHTML=`<div class="name">${d.name}</div><div class="phase">${d.phase.toUpperCase()}${d.critical?' · CRITICAL':''}</div>`;
-  }).on('mousemove',(e)=>{
-    tip.style.left=(e.offsetX+14)+'px'; tip.style.top=(e.offsetY+14)+'px';
-  }).on('mouseleave',()=>{tip.style.display='none';})
+  nodes.on('mouseenter',(e,d)=>{tip.style.display='block';
+    const eff=`Risk:${(getEffective(d.id,'risk')*100).toFixed(0)}% Rel:${(getEffective(d.id,'rel')*100).toFixed(0)}% Lat:${getEffective(d.id,'lat').toFixed(0)}s Cost:${(getEffective(d.id,'cost')*100).toFixed(0)}%`;
+    tip.innerHTML=`<div class="name">${d.name}</div><div class="phase">${d.phase.toUpperCase()}${d.critical?' · CRITICAL':''}</div><div style="color:#888;margin-top:2px">${eff}</div>`;
+  }).on('mousemove',e=>{tip.style.left=(e.offsetX+14)+'px';tip.style.top=(e.offsetY+14)+'px';})
+    .on('mouseleave',()=>{tip.style.display='none';})
     .on('click',(e,d)=>{
-      if(redTeamMode){
-        if(failedNodes.has(d.id)) failedNodes.delete(d.id); else failedNodes.add(d.id);
-        applyFailureState();
-      }else{
-        selectNode(d.id);
-      }
+      if(redTeamMode){failedNodes.has(d.id)?failedNodes.delete(d.id):failedNodes.add(d.id);applyFailureState();}
+      else selectNode(d.id);
     });
 
-  if(sim) sim.stop();
-  sim=d3.forceSimulation(NODES)
-    .force('link',d3.forceLink(linkData).id(d=>d.id).distance(95).strength(.3))
-    .force('charge',d3.forceManyBody().strength(-220))
-    .force('collide',d3.forceCollide(26))
-    .force('y',d3.forceY(height/2).strength(.03))
-    .on('tick',()=>{
-      links.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
-      nodes.attr('transform',d=>`translate(${d.x},${d.y})`);
-    });
+  if(sim)sim.stop();
+  sim=P.forceSimulation(NODES).force('link',P.forceLink(linkData).id(d=>d.id).distance(95).strength(.3))
+    .force('charge',P.forceManyBody().strength(-220)).force('collide',P.forceCollide(26))
+    .force('y',P.forceY(H/2).strength(.03))
+    .on('tick',()=>{links.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);nodes.attr('transform',d=>`translate(${d.x},${d.y})`);});
 
-  updateStats();
-  buildTrailChips();
-  populateEditorDropdowns();
-  renderEdgeList();
-  applyFailureState();
+  updateStats();buildTrailChips();populateEditorDropdowns();
+  applyFailureState();evaluateScorecard();loadScenarioList();
 }
 
-// ── Graph traversal helpers ──
-function descendants(start){
-  const out=new Set(), q=[start];
-  while(q.length){
-    const cur=q.shift();
-    LINKS.forEach(l=>{
-      if(l.source===cur && !out.has(l.target)){out.add(l.target); q.push(l.target);}
-    });
-  }
-  return out;
-}
-function ancestors(start){
-  const out=new Set(), q=[start];
-  while(q.length){
-    const cur=q.shift();
-    LINKS.forEach(l=>{
-      if(l.target===cur && !out.has(l.source)){out.add(l.source); q.push(l.source);}
-    });
-  }
-  return out;
+function getEffective(id,key){
+  const n=nodeById.get(id);if(!n)return 0;
+  const ov=scenarioOverrides[id]||{};
+  const wmap={risk:'w_risk',rel:'w_rel',lat:'w_lat',cost:'w_cost'};
+  return ov[key]!==undefined?ov[key]:n[wmap[key]]||0;
 }
 
-function getImpactedNodes(){
-  const impacted=new Set();
-  failedNodes.forEach(id=>{descendants(id).forEach(x=>impacted.add(x));});
-  return impacted;
-}
+// ── Traversal ──
+function descendants(s){const o=new Set(),q=[s];while(q.length){const c=q.shift();LINKS.forEach(l=>{if(l.source===c&&!o.has(l.target)){o.add(l.target);q.push(l.target);}});}return o;}
+function ancestors(s){const o=new Set(),q=[s];while(q.length){const c=q.shift();LINKS.forEach(l=>{if(l.target===c&&!o.has(l.source)){o.add(l.source);q.push(l.source);}});}return o;}
 
 function applyFailureState(){
-  if(!nodes) return;
-  const impacted=getImpactedNodes();
-  nodes.select('circle')
-    .attr('fill',d=>{
-      if(failedNodes.has(d.id)) return '#ff1111';
-      if(impacted.has(d.id)) return '#663333';
-      return PHASE_COLORS[d.phase]||'#888';
-    })
-    .attr('stroke',d=>failedNodes.has(d.id)?'#fff':(d.critical?'#fff':'#111'))
-    .attr('stroke-width',d=>failedNodes.has(d.id)?2.2:(d.critical?1.5:1))
-    .attr('opacity',d=>impacted.has(d.id)&&!failedNodes.has(d.id)?0.9:1);
-
-  links
-    .attr('stroke',d=>{
-      if(failedNodes.has(d.source.id)||failedNodes.has(d.target.id)) return '#ff4444';
-      if(impacted.has(d.target.id)) return '#aa5555';
-      return '#444';
-    })
-    .attr('stroke-width',d=>(failedNodes.has(d.source.id)||failedNodes.has(d.target.id))?2.2:1.4)
-    .attr('opacity',d=>impacted.has(d.target.id)||failedNodes.has(d.source.id)?1:0.7);
-
-  const down=[...impacted].filter(x=>!failedNodes.has(x));
-  document.getElementById('cascade-summary').innerHTML=
-    failedNodes.size
-      ?`<span style="color:#ff4444">${failedNodes.size}</span> failed node(s), <span style="color:#ffaa00">${down.length}</span> downstream impacted.`
-      :'No active failures.';
-  document.getElementById('cascade-meta').textContent=
-    failedNodes.size?`Failed: ${[...failedNodes].map(id=>(nodeById.get(id)||{}).name||id).join(', ')}`:'';
-  renderList('downstream-list',down.map(id=>nodeById.get(id)).filter(Boolean));
+  if(!nodes)return;const imp=new Set();failedNodes.forEach(id=>{descendants(id).forEach(x=>imp.add(x));});
+  nodes.select('circle').attr('fill',d=>{
+    if(failedNodes.has(d.id))return'#ff1111';if(imp.has(d.id))return'#663333';
+    return scenarioMode?riskColor(getEffective(d.id,'risk')):PC[d.phase]||'#888';
+  }).attr('stroke',d=>failedNodes.has(d.id)?'#fff':(d.critical?'#fff':'#111'))
+    .attr('stroke-width',d=>failedNodes.has(d.id)?2.2:(d.critical?1.5:1));
+  links.attr('stroke',d=>{if(failedNodes.has(d.source.id)||failedNodes.has(d.target.id))return'#ff4444';if(imp.has(d.target.id))return'#aa5555';return'#444';});
+  const down=[...imp].filter(x=>!failedNodes.has(x));
+  document.getElementById('downstream-list').innerHTML=down.length?down.map(id=>{const n=nodeById.get(id);return n?`<div class="item"><span class="sys-badge ${n.phase}">${n.phase}</span>${n.name}</div>`:'';}).join(''):'<div class="sys-empty">None</div>';
 }
 
-function renderList(elId,items){
-  const el=document.getElementById(elId);
-  if(!items||!items.length){el.innerHTML='<div class="sys-empty">None</div>'; return;}
-  el.innerHTML=items.map(n=>`<div class="item"><span><span class="sys-badge ${n.phase}">${n.phase}</span>${n.name}</span></div>`).join('');
+function renderList(elId,items){const el=document.getElementById(elId);if(!items||!items.length){el.innerHTML='<div class="sys-empty">None</div>';return;}el.innerHTML=items.map(n=>`<div class="item"><span class="sys-badge ${n.phase}">${n.phase}</span>${n.name}</div>`).join('');}
+
+function selectNode(id){
+  selectedNode=id;const n=nodeById.get(id);if(!n)return;
+  const up=[...ancestors(id)].map(i=>nodeById.get(i)).filter(Boolean);
+  const down=[...descendants(id)].map(i=>nodeById.get(i)).filter(Boolean);
+  document.getElementById('sel-node').innerHTML=`<b style="color:${PC[n.phase]}">${n.name}</b><br>Phase: ${n.phase.toUpperCase()}${n.critical?' · CRITICAL':''}<br>Trails: ${(n.trails||[]).join(', ')}`;
+  renderList('upstream-list',up);renderList('downstream-list',down);
+  // Show weight sliders
+  const ws=document.getElementById('weight-sliders');ws.style.display='block';
+  document.getElementById('ws-risk').value=Math.round(getEffective(id,'risk')*100);
+  document.getElementById('ws-rel').value=Math.round(getEffective(id,'rel')*100);
+  document.getElementById('ws-lat').value=Math.round(getEffective(id,'lat'));
+  document.getElementById('ws-cost').value=Math.round(getEffective(id,'cost')*100);
+  onWeightSlide();
+  links.attr('stroke',d=>(d.source.id===id||d.target.id===id)?'#00ff41':'#333').attr('stroke-width',d=>(d.source.id===id||d.target.id===id)?2.4:1.2).attr('opacity',d=>(d.source.id===id||d.target.id===id)?1:0.4);
+  nodes.select('circle').attr('opacity',d=>d.id===id?1:0.65);
 }
 
-function selectNode(nodeId){
-  selectedNode=nodeId;
-  const n=nodeById.get(nodeId);
-  if(!n) return;
-  const up=[...ancestors(nodeId)].map(id=>nodeById.get(id)).filter(Boolean);
-  const down=[...descendants(nodeId)].map(id=>nodeById.get(id)).filter(Boolean);
-  document.getElementById('sel-node').innerHTML=
-    `<b style="color:${PHASE_COLORS[n.phase]}">${n.name}</b><br>`+
-    `Phase: ${n.phase.toUpperCase()}${n.critical?' · CRITICAL':''}<br>`+
-    `Trails: ${(n.trails||[]).join(', ')}`;
-  renderList('upstream-list',up);
-  renderList('downstream-list',down);
-
-  links.attr('stroke',d=>(d.source.id===nodeId||d.target.id===nodeId)?'#00ff41':'#333')
-       .attr('stroke-width',d=>(d.source.id===nodeId||d.target.id===nodeId)?2.4:1.2)
-       .attr('opacity',d=>(d.source.id===nodeId||d.target.id===nodeId)?1:0.4);
-  nodes.select('circle').attr('opacity',d=>d.id===nodeId?1:0.65);
+function onWeightSlide(){
+  ['risk','rel','lat','cost'].forEach(k=>{
+    const v=document.getElementById('ws-'+k).value;
+    document.getElementById('wv-'+k).textContent=k==='lat'?v+'s':v+'%';
+  });
 }
 
-// ── Trails ──
-function buildTrailChips(){
-  const el=document.getElementById('trail-chips');
-  el.innerHTML=TRAILS.map((t,i)=>`<span class="trail-chip" onclick="showTrail(${i})">${t.name}</span>`).join('');
-}
-function showTrail(i){
-  selectedTrail=i;
-  const t=TRAILS[i];
-  const set=new Set(t.nodes);
-  links
-    .attr('stroke',d=>(set.has(d.source.id)&&set.has(d.target.id))?'#00ff41':'#333')
-    .attr('stroke-width',d=>(set.has(d.source.id)&&set.has(d.target.id))?2.3:1.2)
-    .attr('opacity',d=>(set.has(d.source.id)&&set.has(d.target.id))?1:0.35);
-  nodes.select('circle')
-    .attr('opacity',d=>set.has(d.id)?1:0.4)
-    .attr('stroke',d=>set.has(d.id)?'#fff':(d.critical?'#fff':'#111'))
-    .attr('stroke-width',d=>set.has(d.id)?2:1);
-  document.getElementById('sel-node').innerHTML=`<b style="color:#00ff41">${t.name}</b><br>Associative Bush trail with ${t.nodes.length} linked resources.`;
-  renderList('upstream-list',t.nodes.map(id=>nodeById.get(id)).filter(Boolean));
-  document.getElementById('downstream-list').innerHTML='<div class="sys-empty">Trail mode active</div>';
+async function saveWeights(){
+  if(!selectedNode)return;
+  const risk=document.getElementById('ws-risk').value/100;
+  const rel=document.getElementById('ws-rel').value/100;
+  const lat=parseFloat(document.getElementById('ws-lat').value);
+  const cost=document.getElementById('ws-cost').value/100;
+  if(scenarioMode){
+    scenarioOverrides[selectedNode]={risk,rel,lat,cost};
+    renderOverrideList();
+    applyFailureState();evaluateScorecard();
+    toast(`Override saved for ${nodeById.get(selectedNode).name}`);
+  }else{
+    await apiPost(`/api/v1/systemmap/node/${selectedNode}/weights`,{risk,reliability:rel,latency:lat,cost});
+    const n=nodeById.get(selectedNode);if(n){n.w_risk=risk;n.w_rel=rel;n.w_lat=lat;n.w_cost=cost;}
+    applyFailureState();evaluateScorecard();
+    toast(`Weights saved for ${n.name}`);
+  }
 }
 
-function clearTrail(){
-  selectedTrail=null;
-  selectedNode=null;
-  if(!links||!nodes) return;
-  links.attr('stroke','#444').attr('stroke-width',1.4).attr('opacity',0.8);
-  nodes.select('circle').attr('opacity',1).attr('stroke',d=>d.critical?'#fff':'#111').attr('stroke-width',d=>d.critical?1.5:1);
-  document.getElementById('sel-node').textContent='Click a node to inspect dependencies and associative trails.';
-  renderList('upstream-list',[]);
+// ── Scorecard ──
+async function evaluateScorecard(){
+  try{
+    const body={overrides:scenarioOverrides};
+    const s=await apiPost('/api/v1/systemmap/evaluate',body);
+    const el=(id,v)=>document.getElementById(id).textContent=v;
+    el('sc-success',s.success_probability+'%');
+    el('sc-risk',s.max_risk+'%');
+    el('sc-latency',s.critical_path_latency_sec+'s');
+    el('sc-cost',s.total_cost.toFixed(1));
+    const bn=s.bottleneck?s.bottleneck.name:'—';
+    const hr=s.highest_risk?s.highest_risk.name:'—';
+    el('sc-bottleneck',`⚠ ${bn} · 🎯 ${hr}`);
+    // Color coding
+    const sc=document.getElementById('sc-success').parentElement;sc.className='sc-item '+scClass(100-s.success_probability,20,50);
+    const sr=document.getElementById('sc-risk').parentElement;sr.className='sc-item '+scClass(s.max_risk,40,70);
+  }catch(e){console.warn('eval fail',e);}
+}
+
+// ── Scenarios ──
+function toggleScenarioMode(){
+  scenarioMode=!scenarioMode;
+  const b=document.getElementById('btn-scenario'),s=document.getElementById('scenario-section');
+  if(scenarioMode){b.classList.add('scenario-active');b.textContent='⚖ SCENARIO: ON';s.classList.add('visible');}
+  else{b.classList.remove('scenario-active');b.textContent='⚖ SCENARIOS';s.classList.remove('visible');scenarioOverrides={};renderOverrideList();}
   applyFailureState();
 }
 
-function toggleRedTeam(){
-  redTeamMode=!redTeamMode;
-  const b=document.getElementById('btn-redteam');
-  if(redTeamMode){b.classList.add('active'); b.textContent='RED TEAM MODE: ON';}
-  else {b.classList.remove('active'); b.textContent='RED TEAM MODE';}
+async function loadScenarioList(){
+  try{
+    const rows=await apiFetch('/api/v1/systemmap/scenarios');
+    const sel=document.getElementById('scenario-sel');
+    sel.innerHTML='<option value="">— Baseline (no overrides) —</option>';
+    rows.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
+  }catch(e){}
 }
 
-function simulateCritical(){
-  const critical=NODES.filter(n=>n.critical);
-  if(!critical.length) return;
-  const pick=critical[Math.floor(Math.random()*critical.length)];
-  failedNodes.add(pick.id);
-  applyFailureState();
-  if(!redTeamMode){toggleRedTeam(); toggleRedTeam();}
+async function loadScenario(){
+  const sid=document.getElementById('scenario-sel').value;
+  if(!sid){scenarioOverrides={};currentScenarioId=null;renderOverrideList();applyFailureState();evaluateScorecard();return;}
+  try{
+    const r=await apiFetch(`/api/v1/systemmap/scenario/${sid}`);
+    scenarioOverrides=r.overrides||{};currentScenarioId=r.id;
+    renderOverrideList();applyFailureState();evaluateScorecard();
+    document.getElementById('scenario-info').textContent=r.description||'Loaded.';
+  }catch(e){toast('Failed to load scenario');}
 }
 
-function resetSystemMap(){
-  failedNodes.clear();
-  selectedNode=null;
-  selectedTrail=null;
-  redTeamMode=false;
-  document.getElementById('btn-redteam').classList.remove('active');
-  document.getElementById('btn-redteam').textContent='RED TEAM MODE';
-  clearTrail();
-  applyFailureState();
+async function saveScenario(){
+  const name=document.getElementById('sc-name').value.trim();
+  if(!name){toast('Enter a scenario name');return;}
+  const body={name,description:`${Object.keys(scenarioOverrides).length} node overrides`,overrides:scenarioOverrides};
+  if(currentScenarioId){
+    await apiPost(`/api/v1/systemmap/scenario/${currentScenarioId}`,{...body,method:'PUT'});
+    // Actually use PUT
+    await apiFetch(`/api/v1/systemmap/scenario/${currentScenarioId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }else{
+    const r=await apiPost('/api/v1/systemmap/scenario',body);
+    currentScenarioId=r.id;
+  }
+  // Save scores too
+  const scores=await apiPost('/api/v1/systemmap/evaluate',{overrides:scenarioOverrides});
+  await apiFetch(`/api/v1/systemmap/scenario/${currentScenarioId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({scores})});
+  toast(`Scenario "${name}" saved`);document.getElementById('sc-name').value='';
+  loadScenarioList();
 }
 
-// ══════════════════════════════════════════
-//  EDIT MODE — Add / Remove nodes & edges
-// ══════════════════════════════════════════
-function toggleEditMode(){
-  editMode=!editMode;
-  const b=document.getElementById('btn-edit');
-  const s=document.getElementById('edit-section');
-  if(editMode){b.classList.add('edit-active'); b.textContent='✎ EDITING'; s.classList.add('visible');}
-  else{b.classList.remove('edit-active'); b.textContent='✎ EDIT GRAPH'; s.classList.remove('visible');}
+async function deleteScenario(){
+  const sid=document.getElementById('scenario-sel').value;
+  if(!sid)return;if(!confirm('Delete this scenario?'))return;
+  await apiFetch(`/api/v1/systemmap/scenario/${sid}`,{method:'DELETE'});
+  scenarioOverrides={};currentScenarioId=null;
+  renderOverrideList();loadScenarioList();evaluateScorecard();toast('Scenario deleted');
 }
 
-function populateEditorDropdowns(){
-  const sorted=[...NODES].sort((a,b)=>a.name.localeCompare(b.name));
-  const opts=sorted.map(n=>`<option value="${n.id}">${n.name}</option>`).join('');
-  document.getElementById('ee-source').innerHTML=opts;
-  document.getElementById('ee-target').innerHTML=opts;
-  document.getElementById('ed-node').innerHTML=opts;
-}
-
-function renderEdgeList(){
-  const el=document.getElementById('edge-list');
-  if(!EDGE_DB||!EDGE_DB.length){el.innerHTML='<div class="sys-empty">No edges</div>'; return;}
-  el.innerHTML=EDGE_DB.map(e=>{
-    const sn=(nodeById.get(e.source_key)||{}).name||e.source_key;
-    const tn=(nodeById.get(e.target_key)||{}).name||e.target_key;
-    return `<div class="item"><span style="flex:1">${sn} → ${tn}</span><span class="del-x" onclick="deleteEdge(${e.id})" title="Remove edge">✕</span></div>`;
+function renderOverrideList(){
+  const el=document.getElementById('override-list');
+  const keys=Object.keys(scenarioOverrides);
+  if(!keys.length){el.innerHTML='<div class="sys-empty" style="font-size:.7em">No overrides — adjust node weights to create them.</div>';return;}
+  el.innerHTML=keys.map(k=>{const n=nodeById.get(k);const ov=scenarioOverrides[k];
+    return`<div class="item" style="font-size:.7em"><span>${n?n.name:k}: R${(ov.risk*100).toFixed(0)} Rel${(ov.rel*100).toFixed(0)} L${ov.lat.toFixed(0)}s C${(ov.cost*100).toFixed(0)}</span><span class="del-x" onclick="delete scenarioOverrides['${k}'];renderOverrideList();applyFailureState();evaluateScorecard();">✕</span></div>`;
   }).join('');
 }
 
-async function addNode(){
-  const key=document.getElementById('en-key').value.trim().replace(/\s+/g,'_').toLowerCase();
-  const name=document.getElementById('en-name').value.trim();
-  const phase=document.getElementById('en-phase').value;
-  const trails=document.getElementById('en-trails').value;
-  const critical=document.getElementById('en-critical').checked;
-  if(!key||!name){toast('Key and name required'); return;}
-  const r=await apiPost('/api/v1/systemmap/node',{key,name,phase,trails,critical});
-  if(r.error){toast('Error: '+r.error); return;}
-  toast(`Node "${name}" added`);
-  document.getElementById('en-key').value='';
-  document.getElementById('en-name').value='';
-  document.getElementById('en-trails').value='';
-  document.getElementById('en-critical').checked=false;
-  await loadGraph();
+// ── Trails ──
+function buildTrailChips(){document.getElementById('trail-chips').innerHTML=TRAILS.map((t,i)=>`<span class="trail-chip" onclick="showTrail(${i})">${t.name}</span>`).join('');}
+function showTrail(i){selectedTrail=i;const t=TRAILS[i];const s=new Set(t.nodes);
+  links.attr('stroke',d=>(s.has(d.source.id)&&s.has(d.target.id))?'#00ff41':'#333').attr('stroke-width',d=>(s.has(d.source.id)&&s.has(d.target.id))?2.3:1.2).attr('opacity',d=>(s.has(d.source.id)&&s.has(d.target.id))?1:0.35);
+  nodes.select('circle').attr('opacity',d=>s.has(d.id)?1:0.4);
+  document.getElementById('sel-node').innerHTML=`<b style="color:#00ff41">${t.name}</b><br>${t.nodes.length} linked resources.`;
+  renderList('upstream-list',t.nodes.map(id=>nodeById.get(id)).filter(Boolean));
 }
 
-async function addEdge(){
-  const source=document.getElementById('ee-source').value;
-  const target=document.getElementById('ee-target').value;
-  if(!source||!target||source===target){toast('Select two different nodes'); return;}
-  const r=await apiPost('/api/v1/systemmap/edge',{source,target});
-  if(r.error){toast('Error: '+r.error); return;}
-  toast('Edge added');
-  await loadGraph();
-}
+function clearTrail(){selectedTrail=null;selectedNode=null;document.getElementById('weight-sliders').style.display='none';
+  if(!links||!nodes)return;links.attr('stroke','#444').attr('stroke-width',1.4).attr('opacity',0.8);
+  nodes.select('circle').attr('opacity',1).attr('stroke',d=>d.critical?'#fff':'#111').attr('stroke-width',d=>d.critical?1.5:1);
+  document.getElementById('sel-node').textContent='Click a node to inspect weights and dependencies.';renderList('upstream-list',[]);applyFailureState();}
 
-async function deleteNode(){
-  const key=document.getElementById('ed-node').value;
-  if(!key) return;
-  const n=nodeById.get(key);
-  if(!confirm(`Delete node "${(n||{}).name||key}" and all its edges?`)) return;
-  await apiFetch(`/api/v1/systemmap/node/${key}`,{method:'DELETE'});
-  toast(`Node "${(n||{}).name||key}" deleted`);
-  await loadGraph();
-}
+function toggleRedTeam(){redTeamMode=!redTeamMode;const b=document.getElementById('btn-redteam');
+  if(redTeamMode){b.classList.add('active');b.textContent='RED TEAM: ON';}else{b.classList.remove('active');b.textContent='RED TEAM';}}
+function simulateCritical(){const c=NODES.filter(n=>n.critical);if(!c.length)return;failedNodes.add(c[Math.floor(Math.random()*c.length)].id);applyFailureState();}
+function resetSystemMap(){failedNodes.clear();selectedNode=null;selectedTrail=null;redTeamMode=false;scenarioOverrides={};
+  document.getElementById('btn-redteam').classList.remove('active');document.getElementById('btn-redteam').textContent='RED TEAM';
+  clearTrail();renderOverrideList();applyFailureState();evaluateScorecard();}
 
-async function deleteEdge(edgeId){
-  await apiFetch(`/api/v1/systemmap/edge/${edgeId}`,{method:'DELETE'});
-  toast('Edge removed');
-  await loadGraph();
-}
+// ── Edit mode ──
+function toggleEditMode(){editMode=!editMode;const b=document.getElementById('btn-edit'),s=document.getElementById('edit-section');
+  if(editMode){b.classList.add('edit-active');b.textContent='✎ EDITING';s.classList.add('visible');}else{b.classList.remove('edit-active');b.textContent='✎ EDIT';s.classList.remove('visible');}}
+function populateEditorDropdowns(){const sorted=[...NODES].sort((a,b)=>a.name.localeCompare(b.name));const o=sorted.map(n=>`<option value="${n.id}">${n.name}</option>`).join('');
+  document.getElementById('ee-source').innerHTML=o;document.getElementById('ee-target').innerHTML=o;document.getElementById('ed-node').innerHTML=o;}
+async function addNode(){const key=document.getElementById('en-key').value.trim().replace(/\s+/g,'_').toLowerCase();const name=document.getElementById('en-name').value.trim();
+  if(!key||!name){toast('Key and name required');return;}
+  const r=await apiPost('/api/v1/systemmap/node',{key,name,phase:document.getElementById('en-phase').value,trails:document.getElementById('en-trails').value,critical:document.getElementById('en-critical').checked});
+  if(r.error){toast(r.error);return;}toast(`"${name}" added`);document.getElementById('en-key').value='';document.getElementById('en-name').value='';await loadGraph();}
+async function addEdge(){const s=document.getElementById('ee-source').value,t=document.getElementById('ee-target').value;if(!s||!t||s===t){toast('Pick two different nodes');return;}
+  const r=await apiPost('/api/v1/systemmap/edge',{source:s,target:t});if(r.error){toast(r.error);return;}toast('Edge added');await loadGraph();}
+async function deleteNode(){const k=document.getElementById('ed-node').value;if(!k)return;if(!confirm(`Delete ${(nodeById.get(k)||{}).name||k}?`))return;
+  await apiFetch(`/api/v1/systemmap/node/${k}`,{method:'DELETE'});toast('Deleted');await loadGraph();}
+async function seedDefaults(){const r=await apiPost('/api/v1/systemmap/seed',{});toast(`Seeded ${r.added_nodes} nodes, ${r.added_edges} edges`);await loadGraph();}
 
-async function seedDefaults(){
-  const r=await apiPost('/api/v1/systemmap/seed',{});
-  toast(`Seeded ${r.added_nodes} nodes, ${r.added_edges} edges`);
-  await loadGraph();
-}
-
-// ── Init ──
 loadGraph();
 </script>
 {% endblock %}
