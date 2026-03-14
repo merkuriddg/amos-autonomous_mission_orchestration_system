@@ -23,6 +23,7 @@ from web.state import (
     now_iso, from_json, to_json,
     persist_bda, persist_engagement,
     drone_ref_db,
+    mission_pipeline,
 )
 
 bp = Blueprint("ops", __name__)
@@ -2220,3 +2221,112 @@ def api_systemmap_evaluate():
         "per_node": {k: v for k, v in active.items()},
     }
     return jsonify(scores)
+
+
+# ═══════════════════════════════════════════════════════════
+#  BEHAVIOR TREE + MISSION PIPELINE API
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/bt/templates")
+@login_required
+def api_bt_templates():
+    """List available behavior tree templates."""
+    return jsonify(mission_pipeline.get_templates())
+
+
+@bp.route("/bt/trees")
+@login_required
+def api_bt_list():
+    """List all active behavior trees."""
+    return jsonify(mission_pipeline.bt_registry.list_all())
+
+
+@bp.route("/bt/tree", methods=["POST"])
+@login_required
+def api_bt_create():
+    """Create a behavior tree from a template."""
+    d = request.get_json() or {}
+    template = (d.get("template") or "").strip().upper()
+    if not template:
+        return jsonify({"error": "template required", "available": list(
+            mission_pipeline.get_templates())}), 400
+    result = mission_pipeline.create_bt_from_template(template, d.get("params"))
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/bt/tree/<bt_id>")
+@login_required
+def api_bt_get(bt_id):
+    """Get full behavior tree state including node tree."""
+    bt = mission_pipeline.bt_registry.get(bt_id)
+    if not bt:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(bt.to_dict())
+
+
+@bp.route("/bt/tree/<bt_id>/tick", methods=["POST"])
+@login_required
+def api_bt_tick(bt_id):
+    """Manually tick a single behavior tree with provided blackboard."""
+    bt = mission_pipeline.bt_registry.get(bt_id)
+    if not bt:
+        return jsonify({"error": "Not found"}), 404
+    d = request.get_json() or {}
+    bb = d.get("blackboard", {})
+    status = bt.tick(bb)
+    return jsonify({"id": bt_id, "status": status.value, "blackboard": bb})
+
+
+@bp.route("/bt/tree/<bt_id>", methods=["DELETE"])
+@login_required
+def api_bt_delete(bt_id):
+    """Remove a behavior tree."""
+    if mission_pipeline.bt_registry.unregister(bt_id):
+        return jsonify({"status": "ok", "deleted": bt_id})
+    return jsonify({"error": "Not found"}), 404
+
+
+@bp.route("/pipeline/status")
+@login_required
+def api_pipeline_status():
+    """Get mission pipeline status — rules, BTs, stats."""
+    return jsonify(mission_pipeline.summary())
+
+
+@bp.route("/pipeline/rules")
+@login_required
+def api_pipeline_rules():
+    """List all trigger rules."""
+    return jsonify(mission_pipeline.get_rules())
+
+
+@bp.route("/pipeline/rules/<rule_id>/toggle", methods=["POST"])
+@login_required
+def api_pipeline_toggle_rule(rule_id):
+    """Enable/disable a trigger rule."""
+    for r in mission_pipeline.rules:
+        if r.id == rule_id:
+            r.enabled = not r.enabled
+            return jsonify({"status": "ok", "rule_id": rule_id, "enabled": r.enabled})
+    return jsonify({"error": "Not found"}), 404
+
+
+@bp.route("/pipeline/tick", methods=["POST"])
+@login_required
+def api_pipeline_tick():
+    """Manually tick the mission pipeline with provided tracks + blackboard."""
+    d = request.get_json() or {}
+    tracks = d.get("tracks", [])
+    bb = d.get("blackboard", {})
+    events = mission_pipeline.tick(tracks, bb)
+    return jsonify({"events": events, "stats": mission_pipeline.summary()})
+
+
+@bp.route("/pipeline/tasks")
+@login_required
+def api_pipeline_tasks():
+    """List tasks spawned by trigger rules."""
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(mission_pipeline.get_spawned_tasks(limit))

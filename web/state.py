@@ -363,6 +363,7 @@ from services.ros2_bridge import ROS2Bridge
 from services.task_allocator import TaskAllocator
 from services.roe_engine import ROEEngine
 from services.sensor_fusion_engine import SensorFusionEngine
+from services.mission_pipeline import MissionPipeline
 from services.mesh_network import MeshNetwork
 from services.video_pipeline import VideoPipeline
 from services.klv_parser import KLVParser
@@ -375,6 +376,7 @@ ros2_bridge = ROS2Bridge()
 task_allocator = TaskAllocator()
 roe_engine = ROEEngine()
 sensor_fusion = SensorFusionEngine()
+mission_pipeline = MissionPipeline()
 mesh_network = MeshNetwork()
 video_pipeline = VideoPipeline()
 klv_parser = KLVParser()
