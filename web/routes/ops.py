@@ -24,6 +24,7 @@ from web.state import (
     persist_bda, persist_engagement,
     drone_ref_db,
     mission_pipeline,
+    swarm_behavior_mgr,
 )
 
 bp = Blueprint("ops", __name__)
@@ -2330,3 +2331,109 @@ def api_pipeline_tasks():
     """List tasks spawned by trigger rules."""
     limit = request.args.get("limit", 50, type=int)
     return jsonify(mission_pipeline.get_spawned_tasks(limit))
+
+
+# ═══════════════════════════════════════════════════════════
+#  SWARM BEHAVIORS API
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/swarm/behaviors/catalog")
+@login_required
+def api_swarm_behavior_catalog():
+    """List available swarm behavior types."""
+    return jsonify(swarm_behavior_mgr.list_catalog())
+
+
+@bp.route("/swarm/behaviors/active")
+@login_required
+def api_swarm_behaviors_active():
+    """List all active swarm behaviors."""
+    return jsonify(swarm_behavior_mgr.list_active())
+
+
+@bp.route("/swarm/behaviors/status")
+@login_required
+def api_swarm_behaviors_status():
+    """Get swarm behavior manager summary."""
+    return jsonify(swarm_behavior_mgr.summary())
+
+
+@bp.route("/swarm/behavior", methods=["POST"])
+@login_required
+def api_swarm_behavior_assign():
+    """Assign a behavior to a swarm."""
+    d = request.get_json() or {}
+    behavior_type = (d.get("behavior") or d.get("type") or "").strip().upper()
+    swarm_id = d.get("swarm_id", "")
+    asset_ids = d.get("asset_ids", [])
+    params = d.get("params", {})
+    if not behavior_type:
+        return jsonify({"error": "behavior type required",
+                        "available": [c["type"] for c in swarm_behavior_mgr.list_catalog()]}), 400
+    if not asset_ids:
+        return jsonify({"error": "asset_ids required"}), 400
+    result = swarm_behavior_mgr.assign_behavior(behavior_type, swarm_id, asset_ids, params)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/swarm/behavior/<behavior_id>")
+@login_required
+def api_swarm_behavior_get(behavior_id):
+    """Get a single swarm behavior's state."""
+    b = swarm_behavior_mgr.get_behavior(behavior_id)
+    if not b:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(b)
+
+
+@bp.route("/swarm/behavior/<behavior_id>/tick", methods=["POST"])
+@login_required
+def api_swarm_behavior_tick(behavior_id):
+    """Manually tick a single swarm behavior."""
+    b = swarm_behavior_mgr.active_behaviors.get(behavior_id)
+    if not b:
+        return jsonify({"error": "Not found or not active"}), 404
+    d = request.get_json() or {}
+    bb = d.get("blackboard", {})
+    events = b.tick(sim_assets, bb, dt=d.get("dt", 1.0))
+    return jsonify({"id": behavior_id, "events": events, "progress": b.progress()})
+
+
+@bp.route("/swarm/behavior/<behavior_id>", methods=["DELETE"])
+@login_required
+def api_swarm_behavior_cancel(behavior_id):
+    """Cancel an active swarm behavior."""
+    result = swarm_behavior_mgr.cancel_behavior(behavior_id)
+    if "error" in result:
+        return jsonify(result), 404
+    return jsonify(result)
+
+
+@bp.route("/swarm/behaviors/triggers")
+@login_required
+def api_swarm_behavior_triggers():
+    """List sensor fusion auto-trigger rules."""
+    return jsonify(swarm_behavior_mgr.get_triggers())
+
+
+@bp.route("/swarm/behaviors/triggers/<trigger_id>/toggle", methods=["POST"])
+@login_required
+def api_swarm_behavior_trigger_toggle(trigger_id):
+    """Enable/disable a sensor fusion auto-trigger."""
+    result = swarm_behavior_mgr.toggle_trigger(trigger_id)
+    if "error" in result:
+        return jsonify(result), 404
+    return jsonify(result)
+
+
+@bp.route("/swarm/behaviors/tick", methods=["POST"])
+@login_required
+def api_swarm_behaviors_tick_all():
+    """Tick all active swarm behaviors."""
+    d = request.get_json() or {}
+    bb = d.get("blackboard", {})
+    dt = d.get("dt", 1.0)
+    events = swarm_behavior_mgr.tick(sim_assets, bb, dt)
+    return jsonify({"events": events, "summary": swarm_behavior_mgr.summary()})
