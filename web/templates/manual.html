@@ -69,6 +69,12 @@
  <a href="#dimos-bridge" data-s="dimos-bridge">DimOS Bridge</a>
  <a href="#cqb-formations" data-s="cqb-formations">CQB Formations</a>
  <div class="nav-hdr">Autonomy</div>
+ <a href="#pipeline" data-s="pipeline">Mission Pipeline</a>
+ <a href="#swarm-behaviors" data-s="swarm-behaviors">Swarm Behaviors</a>
+ <a href="#cop" data-s="cop">COP / Closed Loop</a>
+ <a href="#demo-engine" data-s="demo-engine">Demo Engine</a>
+ <a href="#mesh-resilience" data-s="mesh-resilience">Mesh Resilience</a>
+ <a href="#interop" data-s="interop">Interoperability</a>
  <a href="#swarm" data-s="swarm">Swarm Intelligence</a>
  <a href="#isr" data-s="isr">ISR / ATR</a>
  <a href="#hmt" data-s="hmt">Human-Machine Teaming</a>
@@ -88,7 +94,7 @@
 <!-- ══ Main Content ══ -->
 <div class="man-body">
 <h1>AMOS — INSTRUCTION MANUAL</h1>
-<div class="man-sub">Autonomous Mission Orchestration System v5.1 — Complete Operator Guide</div>
+<div class="man-sub">Autonomous Mission Orchestration System v5.1 (v0.6 Autonomy) — Complete Operator Guide</div>
 
 <!-- ── GETTING STARTED ── -->
 <div class="cat-hdr">Getting Started</div>
@@ -396,7 +402,165 @@
 </div>
 
 <!-- ── AUTONOMY ── -->
-<div class="cat-hdr">Autonomy</div>
+<div class="cat-hdr">Autonomy — v0.6 Mission Orchestration</div>
+
+<div class="man-section" id="pipeline">
+<h2>MISSION PIPELINE &amp; BEHAVIOR TREES</h2>
+<p>Access via <span class="key">☰ MENU → Mission Pipeline</span>. Provides a structured mission automation framework using behavior trees and sensor-triggered rules.</p>
+<h3>Behavior Trees</h3>
+<ul>
+ <li><span class="key">Templates</span> — Pre-built tree templates (PATROL, RECON, ESCORT, STRIKE, etc.). Select a template and click <span class="key">+ CREATE</span> to instantiate a live tree.</li>
+ <li><span class="key">Tick</span> — Manually advance a tree through its nodes. Each tick evaluates conditions and transitions to the next action.</li>
+ <li><span class="key">Delete</span> — Remove an active tree. Trees show their current status: IDLE, RUNNING, SUCCESS, or FAILURE.</li>
+</ul>
+<h3>Trigger Rules</h3>
+<p>Sensor-driven rules that automatically spawn behavior trees or tasks when conditions are met (e.g., "if threat count > 3, spawn RECON tree"). Rules can be enabled/disabled individually.</p>
+<h3>Pipeline Tick</h3>
+<p>Click <span class="key">▶ TICK PIPELINE</span> to evaluate all trigger rules against current sensor tracks and blackboard state. Matched rules spawn tasks shown in the Spawned Tasks panel.</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/bt/templates</code> — List available tree templates</li>
+ <li><code>POST /api/v1/bt/tree</code> — Create tree from template</li>
+ <li><code>POST /api/v1/bt/tree/&lt;id&gt;/tick</code> — Tick a specific tree</li>
+ <li><code>GET /api/v1/pipeline/status</code> — Pipeline summary</li>
+ <li><code>GET /api/v1/pipeline/rules</code> — List trigger rules</li>
+ <li><code>POST /api/v1/pipeline/tick</code> — Evaluate all rules</li>
+</ul>
+</div>
+
+<div class="man-section" id="swarm-behaviors">
+<h2>SWARM BEHAVIORS</h2>
+<p>Access via <span class="key">☰ MENU → Swarm Behaviors</span>. Coordinated multi-asset tactical behaviors beyond basic formations.</p>
+<h3>Behavior Catalog</h3>
+<p>5 coordinated behaviors: <code>PERIMETER_PATROL</code>, <code>SEARCH_GRID</code>, <code>CONVOY_ESCORT</code>, <code>AREA_DENIAL</code>, <code>OVERWATCH</code>. Each behavior defines asset roles, movement patterns, and completion criteria.</p>
+<h3>Assign Behavior</h3>
+<ul>
+ <li>Select a behavior type from the catalog</li>
+ <li>Enter asset IDs (comma-separated) to form the swarm group</li>
+ <li>Optionally name the swarm with a Swarm ID</li>
+ <li>Click <span class="key">ASSIGN BEHAVIOR</span> to activate</li>
+</ul>
+<h3>Active Behaviors</h3>
+<p>Shows running behaviors with progress bars. <span class="key">TICK</span> advances a behavior by one step. <span class="key">CANCEL</span> terminates it. <span class="key">▶ TICK ALL</span> advances every active behavior simultaneously.</p>
+<h3>Auto-Triggers</h3>
+<p>Sensor fusion rules that automatically assign swarm behaviors when conditions are detected (e.g., perimeter breach triggers AREA_DENIAL). Toggle triggers on/off.</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/swarm/behaviors/catalog</code> — Available behavior types</li>
+ <li><code>POST /api/v1/swarm/behavior</code> — Assign behavior to assets</li>
+ <li><code>GET /api/v1/swarm/behaviors/active</code> — Active behaviors</li>
+ <li><code>POST /api/v1/swarm/behaviors/tick</code> — Tick all active behaviors</li>
+</ul>
+</div>
+
+<div class="man-section" id="cop">
+<h2>CLOSED-LOOP ORCHESTRATOR &amp; COP</h2>
+<p>Access via <span class="key">☰ MENU → COP / Loop</span>. Implements the OODA (Observe-Orient-Decide-Act) decision loop with a unified Common Operating Picture.</p>
+<h3>OODA Cycle</h3>
+<p>The OODA bar shows the current phase. Click <span class="key">▶ TICK CYCLE</span> to advance through one full cycle:</p>
+<ul>
+ <li><span class="key">OBSERVE</span> — Ingest sensor data, asset telemetry, and threat tracks</li>
+ <li><span class="key">ORIENT</span> — Fuse observations into situational awareness, assess risk</li>
+ <li><span class="key">DECIDE</span> — Generate autonomous recommendations (reposition, engage, evade)</li>
+ <li><span class="key">ACT</span> — Dispatch decisions as commands to assets and subsystems</li>
+</ul>
+<h3>Common Operating Picture</h3>
+<p>Unified view of all friendly assets (health, status, domain), active threats (type, risk level), and an operational summary (mission phase, readiness, comms health).</p>
+<h3>Autonomous Decisions</h3>
+<p>The decision panel shows actions the orchestrator has taken — repositioning assets, changing ROE posture, activating countermeasures — with rationale and timestamps.</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>POST /api/v1/loop/tick</code> — Run one OODA cycle</li>
+ <li><code>GET /api/v1/loop/status</code> — Orchestrator status</li>
+ <li><code>GET /api/v1/cop</code> — Full COP snapshot</li>
+</ul>
+</div>
+
+<div class="man-section" id="demo-engine">
+<h2>DEMO ENGINE</h2>
+<p>Access via <span class="key">☰ MENU → Demo Engine</span>. Pre-built demonstration scenarios with narrated event timelines for investor presentations and capability showcases.</p>
+<h3>Scenarios</h3>
+<p>3 built-in scenarios:</p>
+<ul>
+ <li><span class="key">URBAN_RECON</span> — Multi-asset urban reconnaissance with threat detection and autonomous response</li>
+ <li><span class="key">CONVOY_ESCORT</span> — Ground convoy with air cover, IED detection, and ambush response</li>
+ <li><span class="key">PERIMETER_DEFENSE</span> — Base defense with intrusion detection, swarm response, and escalation</li>
+</ul>
+<h3>Controls</h3>
+<ul>
+ <li>Select a scenario card, choose speed (0.5× to 5×), click <span class="key">▶ START</span></li>
+ <li><span class="key">⏭ TICK</span> — Advance one step manually</li>
+ <li><span class="key">⏹ STOP</span> — Halt the demo</li>
+</ul>
+<h3>Narrated Timeline</h3>
+<p>Events are color-coded: blue (PHASE), green (ACTION), red (ALERT), yellow (NARRATION). The timeline provides investor-friendly descriptions of what AMOS is doing at each step.</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/demo/scenarios</code> — List scenarios</li>
+ <li><code>POST /api/v1/demo/start</code> — Start a scenario</li>
+ <li><code>POST /api/v1/demo/tick</code> — Advance one step</li>
+ <li><code>GET /api/v1/demo/timeline</code> — Narrated event log</li>
+</ul>
+</div>
+
+<div class="man-section" id="mesh-resilience">
+<h2>MESH RESILIENCE</h2>
+<p>Access via <span class="key">☰ MENU → Mesh Resilience</span>. Handles communication failures gracefully with disconnected operations, automatic relay assignment, and reconnection synchronization.</p>
+<h3>Disconnected Operations</h3>
+<p>When an asset loses comms, it continues executing its last known intent autonomously. The dashboard shows all disconnected assets with their reason, disconnect time, and last intent.</p>
+<h3>Simulate</h3>
+<p>Enter an asset ID and click <span class="key">DISCONNECT</span> to simulate a comms failure, or <span class="key">RECONNECT</span> to restore. Use this to test resilience behavior.</p>
+<h3>Relay Assignment</h3>
+<p>The system automatically designates nearby connected assets as relay nodes to restore communication with disconnected assets. View and release relay assignments.</p>
+<h3>Sync Queue</h3>
+<p>Commands queued for disconnected assets are stored and delivered upon reconnection. Queue commands manually via the <span class="key">QUEUE COMMAND</span> form (select asset, command type, optional payload).</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/mesh/resilience/status</code> — Full resilience status</li>
+ <li><code>POST /api/v1/mesh/resilience/simulate-disconnect</code> — Simulate disconnect</li>
+ <li><code>POST /api/v1/mesh/resilience/reconnect</code> — Simulate reconnect</li>
+ <li><code>GET /api/v1/mesh/resilience/disconnected</code> — Disconnected asset list</li>
+ <li><code>GET /api/v1/mesh/resilience/relays</code> — Active relay nodes</li>
+ <li><code>GET /api/v1/mesh/resilience/sync-queue</code> — Pending sync commands</li>
+</ul>
+</div>
+
+<div class="man-section" id="interop">
+<h2>INTEROPERABILITY LAYER</h2>
+<p>Access via <span class="key">☰ MENU → Interop</span>. Unified multi-framework command abstraction, DoD Blue UAS registry, and integration health monitoring.</p>
+<h3>Autonomy Frameworks</h3>
+<p>4 supported frameworks:</p>
+<ul>
+ <li><span class="key">PX4</span> — MAVLink protocol. Air domain (drones, VTOL).</li>
+ <li><span class="key">ArduPilot</span> — MAVLink protocol. Air + ground (rovers, copters).</li>
+ <li><span class="key">ROS2 Nav2</span> — ROS 2 protocol. Ground domain (UGVs, mobile robots).</li>
+ <li><span class="key">DimOS</span> — gRPC protocol. Ground domain (bipedal robots, manipulators).</li>
+</ul>
+<h3>Bind Asset</h3>
+<p>Select an asset ID and framework, click <span class="key">BIND</span>. Once bound, AMOS commands are automatically translated to the native framework protocol.</p>
+<h3>Command Translator</h3>
+<p>Enter an asset ID, select an AMOS command (WAYPOINT, RTL, HOLD, PATROL, etc.), and provide optional parameters. Click <span class="key">TRANSLATE</span> to see the native framework command output. Supports ~22 command-framework pairs.</p>
+<h3>Blue UAS Registry</h3>
+<p>Browse 8 DoD-approved Blue UAS platforms with full specs:</p>
+<ul>
+ <li>Skydio X10, Shield AI V-BAT, AeroVironment Switchblade 600, L3Harris FVR-90</li>
+ <li>Teal Golden Eagle, Altavian Nova F7200, Ghost Robotics Vision 60, Boston Dynamics Spot</li>
+</ul>
+<p>Search by text, filter by domain (air/ground) or weapons capability. Each entry includes sensors, weapons, SWaP-C data, autonomy framework, and endurance.</p>
+<h3>Integration Health Dashboard</h3>
+<p>Monitors connection status of all framework bridges. Shows connected/offline status, protocol, and alerts for disconnected or error-prone bridges.</p>
+<h3>API Endpoints</h3>
+<ul>
+ <li><code>GET /api/v1/interop/status</code> — Full interop status</li>
+ <li><code>GET /api/v1/interop/frameworks</code> — List frameworks</li>
+ <li><code>POST /api/v1/interop/bind</code> — Bind asset to framework</li>
+ <li><code>POST /api/v1/interop/command</code> — Translate and dispatch command</li>
+ <li><code>GET /api/v1/interop/blue-uas</code> — Search Blue UAS platforms</li>
+ <li><code>GET /api/v1/interop/health</code> — Integration health dashboard</li>
+</ul>
+</div>
+
+<div class="cat-hdr">Autonomy — Core Systems</div>
 <div class="man-section" id="swarm">
 <h2>SWARM INTELLIGENCE</h2>
 <p>Reynolds flocking physics with behavioral DNA profiles. 5 base behaviors + 6 emergent behaviors (surround, funnel, pincer, screen, relay, decoy). Create swarms from the C2 Console or Mission Planner.</p>
