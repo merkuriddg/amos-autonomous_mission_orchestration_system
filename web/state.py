@@ -365,6 +365,7 @@ from services.roe_engine import ROEEngine
 from services.sensor_fusion_engine import SensorFusionEngine
 from services.mission_pipeline import MissionPipeline
 from services.swarm_behaviors import SwarmBehaviorManager
+from services.closed_loop import ClosedLoopOrchestrator
 from services.mesh_network import MeshNetwork
 from services.video_pipeline import VideoPipeline
 from services.klv_parser import KLVParser
@@ -379,6 +380,13 @@ roe_engine = ROEEngine()
 sensor_fusion = SensorFusionEngine()
 mission_pipeline = MissionPipeline()
 swarm_behavior_mgr = SwarmBehaviorManager()
+closed_loop = ClosedLoopOrchestrator(
+    sensor_fusion=sensor_fusion,
+    mission_pipeline=mission_pipeline,
+    task_allocator=task_allocator,
+    swarm_behavior_mgr=swarm_behavior_mgr,
+    swarm_intel=None,  # connected when swarm feature enabled
+)
 mesh_network = MeshNetwork()
 video_pipeline = VideoPipeline()
 klv_parser = KLVParser()

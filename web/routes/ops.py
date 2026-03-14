@@ -25,6 +25,9 @@ from web.state import (
     drone_ref_db,
     mission_pipeline,
     swarm_behavior_mgr,
+    closed_loop,
+    sensor_fusion,
+    task_allocator,
 )
 
 bp = Blueprint("ops", __name__)
@@ -2437,3 +2440,32 @@ def api_swarm_behaviors_tick_all():
     dt = d.get("dt", 1.0)
     events = swarm_behavior_mgr.tick(sim_assets, bb, dt)
     return jsonify({"events": events, "summary": swarm_behavior_mgr.summary()})
+
+
+# ═══════════════════════════════════════════════════════════
+#  CLOSED LOOP ORCHESTRATOR + COP
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/loop/tick", methods=["POST"])
+@login_required
+def api_loop_tick():
+    """Run one full closed-loop autonomy cycle."""
+    d = request.get_json() or {}
+    bb = d.get("blackboard", {})
+    dt = d.get("dt", 1.0)
+    result = closed_loop.tick(sim_assets, sim_threats, dt=dt, blackboard=bb)
+    return jsonify(result)
+
+
+@bp.route("/loop/status")
+@login_required
+def api_loop_status():
+    """Get closed-loop orchestrator summary."""
+    return jsonify(closed_loop.summary())
+
+
+@bp.route("/cop")
+@login_required
+def api_cop():
+    """Common Operating Picture — unified snapshot of all operational layers."""
+    return jsonify(closed_loop.cop(sim_assets, sim_threats))
