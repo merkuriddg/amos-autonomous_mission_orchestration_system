@@ -31,6 +31,7 @@ from web.state import (
     demo_runner,
     mesh_resilience,
     mesh_network,
+    interop,
     sim_assets as _sim_assets,
 )
 
@@ -2635,3 +2636,88 @@ def api_mesh_queue_command():
     if "error" in result:
         return jsonify(result), 400
     return jsonify(result)
+
+
+# ═══════════════════════════════════════════════════════════
+#  INTEROPERABILITY — Autonomy Abstraction, Blue UAS, Health
+# ═══════════════════════════════════════════════════════════
+
+@bp.route("/interop/status")
+@login_required
+def api_interop_status():
+    """Full interop layer status."""
+    return jsonify(interop.get_status())
+
+
+@bp.route("/interop/frameworks")
+@login_required
+def api_interop_frameworks():
+    """List supported autonomy frameworks."""
+    return jsonify(interop.autonomy.list_frameworks())
+
+
+@bp.route("/interop/bindings")
+@login_required
+def api_interop_bindings():
+    """List all asset-to-framework bindings."""
+    return jsonify(interop.autonomy.list_bindings())
+
+
+@bp.route("/interop/bind", methods=["POST"])
+@login_required
+def api_interop_bind():
+    """Bind an asset to an autonomy framework."""
+    d = request.get_json() or {}
+    asset_id = (d.get("asset_id") or "").strip()
+    framework = (d.get("framework") or "").strip().upper()
+    if not asset_id or not framework:
+        return jsonify({"error": "asset_id and framework required"}), 400
+    result = interop.autonomy.bind_asset(asset_id, framework)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/interop/command", methods=["POST"])
+@login_required
+def api_interop_command():
+    """Translate and dispatch an AMOS command via the abstraction layer."""
+    d = request.get_json() or {}
+    asset_id = (d.get("asset_id") or "").strip()
+    command = (d.get("command") or "").strip().upper()
+    params = d.get("params", {})
+    if not asset_id or not command:
+        return jsonify({"error": "asset_id and command required"}), 400
+    result = interop.autonomy.translate_command(asset_id, command, params)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route("/interop/blue-uas")
+@login_required
+def api_blue_uas_list():
+    """Search or list Blue UAS approved platforms."""
+    q = request.args.get("q", "")
+    domain = request.args.get("domain")
+    fw = request.args.get("framework")
+    if fw:
+        return jsonify(interop.blue_uas.get_by_framework(fw))
+    return jsonify(interop.blue_uas.search(query=q, domain=domain))
+
+
+@bp.route("/interop/blue-uas/<model_id>")
+@login_required
+def api_blue_uas_detail(model_id):
+    """Get a specific Blue UAS platform profile."""
+    entry = interop.blue_uas.lookup(model_id)
+    if not entry:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(entry)
+
+
+@bp.route("/interop/health")
+@login_required
+def api_interop_health():
+    """Integration health dashboard."""
+    return jsonify(interop.health.get_dashboard())

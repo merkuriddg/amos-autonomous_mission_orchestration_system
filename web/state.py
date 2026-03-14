@@ -369,6 +369,7 @@ from services.closed_loop import ClosedLoopOrchestrator
 from services.demo_engine import DemoRunner
 from services.mesh_network import MeshNetwork
 from services.mesh_resilience import MeshResilienceOrchestrator
+from services.interop_layer import InteropOrchestrator
 from services.video_pipeline import VideoPipeline
 from services.klv_parser import KLVParser
 from services.imagery_handler import ImageryHandler
@@ -400,6 +401,7 @@ mesh_resilience = MeshResilienceOrchestrator(
     swarm_behavior_mgr=swarm_behavior_mgr,
     task_allocator=task_allocator,
 )
+interop = InteropOrchestrator()
 video_pipeline = VideoPipeline()
 klv_parser = KLVParser()
 imagery_handler = ImageryHandler()
