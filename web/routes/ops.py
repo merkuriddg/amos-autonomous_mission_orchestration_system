@@ -1755,31 +1755,57 @@ def api_drone_ref_detail(model_id):
 # ═══════════════════════════════════════════════════════════
 
 # Default weights: risk(0-1), reliability(0-1), latency_sec, cost(0-1)
+# SWaP-C+ weights: size(0-1), weight_kg, power_w, attrition(0-1), geography(0-1)
+# Attrition = sensitivity to loss — 0=expendable, 1=must protect at all costs
 _SYSMAP_DEFAULT_NODES = [
-    {"key": "sensors", "name": "Sensors", "phase": "left", "critical": True, "trails": ["ISR", "EW", "SIGINT"], "w": {"risk": 0.2, "rel": 0.9, "lat": 2, "cost": 0.3}},
-    {"key": "building_model", "name": "Building Model", "phase": "left", "critical": True, "trails": ["CQB", "Indoor"], "w": {"risk": 0.1, "rel": 0.95, "lat": 1, "cost": 0.2}},
-    {"key": "indoor_positioning", "name": "Indoor Positioning", "phase": "left", "critical": True, "trails": ["Indoor", "Navigation"], "w": {"risk": 0.15, "rel": 0.7, "lat": 3, "cost": 0.4}},
-    {"key": "perception_fusion", "name": "Perception Fusion", "phase": "left", "critical": True, "trails": ["ISR", "CQB", "Fusion"], "w": {"risk": 0.1, "rel": 0.85, "lat": 5, "cost": 0.5}},
-    {"key": "isr_atr", "name": "ISR / ATR", "phase": "left", "critical": False, "trails": ["ISR", "Prediction"], "w": {"risk": 0.2, "rel": 0.8, "lat": 8, "cost": 0.4}},
-    {"key": "threat_predictions", "name": "Threat Predictions", "phase": "left", "critical": False, "trails": ["Prediction", "HAL"], "w": {"risk": 0.05, "rel": 0.75, "lat": 12, "cost": 0.3}},
-    {"key": "hal", "name": "HAL Autonomy", "phase": "left", "critical": True, "trails": ["Decision", "ROE"], "w": {"risk": 0.3, "rel": 0.85, "lat": 4, "cost": 0.6}},
-    {"key": "roe", "name": "ROE Engine", "phase": "left", "critical": True, "trails": ["Decision", "Legal"], "w": {"risk": 0.1, "rel": 0.95, "lat": 2, "cost": 0.2}},
-    {"key": "killweb", "name": "Kill Web", "phase": "left", "critical": False, "trails": ["F2T2EA"], "w": {"risk": 0.4, "rel": 0.8, "lat": 6, "cost": 0.7}},
-    {"key": "cqb_planner", "name": "CQB Planner", "phase": "left", "critical": True, "trails": ["CQB", "Planning"], "w": {"risk": 0.15, "rel": 0.9, "lat": 15, "cost": 0.4}},
-    {"key": "squad_supervisor", "name": "Squad Supervisor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"], "w": {"risk": 0.7, "rel": 0.85, "lat": 5, "cost": 0.5}},
-    {"key": "cqb_executor", "name": "CQB Executor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"], "w": {"risk": 0.85, "rel": 0.9, "lat": 20, "cost": 0.6}},
-    {"key": "dimos_bridge", "name": "DimOS Bridge", "phase": "bang", "critical": True, "trails": ["Robotics", "Integration"], "w": {"risk": 0.1, "rel": 0.7, "lat": 8, "cost": 0.8}},
-    {"key": "countermeasures", "name": "Countermeasures", "phase": "bang", "critical": False, "trails": ["Kinetic", "Effects"], "w": {"risk": 0.6, "rel": 0.85, "lat": 3, "cost": 0.7}},
-    {"key": "effects_chain", "name": "Effects Chain", "phase": "bang", "critical": False, "trails": ["Cross-domain"], "w": {"risk": 0.5, "rel": 0.8, "lat": 10, "cost": 0.6}},
-    {"key": "swarm", "name": "Swarm Orchestrator", "phase": "bang", "critical": False, "trails": ["Swarm", "Execution"], "w": {"risk": 0.3, "rel": 0.75, "lat": 12, "cost": 0.8}},
-    {"key": "bda", "name": "Battle Damage Assessment", "phase": "right", "critical": False, "trails": ["Assessment"], "w": {"risk": 0.2, "rel": 0.85, "lat": 30, "cost": 0.3}},
-    {"key": "aar", "name": "After Action Review", "phase": "right", "critical": False, "trails": ["Assessment", "Learning"], "w": {"risk": 0.05, "rel": 0.95, "lat": 60, "cost": 0.2}},
-    {"key": "docs", "name": "Docs / Reports", "phase": "right", "critical": False, "trails": ["Reporting"], "w": {"risk": 0.0, "rel": 0.95, "lat": 120, "cost": 0.1}},
-    {"key": "retask", "name": "Re-task Loop", "phase": "right", "critical": True, "trails": ["Adaptation", "Feedback"], "w": {"risk": 0.3, "rel": 0.8, "lat": 15, "cost": 0.4}},
-    {"key": "event_bus", "name": "Event Bus", "phase": "cross", "critical": True, "trails": ["Backbone"], "w": {"risk": 0.05, "rel": 0.95, "lat": 0.5, "cost": 0.3}},
-    {"key": "mesh_network", "name": "Mesh Network", "phase": "cross", "critical": True, "trails": ["Comms"], "w": {"risk": 0.15, "rel": 0.8, "lat": 2, "cost": 0.5}},
-    {"key": "integrations", "name": "Integration Layer", "phase": "cross", "critical": False, "trails": ["Bridge"], "w": {"risk": 0.05, "rel": 0.85, "lat": 3, "cost": 0.3}},
-    {"key": "manual_human", "name": "Human-in-Loop", "phase": "cross", "critical": True, "trails": ["Command"], "w": {"risk": 0.8, "rel": 0.95, "lat": 10, "cost": 0.9}},
+    {"key": "sensors", "name": "Sensors", "phase": "left", "critical": True, "trails": ["ISR", "EW", "SIGINT"],
+     "w": {"risk": 0.2, "rel": 0.9, "lat": 2, "cost": 0.3, "size": 0.15, "wt": 5, "pwr": 20, "attr": 0.3, "geo": 0.5}},
+    {"key": "building_model", "name": "Building Model", "phase": "left", "critical": True, "trails": ["CQB", "Indoor"],
+     "w": {"risk": 0.1, "rel": 0.95, "lat": 1, "cost": 0.2, "size": 0.0, "wt": 0, "pwr": 10, "attr": 0.02, "geo": 0.9}},
+    {"key": "indoor_positioning", "name": "Indoor Positioning", "phase": "left", "critical": True, "trails": ["Indoor", "Navigation"],
+     "w": {"risk": 0.15, "rel": 0.7, "lat": 3, "cost": 0.4, "size": 0.1, "wt": 2, "pwr": 15, "attr": 0.2, "geo": 0.85}},
+    {"key": "perception_fusion", "name": "Perception Fusion", "phase": "left", "critical": True, "trails": ["ISR", "CQB", "Fusion"],
+     "w": {"risk": 0.1, "rel": 0.85, "lat": 5, "cost": 0.5, "size": 0.05, "wt": 0, "pwr": 80, "attr": 0.05, "geo": 0.4}},
+    {"key": "isr_atr", "name": "ISR / ATR", "phase": "left", "critical": False, "trails": ["ISR", "Prediction"],
+     "w": {"risk": 0.2, "rel": 0.8, "lat": 8, "cost": 0.4, "size": 0.2, "wt": 8, "pwr": 40, "attr": 0.25, "geo": 0.6}},
+    {"key": "threat_predictions", "name": "Threat Predictions", "phase": "left", "critical": False, "trails": ["Prediction", "HAL"],
+     "w": {"risk": 0.05, "rel": 0.75, "lat": 12, "cost": 0.3, "size": 0.0, "wt": 0, "pwr": 60, "attr": 0.02, "geo": 0.3}},
+    {"key": "hal", "name": "HAL Autonomy", "phase": "left", "critical": True, "trails": ["Decision", "ROE"],
+     "w": {"risk": 0.3, "rel": 0.85, "lat": 4, "cost": 0.6, "size": 0.0, "wt": 0, "pwr": 120, "attr": 0.05, "geo": 0.1}},
+    {"key": "roe", "name": "ROE Engine", "phase": "left", "critical": True, "trails": ["Decision", "Legal"],
+     "w": {"risk": 0.1, "rel": 0.95, "lat": 2, "cost": 0.2, "size": 0.0, "wt": 0, "pwr": 5, "attr": 0.01, "geo": 0.05}},
+    {"key": "killweb", "name": "Kill Web", "phase": "left", "critical": False, "trails": ["F2T2EA"],
+     "w": {"risk": 0.4, "rel": 0.8, "lat": 6, "cost": 0.7, "size": 0.3, "wt": 15, "pwr": 100, "attr": 0.2, "geo": 0.5}},
+    {"key": "cqb_planner", "name": "CQB Planner", "phase": "left", "critical": True, "trails": ["CQB", "Planning"],
+     "w": {"risk": 0.15, "rel": 0.9, "lat": 15, "cost": 0.4, "size": 0.0, "wt": 0, "pwr": 30, "attr": 0.02, "geo": 0.7}},
+    {"key": "squad_supervisor", "name": "Squad Supervisor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"],
+     "w": {"risk": 0.7, "rel": 0.85, "lat": 5, "cost": 0.5, "size": 0.5, "wt": 35, "pwr": 150, "attr": 0.3, "geo": 0.65}},
+    {"key": "cqb_executor", "name": "CQB Executor", "phase": "bang", "critical": True, "trails": ["CQB", "Execution"],
+     "w": {"risk": 0.85, "rel": 0.9, "lat": 20, "cost": 0.6, "size": 0.6, "wt": 45, "pwr": 200, "attr": 0.15, "geo": 0.7}},
+    {"key": "dimos_bridge", "name": "DimOS Bridge", "phase": "bang", "critical": True, "trails": ["Robotics", "Integration"],
+     "w": {"risk": 0.1, "rel": 0.7, "lat": 8, "cost": 0.8, "size": 0.1, "wt": 3, "pwr": 50, "attr": 0.08, "geo": 0.2}},
+    {"key": "countermeasures", "name": "Countermeasures", "phase": "bang", "critical": False, "trails": ["Kinetic", "Effects"],
+     "w": {"risk": 0.6, "rel": 0.85, "lat": 3, "cost": 0.7, "size": 0.4, "wt": 25, "pwr": 180, "attr": 0.35, "geo": 0.55}},
+    {"key": "effects_chain", "name": "Effects Chain", "phase": "bang", "critical": False, "trails": ["Cross-domain"],
+     "w": {"risk": 0.5, "rel": 0.8, "lat": 10, "cost": 0.6, "size": 0.3, "wt": 20, "pwr": 90, "attr": 0.25, "geo": 0.5}},
+    {"key": "swarm", "name": "Swarm Orchestrator", "phase": "bang", "critical": False, "trails": ["Swarm", "Execution"],
+     "w": {"risk": 0.3, "rel": 0.75, "lat": 12, "cost": 0.8, "size": 0.2, "wt": 10, "pwr": 300, "attr": 0.1, "geo": 0.4}},
+    {"key": "bda", "name": "Battle Damage Assessment", "phase": "right", "critical": False, "trails": ["Assessment"],
+     "w": {"risk": 0.2, "rel": 0.85, "lat": 30, "cost": 0.3, "size": 0.1, "wt": 5, "pwr": 30, "attr": 0.15, "geo": 0.5}},
+    {"key": "aar", "name": "After Action Review", "phase": "right", "critical": False, "trails": ["Assessment", "Learning"],
+     "w": {"risk": 0.05, "rel": 0.95, "lat": 60, "cost": 0.2, "size": 0.0, "wt": 0, "pwr": 10, "attr": 0.01, "geo": 0.05}},
+    {"key": "docs", "name": "Docs / Reports", "phase": "right", "critical": False, "trails": ["Reporting"],
+     "w": {"risk": 0.0, "rel": 0.95, "lat": 120, "cost": 0.1, "size": 0.0, "wt": 0, "pwr": 5, "attr": 0.0, "geo": 0.0}},
+    {"key": "retask", "name": "Re-task Loop", "phase": "right", "critical": True, "trails": ["Adaptation", "Feedback"],
+     "w": {"risk": 0.3, "rel": 0.8, "lat": 15, "cost": 0.4, "size": 0.0, "wt": 0, "pwr": 20, "attr": 0.05, "geo": 0.3}},
+    {"key": "event_bus", "name": "Event Bus", "phase": "cross", "critical": True, "trails": ["Backbone"],
+     "w": {"risk": 0.05, "rel": 0.95, "lat": 0.5, "cost": 0.3, "size": 0.0, "wt": 0, "pwr": 15, "attr": 0.02, "geo": 0.1}},
+    {"key": "mesh_network", "name": "Mesh Network", "phase": "cross", "critical": True, "trails": ["Comms"],
+     "w": {"risk": 0.15, "rel": 0.8, "lat": 2, "cost": 0.5, "size": 0.2, "wt": 8, "pwr": 60, "attr": 0.2, "geo": 0.75}},
+    {"key": "integrations", "name": "Integration Layer", "phase": "cross", "critical": False, "trails": ["Bridge"],
+     "w": {"risk": 0.05, "rel": 0.85, "lat": 3, "cost": 0.3, "size": 0.0, "wt": 0, "pwr": 10, "attr": 0.02, "geo": 0.1}},
+    {"key": "manual_human", "name": "Human-in-Loop", "phase": "cross", "critical": True, "trails": ["Command"],
+     "w": {"risk": 0.8, "rel": 0.95, "lat": 10, "cost": 0.9, "size": 0.7, "wt": 90, "pwr": 0, "attr": 0.95, "geo": 0.6}},
 ]
 
 _SYSMAP_DEFAULT_EDGES = [
@@ -1804,11 +1830,12 @@ _SYSMAP_DEFAULT_EDGES = [
 @login_required
 def api_systemmap_graph():
     """Return full graph (nodes + edges + weights) from DB."""
-    nodes = fetchall("SELECT id, node_key, name, phase, critical, trails, pos_x, pos_y, w_risk, w_reliability, w_latency_sec, w_cost FROM system_map_nodes ORDER BY id")
+    nodes = fetchall("SELECT id, node_key, name, phase, critical, trails, pos_x, pos_y, w_risk, w_reliability, w_latency_sec, w_cost, w_size, w_weight_kg, w_power_w, w_attrition, w_geography, w_custom FROM system_map_nodes ORDER BY id")
     edges = fetchall("SELECT id, source_key, target_key, confidence, strength FROM system_map_edges ORDER BY id")
     for n in nodes:
         n["critical"] = bool(n["critical"])
         n["trails"] = from_json(n["trails"]) if n["trails"] else []
+        n["w_custom"] = from_json(n["w_custom"]) if n["w_custom"] else {}
     return jsonify({"nodes": nodes, "edges": edges})
 
 
@@ -1916,16 +1943,18 @@ def api_systemmap_seed():
         w = n.get("w", {})
         try:
             db_execute(
-                "INSERT INTO system_map_nodes (node_key, name, phase, critical, trails, w_risk, w_reliability, w_latency_sec, w_cost) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                "INSERT INTO system_map_nodes (node_key, name, phase, critical, trails, w_risk, w_reliability, w_latency_sec, w_cost, w_size, w_weight_kg, w_power_w, w_attrition, w_geography) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (n["key"], n["name"], n["phase"], int(n["critical"]), to_json(n["trails"]),
-                 w.get("risk", 0.5), w.get("rel", 0.8), w.get("lat", 10), w.get("cost", 0.5)))
+                 w.get("risk", 0.5), w.get("rel", 0.8), w.get("lat", 10), w.get("cost", 0.5),
+                 w.get("size", 0.5), w.get("wt", 10), w.get("pwr", 50), w.get("attr", 0.1), w.get("geo", 0.3)))
             added_nodes += 1
         except Exception:
             # Update weights for existing nodes (re-seed)
             try:
                 db_execute(
-                    "UPDATE system_map_nodes SET w_risk=%s, w_reliability=%s, w_latency_sec=%s, w_cost=%s WHERE node_key=%s",
-                    (w.get("risk", 0.5), w.get("rel", 0.8), w.get("lat", 10), w.get("cost", 0.5), n["key"]))
+                    "UPDATE system_map_nodes SET w_risk=%s, w_reliability=%s, w_latency_sec=%s, w_cost=%s, w_size=%s, w_weight_kg=%s, w_power_w=%s, w_attrition=%s, w_geography=%s WHERE node_key=%s",
+                    (w.get("risk", 0.5), w.get("rel", 0.8), w.get("lat", 10), w.get("cost", 0.5),
+                     w.get("size", 0.5), w.get("wt", 10), w.get("pwr", 50), w.get("attr", 0.1), w.get("geo", 0.3), n["key"]))
             except Exception:
                 pass
     for src, tgt in _SYSMAP_DEFAULT_EDGES:
@@ -1953,14 +1982,25 @@ def api_systemmap_save_position(node_key):
 @bp.route("/systemmap/node/<node_key>/weights", methods=["PUT"])
 @login_required
 def api_systemmap_save_weights(node_key):
-    """Update node weights (risk, reliability, latency, cost)."""
+    """Update node weights (operational + SWaP-C+ + custom)."""
     d = request.get_json() or {}
     sets, params = [], []
+    # Operational weights (0-1 clamped except latency)
     for col, key in [("w_risk", "risk"), ("w_reliability", "reliability"),
                      ("w_latency_sec", "latency"), ("w_cost", "cost")]:
         if key in d:
             val = max(0, min(1, float(d[key]))) if key != "latency" else max(0, float(d[key]))
             sets.append(f"{col}=%s"); params.append(val)
+    # SWaP-C+ weights
+    for col, key in [("w_size", "size"), ("w_attrition", "attrition"), ("w_geography", "geography")]:
+        if key in d:
+            sets.append(f"{col}=%s"); params.append(max(0, min(1, float(d[key]))))
+    for col, key in [("w_weight_kg", "weight_kg"), ("w_power_w", "power_w")]:
+        if key in d:
+            sets.append(f"{col}=%s"); params.append(max(0, float(d[key])))
+    # Custom weights (JSON blob for extensibility)
+    if "custom" in d and isinstance(d["custom"], dict):
+        sets.append("w_custom=%s"); params.append(to_json(d["custom"]))
     if not sets:
         return jsonify({"error": "No weights provided"}), 400
     params.append(node_key)
@@ -2061,26 +2101,35 @@ def api_systemmap_get_scenario(sid):
 def api_systemmap_evaluate():
     """Evaluate mission scores with optional weight overrides.
 
-    Computes: overall risk, success probability, total latency on
-    critical path, total cost, and per-node effective values.
+    Computes: operational scores, SWaP-C+ composites, human exposure,
+    terrain sensitivity, and per-node effective values.
     """
     d = request.get_json() or {}
     overrides = d.get("overrides", {})
     trail_nodes = d.get("trail", None)  # optional: evaluate specific trail
 
-    nodes = fetchall("SELECT node_key, name, phase, critical, w_risk, w_reliability, w_latency_sec, w_cost FROM system_map_nodes")
+    nodes = fetchall("SELECT node_key, name, phase, critical, w_risk, w_reliability, w_latency_sec, w_cost, w_size, w_weight_kg, w_power_w, w_attrition, w_geography, w_custom FROM system_map_nodes")
     edges = fetchall("SELECT source_key, target_key, confidence, strength FROM system_map_edges")
 
     nmap = {}
     for n in nodes:
         k = n["node_key"]
         ov = overrides.get(k, {})
+        custom_db = from_json(n["w_custom"]) if n["w_custom"] else {}
+        custom_ov = ov.get("custom", {})
+        merged_custom = {**custom_db, **custom_ov}
         nmap[k] = {
             "name": n["name"], "phase": n["phase"], "critical": bool(n["critical"]),
             "risk": float(ov.get("risk", n["w_risk"])),
-            "reliability": float(ov.get("reliability", n["w_reliability"])),
-            "latency": float(ov.get("latency", n["w_latency_sec"])),
+            "reliability": float(ov.get("rel", ov.get("reliability", n["w_reliability"]))),
+            "latency": float(ov.get("lat", ov.get("latency", n["w_latency_sec"]))),
             "cost": float(ov.get("cost", n["w_cost"])),
+            "size": float(ov.get("size", n["w_size"] or 0.5)),
+            "weight_kg": float(ov.get("wt", ov.get("weight_kg", n["w_weight_kg"] or 10))),
+            "power_w": float(ov.get("pwr", ov.get("power_w", n["w_power_w"] or 50))),
+            "attrition": float(ov.get("attr", ov.get("attrition", n["w_attrition"] or 0.1))),
+            "geography": float(ov.get("geo", ov.get("geography", n["w_geography"] or 0.3))),
+            "custom": merged_custom,
         }
 
     emap = {}
@@ -2101,7 +2150,7 @@ def api_systemmap_evaluate():
     costs = [v["cost"] for v in active.values()]
     latencies = [v["latency"] for v in active.values()]
 
-    # Success probability = product of reliability along chain, weighted by edge confidence
+    # Success probability = product of reliability along chain
     success_prob = 1.0
     for k, v in active.items():
         success_prob *= v["reliability"]
@@ -2116,6 +2165,25 @@ def api_systemmap_evaluate():
 
     # Total cost = sum, normalized
     total_cost = sum(costs)
+
+    # ── SWaP-C+ Composites ──
+    # SWaP Score: logistics burden (lower is better)
+    total_weight_kg = sum(v["weight_kg"] for v in active.values())
+    total_power_w = sum(v["power_w"] for v in active.values())
+    avg_size = sum(v["size"] for v in active.values()) / len(active)
+    swap_score = round((avg_size * 0.3 + min(total_weight_kg / 500, 1.0) * 0.35 + min(total_power_w / 2000, 1.0) * 0.35) * 100, 1)
+
+    # Human Exposure Index: risk * attrition sensitivity (higher = more human lives at risk)
+    human_exposure = sum(v["risk"] * v["attrition"] for v in active.values())
+    human_exposure_pct = round(human_exposure / len(active) * 100, 1)
+
+    # Terrain Sensitivity: max geography score (weakest terrain link)
+    max_geography = max(v["geography"] for v in active.values()) if active else 0
+    avg_geography = sum(v["geography"] for v in active.values()) / len(active) if active else 0
+
+    # Highest attrition node (most personnel risk)
+    attr_key = max(active, key=lambda k: active[k]["attrition"]) if active else None
+    attr_node = {"key": attr_key, **active[attr_key]} if attr_key else None
 
     # Bottleneck: lowest reliability node
     bottleneck_key = min(active, key=lambda k: active[k]["reliability"]) if active else None
@@ -2136,10 +2204,19 @@ def api_systemmap_evaluate():
         "critical_path_latency_sec": round(critical_latency, 1),
         "total_latency_sec": round(total_latency, 1),
         "total_cost": round(total_cost, 2),
+        # SWaP-C+ scores
+        "swap_score": swap_score,
+        "total_weight_kg": round(total_weight_kg, 1),
+        "total_power_w": round(total_power_w, 1),
+        "human_exposure_pct": human_exposure_pct,
+        "terrain_sensitivity": round(max_geography * 100, 1),
+        "avg_geography": round(avg_geography * 100, 1),
+        # Meta
         "node_count": len(active),
         "hard_dependencies": hard_deps,
         "bottleneck": bottleneck,
         "highest_risk": risk_node,
+        "highest_attrition": attr_node,
         "per_node": {k: v for k, v in active.items()},
     }
     return jsonify(scores)

@@ -101,10 +101,22 @@
         <div class="ttl">SELECTED NODE</div>
         <div class="txt" id="sel-node">Click a node to inspect weights and dependencies.</div>
         <div id="weight-sliders" style="display:none;margin-top:6px">
+          <div style="color:#888;font-size:.65em;letter-spacing:.5px;margin:4px 0 2px">▸ OPERATIONAL</div>
           <div class="wt-slider"><label>Risk</label><input type="range" min="0" max="100" id="ws-risk" oninput="onWeightSlide()"><span class="wt-val" id="wv-risk">50</span></div>
           <div class="wt-slider"><label>Reliability</label><input type="range" min="0" max="100" id="ws-rel" oninput="onWeightSlide()"><span class="wt-val" id="wv-rel">80</span></div>
           <div class="wt-slider"><label>Latency (s)</label><input type="range" min="0" max="300" id="ws-lat" oninput="onWeightSlide()"><span class="wt-val" id="wv-lat">10</span></div>
           <div class="wt-slider"><label>Cost</label><input type="range" min="0" max="100" id="ws-cost" oninput="onWeightSlide()"><span class="wt-val" id="wv-cost">50</span></div>
+          <div style="color:#888;font-size:.65em;letter-spacing:.5px;margin:6px 0 2px">▸ SWaP (SIZE · WEIGHT · POWER)</div>
+          <div class="wt-slider"><label>Size</label><input type="range" min="0" max="100" id="ws-size" oninput="onWeightSlide()"><span class="wt-val" id="wv-size">50</span></div>
+          <div class="wt-slider"><label>Weight (kg)</label><input type="range" min="0" max="500" id="ws-wt" oninput="onWeightSlide()"><span class="wt-val" id="wv-wt">10</span></div>
+          <div class="wt-slider"><label>Power (W)</label><input type="range" min="0" max="500" id="ws-pwr" oninput="onWeightSlide()"><span class="wt-val" id="wv-pwr">50</span></div>
+          <div style="color:#888;font-size:.65em;letter-spacing:.5px;margin:6px 0 2px">▸ MISSION FACTORS</div>
+          <div class="wt-slider"><label>Attrition</label><input type="range" min="0" max="100" id="ws-attr" oninput="onWeightSlide()"><span class="wt-val" id="wv-attr">10</span></div>
+          <div class="wt-slider"><label>Geography</label><input type="range" min="0" max="100" id="ws-geo" oninput="onWeightSlide()"><span class="wt-val" id="wv-geo">30</span></div>
+          <div id="custom-weight-sliders"></div>
+          <div style="margin-top:4px">
+            <div class="ef" style="margin-bottom:2px"><input id="cw-name" placeholder="custom weight name" style="font-size:.68em"><button class="sys-btn" onclick="addCustomWeight()" style="flex:none;font-size:.68em;padding:3px 6px">+ ADD</button></div>
+          </div>
           <button class="sys-btn" onclick="saveWeights()" style="width:100%;margin-top:4px">SAVE WEIGHTS</button>
         </div>
       </div>
@@ -117,7 +129,11 @@
           <div class="sc-item"><div class="sc-val" id="sc-risk">—</div><div class="sc-lbl">Max Risk %</div></div>
           <div class="sc-item"><div class="sc-val" id="sc-latency">—</div><div class="sc-lbl">Crit Path (s)</div></div>
           <div class="sc-item"><div class="sc-val" id="sc-cost">—</div><div class="sc-lbl">Total Cost</div></div>
-          <div class="sc-item sc-full"><div class="sc-val" id="sc-bottleneck" style="font-size:.85em">—</div><div class="sc-lbl">Bottleneck · Highest Risk</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-swap">—</div><div class="sc-lbl">SWaP Score</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-human">—</div><div class="sc-lbl">Human Exposure</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-terrain">—</div><div class="sc-lbl">Terrain Sens.</div></div>
+          <div class="sc-item"><div class="sc-val" id="sc-weight-kg">—</div><div class="sc-lbl">Total kg</div></div>
+          <div class="sc-item sc-full"><div class="sc-val" id="sc-bottleneck" style="font-size:.85em">—</div><div class="sc-lbl">Bottleneck · Highest Risk · Highest Attrition</div></div>
         </div>
         <button class="sys-btn" onclick="evaluateScorecard()" style="width:100%;margin-top:6px">EVALUATE NOW</button>
       </div>
@@ -209,7 +225,8 @@ async function loadGraph(){
     if(r.nodes&&r.nodes.length){
       NODES=r.nodes.map(n=>({id:n.node_key,name:n.name,phase:n.phase,critical:!!n.critical,
         trails:n.trails||[],dbId:n.id,fx:n.pos_x||null,fy:n.pos_y||null,
-        w_risk:n.w_risk,w_rel:n.w_reliability,w_lat:n.w_latency_sec,w_cost:n.w_cost}));
+        w_risk:n.w_risk,w_rel:n.w_reliability,w_lat:n.w_latency_sec,w_cost:n.w_cost,
+        w_size:n.w_size,w_wt:n.w_weight_kg,w_pwr:n.w_power_w,w_attr:n.w_attrition,w_geo:n.w_geography,w_custom:n.w_custom||{}}));
       LINKS=r.edges.map(e=>({source:e.source_key,target:e.target_key}));
       EDGE_DB=r.edges;
     }else{await apiPost('/api/v1/systemmap/seed',{});return loadGraph();}
@@ -245,7 +262,9 @@ function initGraph(){
 
   nodes.on('mouseenter',(e,d)=>{tip.style.display='block';
     const eff=`Risk:${(getEffective(d.id,'risk')*100).toFixed(0)}% Rel:${(getEffective(d.id,'rel')*100).toFixed(0)}% Lat:${getEffective(d.id,'lat').toFixed(0)}s Cost:${(getEffective(d.id,'cost')*100).toFixed(0)}%`;
-    tip.innerHTML=`<div class="name">${d.name}</div><div class="phase">${d.phase.toUpperCase()}${d.critical?' · CRITICAL':''}</div><div style="color:#888;margin-top:2px">${eff}</div>`;
+    const swap=`Size:${(getEffective(d.id,'size')*100).toFixed(0)}% ${getEffective(d.id,'wt').toFixed(0)}kg ${getEffective(d.id,'pwr').toFixed(0)}W`;
+    const msn=`Attrition:${(getEffective(d.id,'attr')*100).toFixed(0)}% Geo:${(getEffective(d.id,'geo')*100).toFixed(0)}%`;
+    tip.innerHTML=`<div class="name">${d.name}</div><div class="phase">${d.phase.toUpperCase()}${d.critical?' · CRITICAL':''}</div><div style="color:#888;margin-top:2px">${eff}</div><div style="color:#4488ff;font-size:.9em">${swap}</div><div style="color:#ffaa00;font-size:.9em">${msn}</div>`;
   }).on('mousemove',e=>{tip.style.left=(e.offsetX+14)+'px';tip.style.top=(e.offsetY+14)+'px';})
     .on('mouseleave',()=>{tip.style.display='none';})
     .on('click',(e,d)=>{
@@ -266,8 +285,14 @@ function initGraph(){
 function getEffective(id,key){
   const n=nodeById.get(id);if(!n)return 0;
   const ov=scenarioOverrides[id]||{};
-  const wmap={risk:'w_risk',rel:'w_rel',lat:'w_lat',cost:'w_cost'};
+  const wmap={risk:'w_risk',rel:'w_rel',lat:'w_lat',cost:'w_cost',size:'w_size',wt:'w_wt',pwr:'w_pwr',attr:'w_attr',geo:'w_geo'};
   return ov[key]!==undefined?ov[key]:n[wmap[key]]||0;
+}
+function getCustom(id,key){
+  const n=nodeById.get(id);if(!n)return 0;
+  const ov=scenarioOverrides[id]||{};
+  if(ov.custom&&ov.custom[key]!==undefined)return ov.custom[key];
+  return(n.w_custom||{})[key]||0;
 }
 
 // ── Traversal ──
@@ -300,32 +325,89 @@ function selectNode(id){
   document.getElementById('ws-rel').value=Math.round(getEffective(id,'rel')*100);
   document.getElementById('ws-lat').value=Math.round(getEffective(id,'lat'));
   document.getElementById('ws-cost').value=Math.round(getEffective(id,'cost')*100);
+  document.getElementById('ws-size').value=Math.round(getEffective(id,'size')*100);
+  document.getElementById('ws-wt').value=Math.round(getEffective(id,'wt'));
+  document.getElementById('ws-pwr').value=Math.round(getEffective(id,'pwr'));
+  document.getElementById('ws-attr').value=Math.round(getEffective(id,'attr')*100);
+  document.getElementById('ws-geo').value=Math.round(getEffective(id,'geo')*100);
+  buildCustomSliders(id);
   onWeightSlide();
   links.attr('stroke',d=>(d.source.id===id||d.target.id===id)?'#00ff41':'#333').attr('stroke-width',d=>(d.source.id===id||d.target.id===id)?2.4:1.2).attr('opacity',d=>(d.source.id===id||d.target.id===id)?1:0.4);
   nodes.select('circle').attr('opacity',d=>d.id===id?1:0.65);
 }
 
 function onWeightSlide(){
-  ['risk','rel','lat','cost'].forEach(k=>{
-    const v=document.getElementById('ws-'+k).value;
-    document.getElementById('wv-'+k).textContent=k==='lat'?v+'s':v+'%';
+  ['risk','rel','cost','size','attr','geo'].forEach(k=>{
+    document.getElementById('wv-'+k).textContent=document.getElementById('ws-'+k).value+'%';
+  });
+  document.getElementById('wv-lat').textContent=document.getElementById('ws-lat').value+'s';
+  document.getElementById('wv-wt').textContent=document.getElementById('ws-wt').value+'kg';
+  document.getElementById('wv-pwr').textContent=document.getElementById('ws-pwr').value+'W';
+  // Custom sliders
+  document.querySelectorAll('.cw-slider').forEach(el=>{
+    const lbl=el.querySelector('.wt-val');const inp=el.querySelector('input[type=range]');
+    if(lbl&&inp)lbl.textContent=inp.value;
   });
 }
 
-async function saveWeights(){
+function buildCustomSliders(id){
+  const el=document.getElementById('custom-weight-sliders');el.innerHTML='';
+  const n=nodeById.get(id);if(!n)return;
+  const merged={...(n.w_custom||{}),... ((scenarioOverrides[id]||{}).custom||{})};
+  Object.entries(merged).forEach(([k,v])=>{
+    el.innerHTML+=`<div class="wt-slider cw-slider" data-key="${k}"><label>${k}</label><input type="range" min="0" max="100" value="${Math.round(v*100)}" oninput="onWeightSlide()"><span class="wt-val">${Math.round(v*100)}</span><span class="del-x" onclick="removeCustomWeight('${k}')">✕</span></div>`;
+  });
+}
+
+function addCustomWeight(){
+  const name=document.getElementById('cw-name').value.trim().toLowerCase().replace(/\s+/g,'_');
+  if(!name||!selectedNode)return;
+  const n=nodeById.get(selectedNode);
+  if(!n.w_custom)n.w_custom={};
+  n.w_custom[name]=0.5;
+  buildCustomSliders(selectedNode);
+  document.getElementById('cw-name').value='';
+  onWeightSlide();
+}
+
+function removeCustomWeight(key){
   if(!selectedNode)return;
+  const n=nodeById.get(selectedNode);
+  if(n.w_custom)delete n.w_custom[key];
+  const ov=scenarioOverrides[selectedNode];
+  if(ov&&ov.custom)delete ov.custom[key];
+  buildCustomSliders(selectedNode);
+}
+
+function gatherWeights(){
   const risk=document.getElementById('ws-risk').value/100;
   const rel=document.getElementById('ws-rel').value/100;
   const lat=parseFloat(document.getElementById('ws-lat').value);
   const cost=document.getElementById('ws-cost').value/100;
+  const size=document.getElementById('ws-size').value/100;
+  const wt=parseFloat(document.getElementById('ws-wt').value);
+  const pwr=parseFloat(document.getElementById('ws-pwr').value);
+  const attr=document.getElementById('ws-attr').value/100;
+  const geo=document.getElementById('ws-geo').value/100;
+  const custom={};
+  document.querySelectorAll('.cw-slider').forEach(el=>{
+    const k=el.dataset.key;const inp=el.querySelector('input[type=range]');
+    if(k&&inp)custom[k]=parseInt(inp.value)/100;
+  });
+  return{risk,rel,lat,cost,size,wt,pwr,attr,geo,custom};
+}
+
+async function saveWeights(){
+  if(!selectedNode)return;
+  const w=gatherWeights();
   if(scenarioMode){
-    scenarioOverrides[selectedNode]={risk,rel,lat,cost};
+    scenarioOverrides[selectedNode]=w;
     renderOverrideList();
     applyFailureState();evaluateScorecard();
     toast(`Override saved for ${nodeById.get(selectedNode).name}`);
   }else{
-    await apiPost(`/api/v1/systemmap/node/${selectedNode}/weights`,{risk,reliability:rel,latency:lat,cost});
-    const n=nodeById.get(selectedNode);if(n){n.w_risk=risk;n.w_rel=rel;n.w_lat=lat;n.w_cost=cost;}
+    await apiPost(`/api/v1/systemmap/node/${selectedNode}/weights`,{risk:w.risk,reliability:w.rel,latency:w.lat,cost:w.cost,size:w.size,weight_kg:w.wt,power_w:w.pwr,attrition:w.attr,geography:w.geo,custom:w.custom});
+    const n=nodeById.get(selectedNode);if(n){n.w_risk=w.risk;n.w_rel=w.rel;n.w_lat=w.lat;n.w_cost=w.cost;n.w_size=w.size;n.w_wt=w.wt;n.w_pwr=w.pwr;n.w_attr=w.attr;n.w_geo=w.geo;n.w_custom=w.custom;}
     applyFailureState();evaluateScorecard();
     toast(`Weights saved for ${n.name}`);
   }
@@ -341,12 +423,20 @@ async function evaluateScorecard(){
     el('sc-risk',s.max_risk+'%');
     el('sc-latency',s.critical_path_latency_sec+'s');
     el('sc-cost',s.total_cost.toFixed(1));
+    el('sc-swap',s.swap_score+'%');
+    el('sc-human',s.human_exposure_pct+'%');
+    el('sc-terrain',s.terrain_sensitivity+'%');
+    el('sc-weight-kg',s.total_weight_kg+'kg');
     const bn=s.bottleneck?s.bottleneck.name:'—';
     const hr=s.highest_risk?s.highest_risk.name:'—';
-    el('sc-bottleneck',`⚠ ${bn} · 🎯 ${hr}`);
+    const ha=s.highest_attrition?s.highest_attrition.name:'—';
+    el('sc-bottleneck',`⚠ ${bn} · 🎯 ${hr} · 🛡 ${ha}`);
     // Color coding
     const sc=document.getElementById('sc-success').parentElement;sc.className='sc-item '+scClass(100-s.success_probability,20,50);
     const sr=document.getElementById('sc-risk').parentElement;sr.className='sc-item '+scClass(s.max_risk,40,70);
+    document.getElementById('sc-human').parentElement.className='sc-item '+scClass(s.human_exposure_pct,15,40);
+    document.getElementById('sc-swap').parentElement.className='sc-item '+scClass(s.swap_score,40,70);
+    document.getElementById('sc-terrain').parentElement.className='sc-item '+scClass(s.terrain_sensitivity,50,80);
   }catch(e){console.warn('eval fail',e);}
 }
 
@@ -411,7 +501,7 @@ function renderOverrideList(){
   const keys=Object.keys(scenarioOverrides);
   if(!keys.length){el.innerHTML='<div class="sys-empty" style="font-size:.7em">No overrides — adjust node weights to create them.</div>';return;}
   el.innerHTML=keys.map(k=>{const n=nodeById.get(k);const ov=scenarioOverrides[k];
-    return`<div class="item" style="font-size:.7em"><span>${n?n.name:k}: R${(ov.risk*100).toFixed(0)} Rel${(ov.rel*100).toFixed(0)} L${ov.lat.toFixed(0)}s C${(ov.cost*100).toFixed(0)}</span><span class="del-x" onclick="delete scenarioOverrides['${k}'];renderOverrideList();applyFailureState();evaluateScorecard();">✕</span></div>`;
+    return`<div class="item" style="font-size:.7em"><span>${n?n.name:k}: R${(ov.risk*100).toFixed(0)} Rel${((ov.rel||0)*100).toFixed(0)} A${((ov.attr||0)*100).toFixed(0)} ${(ov.wt||0).toFixed(0)}kg</span><span class="del-x" onclick="delete scenarioOverrides['${k}'];renderOverrideList();applyFailureState();evaluateScorecard();">✕</span></div>`;
   }).join('');
 }
 
@@ -424,7 +514,7 @@ function showTrail(i){selectedTrail=i;const t=TRAILS[i];const s=new Set(t.nodes)
   renderList('upstream-list',t.nodes.map(id=>nodeById.get(id)).filter(Boolean));
 }
 
-function clearTrail(){selectedTrail=null;selectedNode=null;document.getElementById('weight-sliders').style.display='none';
+function clearTrail(){selectedTrail=null;selectedNode=null;document.getElementById('weight-sliders').style.display='none';document.getElementById('custom-weight-sliders').innerHTML='';
   if(!links||!nodes)return;links.attr('stroke','#444').attr('stroke-width',1.4).attr('opacity',0.8);
   nodes.select('circle').attr('opacity',1).attr('stroke',d=>d.critical?'#fff':'#111').attr('stroke-width',d=>d.critical?1.5:1);
   document.getElementById('sel-node').textContent='Click a node to inspect weights and dependencies.';renderList('upstream-list',[]);applyFailureState();}
